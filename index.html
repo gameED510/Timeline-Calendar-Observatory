@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="把多个客户 timeline 合并成日历、时间轴和撞期视图的排期工具。" />
+    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08090b" media="(prefers-color-scheme: dark)" />
+    <title>TL 日历观察台</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="site.webmanifest" />
+    <link rel="stylesheet" href="styles.css?v=3" />
+  </head>
+  <body>
+    <div class="app-shell mobile-page-plan" id="appShell">
+      <aside class="side-panel" aria-label="项目总览">
+        <div class="app-title">
+          <div>
+            <p class="eyebrow">Timeline Planner</p>
+            <h1>TL 日历观察台</h1>
+          </div>
+          <button class="icon-button" id="resetButton" type="button" title="恢复初始数据" aria-label="恢复初始数据">
+            <i data-lucide="rotate-ccw"></i>
+          </button>
+        </div>
+
+        <div class="metric-grid" aria-label="当前排期数据">
+          <div class="metric-item">
+            <span class="metric-value" id="projectCount">0</span>
+            <span class="metric-label">进行中</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-value" id="milestoneCount">0</span>
+            <span class="metric-label">待完成</span>
+          </div>
+          <div class="metric-item warning">
+            <span class="metric-value" id="conflictCount">0</span>
+            <span class="metric-label">撞期日</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-value" id="rangeCount">0</span>
+            <span class="metric-label">天跨度</span>
+          </div>
+        </div>
+
+        <section class="side-insights" id="sideInsights" aria-label="排期摘要"></section>
+      </aside>
+
+      <main class="workspace">
+        <header class="workspace-bar">
+          <div>
+            <p class="eyebrow">2026 排期</p>
+            <h2 id="rangeTitle">加载中</h2>
+          </div>
+
+          <div class="toolbar" aria-label="工具栏">
+            <div class="segmented" role="tablist" aria-label="视图切换">
+              <button class="segmented-button active" type="button" data-view="calendar" role="tab" aria-selected="true">
+                <i data-lucide="calendar-days"></i>
+                日历
+              </button>
+              <button class="segmented-button" type="button" data-view="projects" role="tab" aria-selected="false">
+                <i data-lucide="layers-3"></i>
+                项目
+              </button>
+              <button class="segmented-button" type="button" data-view="timeline" role="tab" aria-selected="false">
+                <i data-lucide="gantt-chart-square"></i>
+                时间轴
+              </button>
+              <button class="segmented-button" type="button" data-view="conflicts" role="tab" aria-selected="false">
+                <i data-lucide="triangle-alert"></i>
+                风险
+              </button>
+            </div>
+
+            <button class="icon-button" id="todayButton" type="button" title="回到今天" aria-label="回到今天">
+              <i data-lucide="calendar-check-2"></i>
+            </button>
+
+            <div class="data-menu" id="dataMenu">
+              <button class="icon-button" id="dataMenuButton" type="button" title="更多工具" aria-label="打开更多工具" aria-expanded="false">
+                <i data-lucide="ellipsis"></i>
+              </button>
+              <div class="data-popover hidden" id="dataPopover" role="menu" aria-label="数据工具">
+                <button id="importButton" type="button" role="menuitem">
+                  <i data-lucide="upload"></i>
+                  <span>导入备份</span>
+                </button>
+                <button id="exportButton" type="button" role="menuitem">
+                  <i data-lucide="download"></i>
+                  <span>导出备份</span>
+                </button>
+                <button id="exportCsvButton" type="button" role="menuitem">
+                  <i data-lucide="table"></i>
+                  <span>导出表格</span>
+                </button>
+              </div>
+            </div>
+            <input class="visually-hidden" id="importFile" type="file" accept="application/json" />
+
+            <div class="account-menu" id="accountMenu">
+              <button class="avatar-button" id="avatarButton" type="button" title="账户与云同步" aria-label="账户与云同步" aria-expanded="false">
+                <span id="avatarInitial">云</span>
+              </button>
+
+              <button class="account-backdrop hidden" id="accountBackdrop" type="button" aria-label="关闭账户与云同步窗口"></button>
+
+              <section class="sync-card account-popover hidden" id="accountPopover" role="dialog" aria-modal="true" aria-labelledby="syncDialogTitle">
+                <div class="sync-card-head">
+                  <div>
+                    <p class="eyebrow">Cloud Sync</p>
+                    <h2 id="syncDialogTitle">云同步</h2>
+                  </div>
+                  <div class="sync-card-status-actions">
+                    <span class="sync-status" id="syncStatus">本地</span>
+                    <button class="icon-button mini-button" id="closeAccountPopoverButton" type="button" title="关闭" aria-label="关闭账户与云同步窗口">
+                      <i data-lucide="x"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <form class="sync-login" id="syncLoginForm">
+                  <div class="sync-auth-mode" role="tablist" aria-label="登录方式">
+                    <button class="active" type="button" data-sync-mode="signin" role="tab" aria-selected="true">登录</button>
+                    <button type="button" data-sync-mode="signup" role="tab" aria-selected="false">注册</button>
+                  </div>
+                  <input id="syncEmail" type="email" placeholder="邮箱" autocomplete="email" />
+                  <input id="syncPassword" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password" minlength="6" />
+                  <button class="primary-button" id="syncLoginButton" type="submit">
+                    <i data-lucide="log-in"></i>
+                    登录
+                  </button>
+                  <button class="sync-reset-button" id="syncResetPasswordButton" type="button">忘记密码</button>
+                </form>
+
+                <div class="sync-user hidden" id="syncUserPanel">
+                  <div class="sync-user-meta">
+                    <span id="syncUserEmail">未登录</span>
+                    <small id="syncLastSaved">未同步</small>
+                  </div>
+                  <div class="sync-actions">
+                    <button class="icon-button" id="syncNowButton" type="button" title="立即同步" aria-label="立即同步">
+                      <i data-lucide="cloud-upload"></i>
+                    </button>
+                    <button class="icon-button" id="syncRefreshButton" type="button" title="安全合并云端数据" aria-label="安全合并云端数据">
+                      <i data-lucide="cloud-download"></i>
+                    </button>
+                    <button class="icon-button" id="syncHistoryButton" type="button" title="数据恢复记录" aria-label="打开数据恢复记录">
+                      <i data-lucide="history"></i>
+                    </button>
+                    <button class="icon-button" id="syncLogoutButton" type="button" title="退出登录" aria-label="退出登录">
+                      <i data-lucide="log-out"></i>
+                    </button>
+                  </div>
+                  <form class="sync-password-form hidden" id="syncPasswordUpdateForm">
+                    <input id="syncNewPassword" type="password" placeholder="设置/更新密码" autocomplete="new-password" minlength="6" />
+                    <button class="ghost-button" id="syncPasswordUpdateButton" type="submit">设置密码</button>
+                  </form>
+                </div>
+
+                <p class="sync-note" id="syncNote">检查云端配置中</p>
+              </section>
+            </div>
+          </div>
+        </header>
+
+        <section class="focus-row" id="focusRow" aria-label="排期焦点"></section>
+
+        <section class="legend-strip" id="projectLegend" aria-label="项目颜色"></section>
+
+        <section class="view active" id="calendarView" aria-label="日历视图">
+          <div class="calendar-view-tools">
+            <div class="calendar-tool-group">
+              <div class="segmented compact" role="tablist" aria-label="日历显示方式">
+                <button class="segmented-button active" type="button" data-calendar-mode="month" role="tab" aria-selected="true">
+                  <i data-lucide="calendar-days"></i>
+                  月历
+                </button>
+                <button class="segmented-button" type="button" data-calendar-mode="week" role="tab" aria-selected="false">
+                  <i data-lucide="calendar-range"></i>
+                  周
+                </button>
+                <button class="segmented-button" type="button" data-calendar-mode="agenda" role="tab" aria-selected="false">
+                  <i data-lucide="list-checks"></i>
+                  日程
+                </button>
+              </div>
+              <div class="calendar-period-nav" id="calendarPeriodNav" aria-label="月份切换">
+                <button class="icon-button mini-button" id="previousMonthButton" type="button" title="上个月" aria-label="上个月">
+                  <i data-lucide="chevron-left"></i>
+                </button>
+                <strong id="calendarPeriodLabel">本月</strong>
+                <button class="icon-button mini-button" id="nextMonthButton" type="button" title="下个月" aria-label="下个月">
+                  <i data-lucide="chevron-right"></i>
+                </button>
+              </div>
+            </div>
+            <button class="text-button" id="quickAddButton" type="button">
+              <i data-lucide="plus"></i>
+              新增项目
+            </button>
+          </div>
+          <div class="calendar-scroll">
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+          <div class="calendar-day-details" id="calendarDayDetails"></div>
+        </section>
+
+        <section class="view" id="projectsView" aria-label="项目视图">
+          <div class="projects-page">
+            <div class="projects-page-head">
+              <div>
+                <p class="eyebrow">Projects</p>
+                <h2>项目</h2>
+              </div>
+              <button class="text-button" id="addProjectButton" type="button">
+                <i data-lucide="plus"></i>
+                新增
+              </button>
+            </div>
+
+            <div class="project-tools">
+              <label class="visually-hidden" for="projectSearch">搜索项目</label>
+              <div class="project-search-row">
+                <input id="projectSearch" type="search" placeholder="搜索项目 / 客户 / 日期" autocomplete="off" />
+                <select id="projectSort" aria-label="项目排序">
+                  <option value="next">按下一节点</option>
+                  <option value="progress">按完成率</option>
+                  <option value="conflict">按撞期风险</option>
+                  <option value="name">按名称</option>
+                </select>
+              </div>
+              <div class="project-filter" role="tablist" aria-label="项目筛选">
+                <button type="button" data-project-filter="all" role="tab" aria-selected="false">全部</button>
+                <button class="active" type="button" data-project-filter="active" role="tab" aria-selected="true">进行中</button>
+                <button type="button" data-project-filter="done" role="tab" aria-selected="false">完成</button>
+                <button type="button" data-project-filter="conflict" role="tab" aria-selected="false">撞期</button>
+              </div>
+            </div>
+
+            <div class="project-list project-card-grid" id="projectList"></div>
+          </div>
+        </section>
+
+        <section class="view" id="timelineView" aria-label="时间轴视图">
+          <div class="mobile-view-head">
+            <h2>时间轴</h2>
+          </div>
+          <div class="timeline-shell" id="timelineShell"></div>
+        </section>
+
+        <section class="view" id="conflictsView" aria-label="撞期视图">
+          <div class="mobile-view-head">
+            <h2>撞期风险</h2>
+          </div>
+          <div class="conflict-list" id="conflictList"></div>
+        </section>
+      </main>
+
+      <aside class="inspector" aria-label="节点编辑" aria-hidden="true">
+        <div class="inspector-header">
+          <p class="eyebrow">编辑</p>
+          <h2 id="inspectorTitle">未选择节点</h2>
+        </div>
+
+        <div class="empty-state" id="emptyInspector">
+          <i data-lucide="mouse-pointer-2"></i>
+          <span>未选择节点</span>
+        </div>
+
+        <div class="inspector-body hidden" id="activeInspector">
+          <div class="selected-card">
+            <div class="selected-dot" id="selectedDot"></div>
+            <div>
+              <p id="selectedProject">项目</p>
+              <strong id="selectedStage">节点</strong>
+            </div>
+          </div>
+
+          <label class="field-label" for="inspectorDate">日期</label>
+          <div class="date-control">
+            <button class="icon-button" id="moveEarlierButton" type="button" title="提前一天" aria-label="提前一天">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <input id="inspectorDate" type="date" />
+            <button class="icon-button" id="moveLaterButton" type="button" title="延后一天" aria-label="延后一天">
+              <i data-lucide="chevron-right"></i>
+            </button>
+          </div>
+
+          <div class="stage-stack" id="stageStack"></div>
+
+          <div class="sequence-alert hidden" id="sequenceAlert">
+            <i data-lucide="circle-alert"></i>
+            <span id="sequenceAlertText"></span>
+          </div>
+
+          <button class="ghost-button full-button" id="editProjectButton" type="button">
+            <i data-lucide="settings-2"></i>
+            编辑项目
+          </button>
+          <button class="danger-button" id="deleteProjectButton" type="button">
+            <i data-lucide="trash-2"></i>
+            删除项目
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <nav class="mobile-tabbar" aria-label="移动端页面">
+      <button class="active" type="button" data-mobile-page="plan" aria-pressed="true">
+        <i data-lucide="calendar-days"></i>
+        <span>日历</span>
+      </button>
+      <button type="button" data-mobile-page="projects" aria-pressed="false">
+        <i data-lucide="layers-3"></i>
+        <span>项目</span>
+      </button>
+      <button type="button" data-mobile-page="timeline" aria-pressed="false">
+        <i data-lucide="gantt-chart-square"></i>
+        <span>时间轴</span>
+      </button>
+      <button type="button" data-mobile-page="conflicts" aria-pressed="false">
+        <i data-lucide="triangle-alert"></i>
+        <span>风险</span>
+      </button>
+    </nav>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <dialog class="project-dialog" id="projectDialog" aria-labelledby="projectDialogTitle">
+      <form id="projectForm" method="dialog">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Timeline</p>
+            <h2 id="projectDialogTitle">新增项目</h2>
+          </div>
+          <button class="icon-button" id="closeDialogButton" type="button" title="关闭" aria-label="关闭">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <section class="smart-import-panel" aria-label="智能识别排期">
+          <div class="smart-import-head">
+            <div>
+              <p class="eyebrow">Smart Paste</p>
+              <h3>粘贴排期自动识别</h3>
+            </div>
+            <button class="ghost-button smart-import-button" id="parseScheduleButton" type="button">
+              <i data-lucide="sparkles"></i>
+              识别填入
+            </button>
+          </div>
+          <textarea id="smartPasteInput" rows="5" placeholder="Ta的故事&amp;阿道夫&#10;大纲8.24&#10;脚本8.25&#10;拍摄8.25&#10;初稿8.27&#10;发布8.29"></textarea>
+          <p class="smart-import-status" id="smartPasteStatus" aria-live="polite">粘贴项目名和阶段日期，会自动填入下面的表单。</p>
+          <div class="smart-import-preview hidden" id="smartPastePreview" aria-label="识别结果预览"></div>
+        </section>
+
+        <label class="field-label" for="projectNameInput">项目名称</label>
+        <input id="projectNameInput" name="name" type="text" placeholder="拜托了闻学长 & 新客户" required />
+
+        <label class="field-label">项目颜色</label>
+        <div class="color-swatch-row" id="projectColorFields" aria-label="项目颜色"></div>
+
+        <p class="optional-stage-note">只填写项目需要的阶段，留空的阶段不会进入日历、完成率和 TL 内容。</p>
+        <div class="dialog-grid" id="projectDateFields"></div>
+
+        <div class="sequence-alert hidden" id="dialogSequenceAlert">
+          <i data-lucide="circle-alert"></i>
+          <span id="dialogSequenceAlertText"></span>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="ghost-button hidden" id="copyProjectTlButton" type="button">
+            <i data-lucide="copy"></i>
+            复制 TL
+          </button>
+          <button class="danger-button compact-danger hidden" id="deleteProjectFromDialogButton" type="button">
+            <i data-lucide="trash-2"></i>
+            删除
+          </button>
+          <button class="ghost-button" id="cancelDialogButton" type="button">取消</button>
+          <button class="primary-button" type="submit">
+            <i data-lucide="check"></i>
+            保存
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="history-dialog" id="historyDialog" aria-labelledby="historyDialogTitle">
+      <div class="history-dialog-shell">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Data Protection</p>
+            <h2 id="historyDialogTitle">恢复记录</h2>
+          </div>
+          <button class="icon-button" id="closeHistoryDialogButton" type="button" title="关闭" aria-label="关闭恢复记录">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <p class="history-dialog-note">云端保留最近 50 份，本机保留最近 20 份。恢复前还会再保存一份当前数据。</p>
+        <div class="history-list" id="historyList" aria-live="polite"></div>
+      </div>
+    </dialog>
+
+    <script src="app.js?v=3"></script>
+    <script src="vendor/lucide.min.js?v=1" defer onload="window.lucide && window.lucide.createIcons()"></script>
+  </body>
+</html>

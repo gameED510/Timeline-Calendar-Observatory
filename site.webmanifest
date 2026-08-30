@@ -1,0 +1,9 @@
+{
+  "name": "TL 日历观察台",
+  "short_name": "TL日历",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f5f5f7",
+  "theme_color": "#f5f5f7",
+  "description": "把多个客户 timeline 合并成日历、时间轴和撞期视图的排期工具。"
+}

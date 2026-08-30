@@ -1,0 +1,19 @@
+.vercel
+.playwright-cli
+.learnings/
+supabase/.temp
+.env
+.env.local
+node_modules/
+vendor/lucide.min.js
+vendor/supabase-client.js
+.edgeone/
+.edgeone-dist/
+.netlify/
+output/
+
+# Tencent Cloud EdgeOne
+.env
+.edgeone/*
+.tef_dist/*
+  

@@ -1,0 +1,19 @@
+{
+  "name": "tl-calendar-planner",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:icons": "node scripts/build-icons.mjs",
+    "build:supabase": "esbuild vendor/supabase-entry.mjs --bundle --format=esm --platform=browser --target=es2020 --minify --outfile=vendor/supabase-client.js",
+    "build:vendor": "npm run build:icons && npm run build:supabase",
+    "build:edgeone": "npm run build:vendor && node scripts/build-edgeone.mjs && pwsh -NoProfile -File scripts/inject-edgeone-config.ps1",
+    "build:netlify": "npm run build:vendor && node scripts/build-netlify.mjs && pwsh -NoProfile -File scripts/inject-netlify-config.ps1",
+    "test": "node --test tests/architecture.test.mjs",
+    "check": "node --check app.js && node --check sw.js && node --check netlify-functions/supabase-proxy.mjs && node --check edge-functions/api/supabase-proxy.js && node --check api/supabase-proxy.js && npm test"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "2.112.3",
+    "esbuild": "0.28.2",
+    "lucide": "1.37.0"
+  }
+}
