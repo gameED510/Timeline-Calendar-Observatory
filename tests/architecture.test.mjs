@@ -12,6 +12,20 @@ test("browser dependencies are served locally", async () => {
   assert.match(app, /\.\/vendor\/supabase-client\.js/);
 });
 
+test("manual theme preference loads before the interface and stays local", async () => {
+  const [html, theme, app] = await Promise.all([
+    read("index.html"),
+    read("theme.js"),
+    read("app.js")
+  ]);
+
+  assert.match(html, /theme\.js\?v=1[\s\S]*styles\.css\?v=4/);
+  assert.match(theme, /localStorage\.getItem\(key\)/);
+  assert.match(theme, /document\.documentElement\.dataset\.theme/);
+  assert.match(app, /localStorage\.setItem\(THEME_KEY, nextTheme\)/);
+  assert.match(app, /aria-pressed/);
+});
+
 test("cloud sync uses project versions, snapshots, and authenticated RPC access", async () => {
   const [app, migration] = await Promise.all([
     read("app.js"),

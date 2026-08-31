@@ -4,12 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="把多个客户 timeline 合并成日历、时间轴和撞期视图的排期工具。" />
-    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#08090b" media="(prefers-color-scheme: dark)" />
+    <meta id="themeColorLight" name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
+    <meta id="themeColorDark" name="theme-color" content="#08090b" media="(prefers-color-scheme: dark)" />
     <title>TL 日历观察台</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="site.webmanifest" />
-    <link rel="stylesheet" href="styles.css?v=3" />
+    <script src="theme.js?v=1"></script>
+    <link rel="stylesheet" href="styles.css?v=4" />
   </head>
   <body>
     <div class="app-shell mobile-page-plan" id="appShell">
@@ -75,6 +76,10 @@
 
             <button class="icon-button" id="todayButton" type="button" title="回到今天" aria-label="回到今天">
               <i data-lucide="calendar-check-2"></i>
+            </button>
+
+            <button class="icon-button theme-toggle-button" id="themeButton" type="button" title="切换到深色模式" aria-label="切换到深色模式" aria-pressed="false">
+              <i data-lucide="moon"></i>
             </button>
 
             <div class="data-menu" id="dataMenu">
@@ -404,7 +409,7 @@
       </div>
     </dialog>
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
     <script src="vendor/lucide.min.js?v=1" defer onload="window.lucide && window.lucide.createIcons()"></script>
   </body>
 </html>

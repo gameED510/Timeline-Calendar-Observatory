@@ -6,6 +6,7 @@ const output = resolve(root, "output", "edgeone");
 const entries = [
   "index.html",
   "styles.css",
+  "theme.js",
   "app.js",
   "favicon.svg",
   "site.webmanifest",

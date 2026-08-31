@@ -1,6 +1,7 @@
 const STORAGE_KEY = "tl-calendar-planner-v1";
 const CALENDAR_MODE_KEY = "tl-calendar-planner-calendar-mode";
 const LOCAL_RECOVERY_KEY = "tl-calendar-planner-recovery-v2";
+const THEME_KEY = "tl-calendar-planner-theme";
 const SUPABASE_CONFIG_ENDPOINT = "/api/config";
 const SUPABASE_LEGACY_TABLE = "timeline_data";
 const SUPABASE_PROJECTS_TABLE = "timeline_projects";
@@ -168,6 +169,9 @@ const elements = {
   cancelDialogButton: document.querySelector("#cancelDialogButton"),
   quickAddButton: document.querySelector("#quickAddButton"),
   todayButton: document.querySelector("#todayButton"),
+  themeButton: document.querySelector("#themeButton"),
+  themeColorLight: document.querySelector("#themeColorLight"),
+  themeColorDark: document.querySelector("#themeColorDark"),
   exportButton: document.querySelector("#exportButton"),
   exportCsvButton: document.querySelector("#exportCsvButton"),
   importButton: document.querySelector("#importButton"),
@@ -207,6 +211,49 @@ const elements = {
   mobilePageButtons: [...document.querySelectorAll("[data-mobile-page]")],
   toast: document.querySelector("#toast")
 };
+
+const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+function getActiveTheme() {
+  const selectedTheme = document.documentElement.dataset.theme;
+  if (selectedTheme === "light" || selectedTheme === "dark") return selectedTheme;
+  return systemThemeQuery.matches ? "dark" : "light";
+}
+
+function updateThemeControls() {
+  const activeTheme = getActiveTheme();
+  const nextTheme = activeTheme === "dark" ? "light" : "dark";
+  const explicitTheme = document.documentElement.dataset.theme === activeTheme;
+  const label = `切换到${nextTheme === "dark" ? "深色" : "浅色"}模式`;
+
+  if (elements.themeButton) {
+    elements.themeButton.innerHTML = `<i data-lucide="${activeTheme === "dark" ? "sun" : "moon"}"></i>`;
+    elements.themeButton.title = label;
+    elements.themeButton.setAttribute("aria-label", label);
+    elements.themeButton.setAttribute("aria-pressed", String(activeTheme === "dark"));
+  }
+
+  if (elements.themeColorLight && elements.themeColorDark) {
+    elements.themeColorLight.media = explicitTheme
+      ? (activeTheme === "light" ? "all" : "not all")
+      : "(prefers-color-scheme: light)";
+    elements.themeColorDark.media = explicitTheme
+      ? (activeTheme === "dark" ? "all" : "not all")
+      : "(prefers-color-scheme: dark)";
+  }
+}
+
+function toggleTheme() {
+  const nextTheme = getActiveTheme() === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = nextTheme;
+  try {
+    localStorage.setItem(THEME_KEY, nextTheme);
+  } catch {
+    // The theme still applies for the current session.
+  }
+  updateThemeControls();
+  activateIcons();
+}
 
 function loadLocalState() {
   try {
@@ -3077,6 +3124,7 @@ function wireEvents() {
   elements.deleteProjectFromDialogButton.addEventListener("click", deleteEditingProject);
   elements.deleteProjectButton.addEventListener("click", deleteSelectedProject);
   elements.todayButton.addEventListener("click", jumpToToday);
+  elements.themeButton?.addEventListener("click", toggleTheme);
   elements.dataMenuButton?.addEventListener("click", () => {
     setAccountPopoverOpen(false);
     toggleDataMenu();
@@ -3136,6 +3184,13 @@ function wireEvents() {
   setMobilePage(mobilePage);
 }
 
+updateThemeControls();
+systemThemeQuery.addEventListener?.("change", () => {
+  if (!document.documentElement.dataset.theme) {
+    updateThemeControls();
+    activateIcons();
+  }
+});
 wireEvents();
 render();
 initCloudSync();

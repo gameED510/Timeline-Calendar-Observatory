@@ -7,6 +7,7 @@ const siteOutput = resolve(output, "site");
 const staticEntries = [
   "index.html",
   "styles.css",
+  "theme.js",
   "app.js",
   "favicon.svg",
   "site.webmanifest",
