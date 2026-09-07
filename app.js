@@ -24,46 +24,11 @@ const PRIORITY_OPTIONS = {
   low: { label: "低优先级", weight: 1, tone: "muted" }
 };
 
-const DEFAULT_PROJECTS = [
-  {
-    id: "hp-printer",
-    name: "拜托了闻学长 & 惠普墨盒打印机",
-    color: PROJECT_COLORS[0],
-    milestones: {
-      "大纲": "2026-05-25",
-      "脚本": "2026-05-27",
-      "拍摄": "2026-06-01",
-      "初稿": "2026-06-04",
-      "发布": "2026-06-08"
-    }
-  },
-  {
-    id: "xiaomi",
-    name: "拜托了闻学长 & 小米",
-    color: PROJECT_COLORS[1],
-    milestones: {
-      "大纲": "2026-05-26",
-      "脚本": "2026-05-27",
-      "拍摄": "2026-05-28",
-      "初稿": "2026-06-01",
-      "发布": "2026-06-03"
-    }
-  },
-  {
-    id: "lenovo-laptop",
-    name: "拜托了闻学长 & 联想笔记本",
-    color: PROJECT_COLORS[2],
-    milestones: {
-      "大纲": "2026-06-01",
-      "脚本": "2026-06-02",
-      "拍摄": "2026-06-03",
-      "初稿": "2026-06-05",
-      "发布": "2026-06-10"
-    }
-  }
-];
-
-const localState = loadLocalState();
+const localState = createEmptyLocalState([]);
+let activeAccountId = null;
+let accountEpoch = 0;
+let accountHydrated = false;
+let accountAbort = new AbortController();
 let projects = localState.projects;
 let localUpdatedAt = localState.updatedAt;
 let projectSyncVersions = localState.sync.versions;
@@ -82,6 +47,7 @@ let mobilePage = "plan";
 let selectedCalendarDate = getInitialCalendarDate();
 let calendarMode = getInitialCalendarMode();
 let calendarMonthAnchor = startOfMonthIso(selectedCalendarDate);
+const expandedCalendarDates = new Set();
 let toastTimer = null;
 let syncRefreshTimer = null;
 let smartParseTimer = null;
@@ -259,14 +225,15 @@ function toggleTheme() {
   activateIcons();
 }
 
-function loadLocalState() {
+function loadLocalState(accountId = activeAccountId) {
+  if (!accountId) return createEmptyLocalState([]);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return createEmptyLocalState(normalizeProjects(DEFAULT_PROJECTS));
+    const raw = localStorage.getItem(`${STORAGE_KEY}:${accountId}`);
+    if (!raw) return createEmptyLocalState([]);
     const parsed = JSON.parse(raw);
     const parsedProjects = parsed.projects || parsed;
     if (!validateProjects(parsedProjects)) {
-      return createEmptyLocalState(normalizeProjects(DEFAULT_PROJECTS));
+      return createEmptyLocalState([]);
     }
     return {
       projects: normalizeProjects(parsedProjects),
@@ -274,7 +241,72 @@ function loadLocalState() {
       sync: normalizeLocalSyncState(parsed.sync)
     };
   } catch {
-    return createEmptyLocalState(normalizeProjects(DEFAULT_PROJECTS));
+    return createEmptyLocalState([]);
+  }
+}
+
+function changeCloudAccount(user) {
+  const nextId = user?.id || null;
+  syncState.user = user;
+  if (nextId === activeAccountId) return;
+  if (activeAccountId && accountHydrated) createLocalRecoveryPoint("切换账号前");
+  accountEpoch += 1;
+  accountAbort.abort();
+  accountAbort = new AbortController();
+  window.clearTimeout(syncState.pendingSaveTimer);
+  stopCloudRefresh();
+  activeAccountId = nextId;
+  accountHydrated = false;
+  projects = [];
+  syncedProjects = {};
+  projectSyncVersions = {};
+  projectTombstones = {};
+  dirtyProjectIds = new Set();
+  snapshotPending = false;
+  syncRetryCount = 0;
+  syncState.saving = false;
+  syncState.loadingRemote = false;
+  syncState.pendingSaveTimer = null;
+  syncState.lastSavedAt = null;
+  syncState.conflicts = 0;
+  selected = null;
+  editingProjectId = null;
+  selectedCalendarDate = TODAY_ISO;
+  expandedCalendarDates.clear();
+  calendarMonthAnchor = startOfMonthIso(TODAY_ISO);
+  for (const key of ["projectList", "timelineShell", "conflictList", "calendarGrid", "calendarDayDetails", "historyList", "selectedProject", "selectedStage", "stageStack"]) {
+    if (elements[key]) elements[key].replaceChildren();
+  }
+  elements.projectDialog?.close();
+  elements.projectForm?.reset();
+  elements.historyDialog?.close();
+  if (nextId) {
+    const cached = loadLocalState(nextId);
+    if (cached.projects.length) createLocalRecoveryPoint("登录前本机备份", cached.projects);
+  }
+  render();
+}
+
+function canEditProjects() {
+  if (activeAccountId && accountHydrated) return true;
+  showToast(activeAccountId ? "请等待云端排期加载完成" : "请先登录账号");
+  if (!activeAccountId) setAccountPopoverOpen(true);
+  return false;
+}
+
+function accountRequest(request) {
+  return request.abortSignal(accountAbort.signal);
+}
+
+function renderAccountGate() {
+  const locked = !activeAccountId || !accountHydrated;
+  elements.appShell?.classList.toggle("account-locked", locked);
+  const title = document.querySelector("#accountGateTitle");
+  const button = document.querySelector("#accountGateButton");
+  if (title) title.textContent = activeAccountId ? (syncState.loadingRemote ? "正在读取云端排期" : "云端排期尚未加载") : "登录后查看排期";
+  if (button) {
+    button.disabled = syncState.initializing || syncState.loadingRemote;
+    button.textContent = activeAccountId ? "重新读取" : "登录";
   }
 }
 
@@ -359,8 +391,9 @@ function getProjectConflictCountSafe(project) {
 }
 
 function persistLocalProjects(updatedAt = new Date().toISOString()) {
+  if (!activeAccountId || !accountHydrated) return;
   localUpdatedAt = updatedAt;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+  localStorage.setItem(`${STORAGE_KEY}:${activeAccountId}`, JSON.stringify({
     projects,
     updatedAt: localUpdatedAt,
     sync: {
@@ -374,6 +407,7 @@ function persistLocalProjects(updatedAt = new Date().toISOString()) {
 }
 
 function saveProjects(options = {}) {
+  if (!activeAccountId || !accountHydrated) return;
   markDirtyProjects();
   persistLocalProjects();
   createLocalRecoveryPoint(options.reason || "本机自动保存");
@@ -407,10 +441,12 @@ function markDirtyProjects() {
 }
 
 function createLocalRecoveryPoint(reason, recoveryProjects = projects) {
+  if (!activeAccountId) return null;
   try {
     const normalized = recoveryProjects.map(cloneProject);
     const fingerprint = JSON.stringify(normalized);
-    const stored = JSON.parse(localStorage.getItem(LOCAL_RECOVERY_KEY) || "[]");
+    const key = `${LOCAL_RECOVERY_KEY}:${activeAccountId}`;
+    const stored = JSON.parse(localStorage.getItem(key) || "[]");
     const points = Array.isArray(stored) ? stored : [];
     if (points[0]?.fingerprint === fingerprint) return points[0];
     const point = {
@@ -420,7 +456,7 @@ function createLocalRecoveryPoint(reason, recoveryProjects = projects) {
       fingerprint,
       projects: normalized
     };
-    localStorage.setItem(LOCAL_RECOVERY_KEY, JSON.stringify([point, ...points].slice(0, 20)));
+    localStorage.setItem(key, JSON.stringify([point, ...points].slice(0, 20)));
     return point;
   } catch {
     return null;
@@ -428,8 +464,9 @@ function createLocalRecoveryPoint(reason, recoveryProjects = projects) {
 }
 
 function getLocalRecoveryPoints() {
+  if (!activeAccountId) return [];
   try {
-    const points = JSON.parse(localStorage.getItem(LOCAL_RECOVERY_KEY) || "[]");
+    const points = JSON.parse(localStorage.getItem(`${LOCAL_RECOVERY_KEY}:${activeAccountId}`) || "[]");
     return Array.isArray(points) ? points.filter((point) => validateProjects(point.projects)) : [];
   } catch {
     return [];
@@ -575,7 +612,7 @@ function render() {
   elements.milestoneCount.textContent = String(pendingMilestones.length);
   elements.conflictCount.textContent = String(conflictDays.length);
   elements.rangeCount.textContent = visibleMilestones.length ? String(daysBetween(dateToIso(min), dateToIso(max)) + 1) : "0";
-  elements.rangeTitle.textContent = visibleMilestones.length ? `${formatDateShort(dateToIso(min))} 至 ${formatDateShort(dateToIso(max))}` : "所有项目已完成";
+  elements.rangeTitle.textContent = !activeAccountId ? "我的排期" : !accountHydrated ? "读取云端中" : visibleMilestones.length ? `${formatDateShort(dateToIso(min))} 至 ${formatDateShort(dateToIso(max))}` : projects.length ? "所有项目已完成" : "暂无项目";
 
   if (currentView === "projects") renderProjectList();
   renderSideInsights(grouped, allMilestones, conflictDays);
@@ -999,6 +1036,7 @@ function isProjectComplete(project) {
 }
 
 function toggleProjectCompleted(projectId) {
+  if (!canEditProjects()) return;
   const project = projects.find((item) => item.id === projectId);
   if (!project) return;
   const nextDone = !isProjectComplete(project);
@@ -1020,6 +1058,7 @@ function toggleProjectCompleted(projectId) {
 }
 
 function toggleMilestoneCompleted(projectId, stageName) {
+  if (!canEditProjects()) return;
   const project = projects.find((item) => item.id === projectId);
   if (!project || !project.milestones[stageName]) return;
   project.completedMilestones = normalizeCompletedMilestones(project.completedMilestones, project.milestones);
@@ -1235,7 +1274,37 @@ function renderCalendar(grouped) {
       more.setAttribute("aria-label", `还有 ${items.length - visibleItems.length} 个节点，点击日期查看`);
       stack.append(more);
     }
-    cell.append(stack);
+    if (!compactMonth && items.length >= 3) {
+      const pile = document.createElement("details");
+      pile.className = "day-pile";
+      pile.open = expandedCalendarDates.has(iso);
+      const summary = document.createElement("summary");
+      summary.className = "day-pile-cover";
+      summary.setAttribute("aria-label", `${formatTinyDate(iso)}，展开 ${items.length} 个节点`);
+      items.slice(0, 3).reverse().forEach((item, index) => {
+        const card = document.createElement("span");
+        card.className = "pile-leaf";
+        card.style.setProperty("--project-color", item.project.color);
+        card.style.setProperty("--leaf", String(index));
+        card.textContent = getClientName(item.project.name);
+        summary.append(card);
+      });
+      const count = document.createElement("span");
+      count.className = "pile-count";
+      count.textContent = `${items.length} 个节点`;
+      summary.append(count);
+      pile.append(summary, stack);
+      pile.addEventListener("click", (event) => event.stopPropagation());
+      pile.addEventListener("toggle", () => {
+        if (!pile.isConnected) return;
+        if (pile.open) expandedCalendarDates.add(iso);
+        else expandedCalendarDates.delete(iso);
+      });
+      pile.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") { pile.open = false; summary.focus(); }
+      });
+      cell.append(pile);
+    } else cell.append(stack);
 
     elements.calendarGrid.append(cell);
   });
@@ -1621,6 +1690,7 @@ function createMilestoneChip(project, stage, iso, draggable) {
 }
 
 function addDropTarget(target) {
+  if (target.dataset.date) target.dataset.dropLabel = formatTinyDate(target.dataset.date);
   target.addEventListener("dragover", (event) => {
     event.preventDefault();
     target.classList.add("drag-over");
@@ -1701,6 +1771,7 @@ function openMilestoneInCalendar(projectId, stage) {
 }
 
 function moveMilestone(projectId, stage, iso) {
+  if (!canEditProjects()) return;
   const project = projects.find((item) => item.id === projectId);
   if (!project || !project.milestones[stage] || !iso) return;
   project.milestones[stage] = iso;
@@ -1708,6 +1779,15 @@ function moveMilestone(projectId, stage, iso) {
   selectedCalendarDate = iso;
   saveProjects();
   render();
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.querySelectorAll(".milestone-chip.selected").forEach((chip) => {
+      chip.animate([
+        { transform: "translateY(-8px) scale(1.04) rotate(-1deg)" },
+        { transform: "translateY(2px) scale(.99)", offset: .7 },
+        { transform: "none" }
+      ], { duration: 340, easing: "cubic-bezier(.2,.8,.25,1)" });
+    });
+  }
   showToast(`${getClientName(project.name)} · ${stage} 已调整到 ${formatDateWithWeekday(iso)}`);
 }
 
@@ -1918,6 +1998,7 @@ function createSupabaseProxyFetch(proxyUrl) {
 }
 
 function renderSyncPanel() {
+  renderAccountGate();
   if (!elements.syncStatus) return;
 
   elements.syncLoginForm.classList.toggle("hidden", !syncState.configured || Boolean(syncState.user));
@@ -2041,15 +2122,15 @@ async function initCloudSync() {
     syncState.initializing = false;
 
     const { data } = await syncState.client.auth.getSession();
-    syncState.user = data.session?.user || null;
+    changeCloudAccount(data.session?.user || null);
 
     syncState.client.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user || null;
-      const userChanged = nextUser?.id !== syncState.user?.id;
-      syncState.user = nextUser;
+      const userChanged = (nextUser?.id || null) !== activeAccountId;
+      changeCloudAccount(nextUser);
       renderSyncPanel();
       if (nextUser && userChanged) {
-        loadCloudProjects({ preferNewer: true });
+        window.setTimeout(() => loadCloudProjects({ preferNewer: true }), 0);
         startCloudRefresh();
       }
       if (!nextUser) stopCloudRefresh();
@@ -2100,7 +2181,7 @@ async function submitPasswordAuth(event) {
       : await syncState.client.auth.signInWithPassword({ email, password });
     const { data, error } = result;
     if (error) throw error;
-    syncState.user = data.session?.user || data.user || syncState.user;
+    if (data.session) changeCloudAccount(data.session.user);
     elements.syncPassword.value = "";
 
     if (syncState.user) {
@@ -2178,16 +2259,19 @@ function getAuthRedirectUrl() {
 
 async function signOutCloud() {
   if (!syncState.client) return;
-  await syncState.client.auth.signOut();
-  syncState.user = null;
-  syncState.lastSavedAt = null;
-  stopCloudRefresh();
-  renderSyncPanel();
-  showToast("已退出云同步");
+  const client = syncState.client;
+  changeCloudAccount(null);
+  try {
+    const { error } = await client.auth.signOut({ scope: "local" });
+    if (error) throw error;
+    showToast("已退出云同步");
+  } catch (error) {
+    showToast(getCloudErrorMessage(error, "退出失败，请重试"));
+  }
 }
 
 function queueCloudSave() {
-  if (!syncState.client || !syncState.user || syncState.loadingRemote || !navigator.onLine) return;
+  if (!syncState.client || !activeAccountId || !accountHydrated || syncState.loadingRemote || !navigator.onLine) return;
   window.clearTimeout(syncState.pendingSaveTimer);
   syncState.pendingSaveTimer = window.setTimeout(() => {
     saveCloudProjects();
@@ -2195,7 +2279,8 @@ function queueCloudSave() {
 }
 
 async function saveCloudProjects(options = {}) {
-  if (!syncState.client || !syncState.user || syncState.saving || syncState.loadingRemote || !navigator.onLine) return;
+  if (!syncState.client || !activeAccountId || !accountHydrated || syncState.saving || syncState.loadingRemote || !navigator.onLine) return;
+  const epoch = accountEpoch;
   window.clearTimeout(syncState.pendingSaveTimer);
   syncState.pendingSaveTimer = null;
   markDirtyProjects();
@@ -2215,16 +2300,18 @@ async function saveCloudProjects(options = {}) {
       pass += 1;
       const batch = [...dirtyProjectIds];
       for (const projectId of batch) {
+        if (epoch !== accountEpoch) return;
         const localProject = projects.find((project) => project.id === projectId) || null;
         const sentFingerprint = localProject ? projectFingerprint(localProject) : null;
         const tombstone = projectTombstones[projectId];
         const payload = localProject || tombstone?.project || syncedProjects[projectId] || { id: projectId };
-        const { data, error } = await syncState.client.rpc("sync_timeline_project", {
+        const { data, error } = await accountRequest(syncState.client.rpc("sync_timeline_project", {
           p_project_id: projectId,
           p_project: payload,
           p_base_version: Number(projectSyncVersions[projectId] || tombstone?.version || 0),
           p_deleted: !localProject
-        });
+        }));
+        if (epoch !== accountEpoch) return;
         if (error) throw error;
         const result = Array.isArray(data) ? data[0] : data;
         if (!result) throw new Error("云端未返回同步结果");
@@ -2245,9 +2332,10 @@ async function saveCloudProjects(options = {}) {
       throw new Error("部分项目需要稍后继续同步");
     }
 
-    const { error: snapshotError } = await syncState.client.rpc("create_timeline_snapshot", {
+    const { error: snapshotError } = await accountRequest(syncState.client.rpc("create_timeline_snapshot", {
       p_reason: options.reason || "auto"
-    });
+    }));
+    if (epoch !== accountEpoch) return;
     if (snapshotError) throw snapshotError;
     snapshotPending = false;
     syncRetryCount = 0;
@@ -2256,9 +2344,11 @@ async function saveCloudProjects(options = {}) {
     render();
     renderSyncPanel();
   } catch (error) {
+    if (epoch !== accountEpoch) return;
     syncRetryCount += 1;
     showToast(getCloudErrorMessage(error, "云同步失败"));
   } finally {
+    if (epoch !== accountEpoch) return;
     syncState.saving = false;
     renderSyncPanel();
     if (dirtyProjectIds.size || snapshotPending) queueCloudSave();
@@ -2267,25 +2357,43 @@ async function saveCloudProjects(options = {}) {
 
 async function loadCloudProjects(options = {}) {
   if (!syncState.client || !syncState.user || syncState.saving || syncState.loadingRemote || !navigator.onLine) return;
+  const epoch = accountEpoch;
+  const userId = activeAccountId;
+  if (!userId) return;
   syncState.loadingRemote = true;
   renderSyncPanel();
 
   try {
-    const { data, error } = await syncState.client
+    const { data, error } = await accountRequest(syncState.client
       .from(SUPABASE_PROJECTS_TABLE)
       .select("project_id, project, version, deleted, updated_at")
-      .eq("user_id", syncState.user.id)
-      .order("project_id");
+      .eq("user_id", userId)
+      .order("project_id"));
+    if (epoch !== accountEpoch) return;
     if (error) throw error;
 
     let rows = Array.isArray(data) ? data : [];
     if (!rows.length) {
-      rows = await bootstrapVersionedCloudData();
+      rows = await bootstrapVersionedCloudData(userId, epoch);
     }
+    if (epoch !== accountEpoch) return;
 
     const previousProjects = JSON.stringify(projects);
     createLocalRecoveryPoint(options.manual ? "手动刷新前" : "云端合并前");
-    mergeRemoteProjectRows(rows);
+    if (!accountHydrated || options.authoritative) {
+      projects = [];
+      syncedProjects = {};
+      projectSyncVersions = {};
+      projectTombstones = {};
+      dirtyProjectIds = new Set();
+      snapshotPending = false;
+      rows.forEach(applyRemoteCloudRow);
+      accountHydrated = true;
+      const pending = getActiveProjectMilestones().filter((item) => !item.completed).map((item) => item.date).sort();
+      selectedCalendarDate = pending.find((iso) => iso >= TODAY_ISO) || pending[0] || TODAY_ISO;
+      calendarMonthAnchor = startOfMonthIso(selectedCalendarDate);
+      render();
+    } else mergeRemoteProjectRows(rows);
     persistLocalProjects();
     if (JSON.stringify(projects) !== previousProjects) render();
     syncState.lastSavedAt = new Date().toISOString();
@@ -2295,33 +2403,28 @@ async function loadCloudProjects(options = {}) {
       await saveCloudProjects({ reason: "merge" });
     }
   } catch (error) {
+    if (epoch !== accountEpoch) return;
     showToast(getCloudErrorMessage(error, "读取云端失败"));
   } finally {
+    if (epoch !== accountEpoch) return;
     syncState.loadingRemote = false;
     renderSyncPanel();
   }
 }
 
-async function bootstrapVersionedCloudData() {
-  let sourceProjects = projects.map(cloneProject);
-  const { data: legacy, error: legacyError } = await syncState.client
+async function bootstrapVersionedCloudData(userId, epoch) {
+  const { data: legacy, error: legacyError } = await accountRequest(syncState.client
     .from(SUPABASE_LEGACY_TABLE)
     .select("projects, updated_at")
-    .eq("user_id", syncState.user.id)
-    .maybeSingle();
+    .eq("user_id", userId)
+    .maybeSingle());
+  if (epoch !== accountEpoch) return [];
+  if (legacyError) throw legacyError;
+  if (!legacy || !validateProjects(legacy.projects) || !legacy.projects.length) return [];
 
-  if (!legacyError && legacy && validateProjects(legacy.projects)) {
-    const remoteIsNewer = !localUpdatedAt || !legacy.updated_at
-      || new Date(legacy.updated_at) >= new Date(localUpdatedAt);
-    if (remoteIsNewer) {
-      createLocalRecoveryPoint("旧版云数据迁移前", projects);
-      sourceProjects = legacy.projects.map(cloneProject);
-    }
-  }
-
-  const { data, error } = await syncState.client.rpc("bootstrap_timeline_projects", {
-    p_projects: sourceProjects
-  });
+  const { data, error } = await accountRequest(syncState.client.rpc("bootstrap_timeline_projects", {
+    p_projects: legacy.projects.map(cloneProject)
+  }));
   if (error) throw error;
   return Array.isArray(data) ? data : [];
 }
@@ -2422,14 +2525,6 @@ function resolveCloudConflict(projectId, localProject, remoteRow) {
     : null;
   const localDiffers = localProject && (!remoteProject || projectFingerprint(localProject) !== projectFingerprint(remoteProject));
 
-  if (localDiffers) {
-    const conflictCopy = cloneProject(localProject);
-    conflictCopy.id = `${projectId}-conflict-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`;
-    conflictCopy.name = `${localProject.name}（本机冲突副本）`;
-    projects.push(conflictCopy);
-    dirtyProjectIds.add(conflictCopy.id);
-  }
-
   applyRemoteCloudRow({
     ...remoteRow,
     project_id: projectId,
@@ -2437,7 +2532,7 @@ function resolveCloudConflict(projectId, localProject, remoteRow) {
     deleted: remoteDeleted
   });
   syncState.conflicts += 1;
-  showToast(localDiffers ? "检测到跨设备冲突，已保留本机副本" : "云端已有更新，已安全合并");
+  showToast(localDiffers ? "已采用云端版本，本机修改保留在恢复记录中" : "已更新为云端版本");
 }
 
 function startCloudRefresh() {
@@ -2465,16 +2560,18 @@ async function openHistoryDialog() {
 
 async function renderRecoveryHistory() {
   if (!elements.historyList) return;
+  const epoch = accountEpoch;
   elements.historyList.innerHTML = "";
 
   const cloudSection = createHistorySection("云端版本", "每次成功同步自动保存");
   try {
-    const { data, error } = await syncState.client
+    const { data, error } = await accountRequest(syncState.client
       .from(SUPABASE_SNAPSHOTS_TABLE)
       .select("id, created_at, reason, projects")
       .eq("user_id", syncState.user.id)
       .order("created_at", { ascending: false })
-      .limit(30);
+      .limit(30));
+    if (epoch !== accountEpoch) return;
     if (error) throw error;
     if (data?.length) {
       data.forEach((snapshot) => {
@@ -2491,7 +2588,8 @@ async function renderRecoveryHistory() {
     cloudSection.append(createHistoryEmpty(getCloudErrorMessage(error, "云端版本读取失败")));
   }
 
-  const localSection = createHistorySection("本机恢复点", "即使断网也可以恢复");
+  if (epoch !== accountEpoch) return;
+  const localSection = createHistorySection("本机恢复点", "当前账号的本机备份");
   const localPoints = getLocalRecoveryPoints();
   if (localPoints.length) {
     localPoints.forEach((point) => {
@@ -2569,12 +2667,15 @@ function formatSnapshotReason(reason) {
 }
 
 async function restoreCloudSnapshot(snapshotId) {
+  if (!canEditProjects()) return;
+  const epoch = accountEpoch;
   if (!window.confirm("恢复这个云端版本？当前数据会先自动保存一份。")) return;
   createLocalRecoveryPoint("云端版本恢复前");
   try {
-    const { data, error } = await syncState.client.rpc("restore_timeline_snapshot", {
+    const { data, error } = await accountRequest(syncState.client.rpc("restore_timeline_snapshot", {
       p_snapshot_id: snapshotId
-    });
+    }));
+    if (epoch !== accountEpoch) return;
     if (error) throw error;
     projects = [];
     projectSyncVersions = {};
@@ -2594,6 +2695,7 @@ async function restoreCloudSnapshot(snapshotId) {
 }
 
 function restoreLocalRecoveryPoint(pointId) {
+  if (!canEditProjects()) return;
   const point = getLocalRecoveryPoints().find((item) => item.id === pointId);
   if (!point || !window.confirm("恢复这个本机版本？当前数据会先自动保存一份。")) return;
   createLocalRecoveryPoint("本机版本恢复前");
@@ -2771,6 +2873,7 @@ function queueSmartScheduleParse() {
 }
 
 function openProjectDialog(projectId = null) {
+  if (!canEditProjects()) return;
   editingProjectId = projectId;
   const editingProject = projects.find((project) => project.id === projectId) || null;
   elements.projectForm.reset();
@@ -2851,6 +2954,7 @@ function renderColorSwatches() {
 }
 
 function saveProjectFromForm() {
+  if (!canEditProjects()) return false;
   const formData = new FormData(elements.projectForm);
   const name = String(formData.get("name") || "").trim();
   if (!name) return false;
@@ -2992,9 +3096,12 @@ function escapeCsvCell(value) {
 }
 
 async function importProjects(file) {
+  if (!canEditProjects()) return;
+  const epoch = accountEpoch;
   if (!file) return;
   try {
     const payload = JSON.parse(await file.text());
+    if (epoch !== accountEpoch) return;
     const imported = payload.projects || payload;
     if (!validateProjects(imported)) throw new Error("Invalid project shape");
     if (!window.confirm(`导入 ${imported.length} 个项目？当前数据会被覆盖。`)) return;
@@ -3011,6 +3118,7 @@ async function importProjects(file) {
 }
 
 function deleteSelectedProject() {
+  if (!canEditProjects()) return;
   if (!selected) return;
   const project = projects.find((item) => item.id === selected.projectId);
   if (!project) return;
@@ -3023,6 +3131,7 @@ function deleteSelectedProject() {
 }
 
 function deleteEditingProject() {
+  if (!canEditProjects()) return;
   if (!editingProjectId) return;
   const project = projects.find((item) => item.id === editingProjectId);
   if (!project) return;
@@ -3037,16 +3146,9 @@ function deleteEditingProject() {
 }
 
 function resetToDefaults() {
-  const confirmation = window.prompt("恢复初始时间线会覆盖当前本地和云端数据。请输入 RESET 确认。");
-  if (confirmation !== "RESET") {
-    showToast("已取消恢复初始数据");
-    return;
-  }
-  projects = normalizeProjects(DEFAULT_PROJECTS);
-  selected = null;
-  saveProjects();
-  render();
-  showToast("已恢复初始数据");
+  if (!canEditProjects()) return;
+  if (!window.confirm("重新读取云端排期？本机内容会先备份，不会上传或覆盖云端。")) return;
+  loadCloudProjects({ manual: true, authoritative: true });
 }
 
 function switchView(view) {
@@ -3084,6 +3186,10 @@ function jumpToToday() {
 }
 
 function wireEvents() {
+  document.querySelector("#accountGateButton")?.addEventListener("click", () => {
+    if (activeAccountId) loadCloudProjects();
+    else setAccountPopoverOpen(true);
+  });
   elements.viewButtons.forEach((button) => {
     button.addEventListener("click", () => switchView(button.dataset.view));
   });

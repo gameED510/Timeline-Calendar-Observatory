@@ -10,17 +10,17 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="site.webmanifest" />
     <script src="theme.js?v=1"></script>
-    <link rel="stylesheet" href="styles.css?v=5" />
+    <link rel="stylesheet" href="styles.css?v=6" />
   </head>
   <body>
-    <div class="app-shell mobile-page-plan" id="appShell">
+    <div class="app-shell mobile-page-plan account-locked" id="appShell">
       <aside class="side-panel" aria-label="项目总览">
         <div class="app-title">
           <div>
             <p class="eyebrow">Timeline Planner</p>
             <h1>TL 日历观察台</h1>
           </div>
-          <button class="icon-button" id="resetButton" type="button" title="恢复初始数据" aria-label="恢复初始数据">
+          <button class="icon-button" id="resetButton" type="button" title="重新读取云端排期" aria-label="重新读取云端排期">
             <i data-lucide="rotate-ccw"></i>
           </button>
         </div>
@@ -168,6 +168,12 @@
             </div>
           </div>
         </header>
+
+        <section class="account-gate" aria-live="polite">
+          <i data-lucide="calendar-days"></i>
+          <h2 id="accountGateTitle">登录后查看排期</h2>
+          <button type="button" class="primary-button" id="accountGateButton">登录</button>
+        </section>
 
         <section class="focus-row" id="focusRow" aria-label="排期焦点"></section>
 
@@ -409,7 +415,7 @@
       </div>
     </dialog>
 
-    <script src="app.js?v=5"></script>
-    <script src="vendor/lucide.min.js?v=2" defer></script>
+    <script src="app.js?v=6"></script>
+    <script src="vendor/lucide.min.js?v=3" defer></script>
   </body>
 </html>

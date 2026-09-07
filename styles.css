@@ -4430,7 +4430,75 @@ dialog[open] {
   }
 }
 
+/* Account content is hidden before auth hydration, including the first paint. */
+.account-gate { display: none; }
+.account-locked .account-gate {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 55vh; gap: 20px; text-align: center;
+}
+.account-gate > svg { width: 40px; height: 40px; color: var(--muted); }
+.account-gate h2 { font-size: 20px; font-weight: 600; }
+.account-gate button { min-height: 44px; padding: 10px 28px; border-radius: 8px; background: var(--accent); color: white; border: 0; }
+.account-locked .focus-row, .account-locked .legend-strip,
+.account-locked .view, .account-locked .side-panel,
+.account-locked .mobile-tabbar, .account-locked .inspector { display: none !important; }
+.account-locked { grid-template-columns: minmax(0, 1fr) !important; }
+body:has(.account-locked) .mobile-tabbar { display: none !important; }
+.account-locked .workspace-tools > .segmented,
+.account-locked .data-menu-wrap { display: none; }
+
 /* Colored event materials inspired by the supplied calendar motion reference. */
+.calendar-view-tools .segmented {
+  background: var(--bg-soft); padding: 4px; gap: 4px; border-radius: 8px;
+  box-shadow: 0 3px 12px rgb(0 0 0 / 4%);
+}
+.calendar-view-tools .segmented-button { border: 0; border-radius: 6px; min-height: 36px; }
+.calendar-view-tools .segmented-button.active {
+  background: var(--ink); color: var(--bg-soft); box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+}
+.calendar-grid .day-cell.today .date-number {
+  background: #ed5c77; color: white; box-shadow: 0 2px 8px rgb(237 92 119 / 20%);
+}
+.calendar-grid .day-cell.selected-day { box-shadow: inset 0 0 0 1px var(--accent); }
+.calendar-grid .day-cell { position: relative; }
+.day-pile { position: relative; min-height: 124px; }
+.day-pile-cover { position: relative; height: 124px; cursor: pointer; list-style: none; }
+.day-pile-cover::-webkit-details-marker { display: none; }
+.pile-leaf {
+  position: absolute; inset: 8px 5px auto; height: 52px; padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--project-color) 30%, var(--line));
+  border-radius: 8px; background: color-mix(in srgb, var(--project-color) 45%, var(--bg-soft));
+  color: var(--ink); font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: inset 0 1px 0 var(--material-highlight), 0 3px 7px rgb(0 0 0 / 8%);
+  transform: translateY(calc(var(--leaf) * 9px)) rotate(calc((var(--leaf) - 1) * 3deg));
+  transition: transform 360ms cubic-bezier(.2,.8,.25,1.18), box-shadow 220ms ease;
+  pointer-events: none;
+}
+.pile-count { position: absolute; bottom: 2px; inset-inline: 0; text-align: center; font-size: 11px; color: var(--muted-strong); }
+.day-pile-cover:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.day-pile[open] .pile-leaf { transform: translateY(calc(var(--leaf) * 20px)) rotate(0); }
+.day-pile[open] .chip-stack {
+  padding: 6px 2px; max-height: 230px; overflow-y: auto; scrollbar-width: thin;
+  animation: pile-reveal 300ms cubic-bezier(.2,.8,.25,1.12);
+}
+.day-pile[open] .milestone-chip { min-height: 62px; }
+.day-pile[open] .pile-count { color: var(--accent); }
+@keyframes pile-reveal { from { opacity: 0; transform: translateY(-12px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (hover: hover) and (pointer: fine) {
+  .day-pile-cover:hover .pile-leaf, .day-pile-cover:focus-visible .pile-leaf {
+    transform: translateY(calc(var(--leaf) * 23px - 4px)) rotate(calc((var(--leaf) - 1) * 4deg));
+    box-shadow: inset 0 1px 0 var(--material-highlight), 0 6px 12px rgb(0 0 0 / 10%);
+  }
+}
+.day-cell.drag-over::after {
+  content: attr(data-drop-label); position: absolute; inset: 36px 8px 8px; z-index: 5;
+  display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 12%, var(--bg-soft));
+  border: 1px dashed var(--accent); border-radius: 8px; font-size: 20px; font-weight: 600; color: var(--ink);
+  pointer-events: none;
+}
+@media (min-width: 861px) {
+  .calendar-details-list { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+}
 .calendar-scroll {
   padding: 0;
   border: 0;

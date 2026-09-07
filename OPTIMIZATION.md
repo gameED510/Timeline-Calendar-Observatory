@@ -1,5 +1,10 @@
 # UI and Performance Review
 
+2026-09-08 follow-up: account isolation and full video-frame review are documented
+in [UI_REFERENCE.md](UI_REFERENCE.md). This supersedes the earlier conflict-copy
+behavior and six-frame reference review below. Current icon bundle: 52 icons,
+14,121 bytes; no new animation dependency.
+
 Date: 2026-09-07. Scope: preserve scheduling, optional stages, completion rules,
 TL copying, themes, cloud conflict copies and recovery history.
 
