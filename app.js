@@ -3186,7 +3186,8 @@ function jumpToToday() {
 }
 
 function wireEvents() {
-  document.querySelector("#accountGateButton")?.addEventListener("click", () => {
+  document.querySelector("#accountGateButton")?.addEventListener("click", (event) => {
+    event.stopPropagation();
     if (activeAccountId) loadCloudProjects();
     else setAccountPopoverOpen(true);
   });

@@ -16,7 +16,7 @@ function worker(fetch) {
   vm.runInNewContext(source, {
     URL, Response, fetch,
     self: { location: new URL("https://calendar.example/sw.js"), addEventListener: (name, fn) => { handlers[name] = fn; }, clients: { claim() {} }, skipWaiting() {} },
-    caches: { open: async () => cache, keys: async () => ["unrelated-cache", "tl-calendar-shell-v5", "tl-calendar-shell-v6"], delete: async (key) => deleted.push(key) }
+    caches: { open: async () => cache, keys: async () => ["unrelated-cache", "tl-calendar-shell-v6", "tl-calendar-shell-v7"], delete: async (key) => deleted.push(key) }
   });
   return { stored, deleted, handlers, request(path, mode = "cors") {
     let response;
@@ -34,8 +34,8 @@ test("API and non-shell resources bypass the offline cache", () => {
 
 test("cached versioned resources do not make redundant background requests", async () => {
   const sw = worker(() => { throw Error("must use cache"); });
-  sw.stored.set("https://calendar.example/app.js?v=6", new Response("cached script"));
-  assert.equal(await (await sw.request("/app.js?v=6")).text(), "cached script");
+  sw.stored.set("https://calendar.example/app.js?v=7", new Response("cached script"));
+  assert.equal(await (await sw.request("/app.js?v=7")).text(), "cached script");
 });
 
 test("server errors never replace a usable offline page", async () => {
@@ -50,5 +50,5 @@ test("activation removes only this application's previous cache", async () => {
   let work;
   sw.handlers.activate({ waitUntil: (promise) => { work = promise; } });
   await work;
-  assert.deepEqual(sw.deleted, ["tl-calendar-shell-v5"]);
+  assert.deepEqual(sw.deleted, ["tl-calendar-shell-v6"]);
 });
