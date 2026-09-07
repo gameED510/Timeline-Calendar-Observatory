@@ -54,6 +54,8 @@ npm run build:edgeone
 
 图标和 Supabase 客户端均打包在 `vendor/`，线上运行不依赖第三方 CDN。Netlify 与 EdgeOne 构建产物分别输出到 `output/netlify/` 和 `output/edgeone/`。
 
+构建只打包实际使用的图标，并压缩发布产物中的 JavaScript/CSS，源文件保持可读。构建不再请求 Vercel 或依赖 PowerShell：若设置下方环境变量，会写入构建目录中的运行配置；未设置时需由部署平台在运行时提供。不要使用旧的 `inject-*-config.ps1` 脚本。
+
 ## 部署变量
 
 部署平台需要配置以下公开客户端参数：

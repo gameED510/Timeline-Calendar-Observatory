@@ -1,5 +1,6 @@
 import { copyFileSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { prepareStatic } from "./prepare-static.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "output", "edgeone");
@@ -12,6 +13,7 @@ const entries = [
   "site.webmanifest",
   "sw.js",
   "vendor",
+  "shared",
   "edge-functions",
   "edgeone.json"
 ];
@@ -44,4 +46,5 @@ for (const entry of entries) {
   }
 }
 
+await prepareStatic(output, resolve(output, "edge-functions", "api", "_runtime-config.js"));
 console.log(`Prepared EdgeOne deployment in ${output}`);

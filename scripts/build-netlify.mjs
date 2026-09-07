@@ -1,5 +1,6 @@
 import { copyFileSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { prepareStatic } from "./prepare-static.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "output", "netlify");
@@ -41,4 +42,6 @@ for (const entry of staticEntries) {
 }
 
 copyEntry(resolve(root, "netlify-functions"), resolve(output, "functions"));
+copyEntry(resolve(root, "shared"), resolve(output, "shared"));
+await prepareStatic(siteOutput, resolve(output, "functions", "_runtime-config.mjs"));
 console.log(`Prepared Netlify deployment in ${output}`);

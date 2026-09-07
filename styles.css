@@ -33,9 +33,10 @@
   --calendar-cell: rgba(255, 255, 255, 0.74);
   --calendar-cell-soft: rgba(255, 255, 255, 0.58);
   --scroll-thumb: rgba(60, 60, 67, 0.3);
-  --shadow: 0 18px 50px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.62);
-  --shadow-lift: 0 18px 42px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-lift: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --event-tint: 30%;
   --radius: 8px;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
 }
@@ -75,9 +76,10 @@
     --calendar-cell: rgba(36, 36, 38, 0.62);
     --calendar-cell-soft: rgba(44, 44, 46, 0.48);
     --scroll-thumb: rgba(235, 235, 245, 0.28);
-    --shadow: 0 22px 58px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    --shadow-soft: 0 14px 36px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    --shadow-lift: 0 24px 64px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    --shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+    --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.18);
+    --shadow-lift: 0 6px 18px rgba(0, 0, 0, 0.24);
+    --event-tint: 22%;
   }
 }
 
@@ -120,9 +122,10 @@
   --calendar-cell: rgba(36, 36, 38, 0.62);
   --calendar-cell-soft: rgba(44, 44, 46, 0.48);
   --scroll-thumb: rgba(235, 235, 245, 0.28);
-  --shadow: 0 22px 58px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  --shadow-soft: 0 14px 36px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  --shadow-lift: 0 24px 64px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.18);
+  --shadow-lift: 0 6px 18px rgba(0, 0, 0, 0.24);
+  --event-tint: 22%;
 }
 
 * {
@@ -132,8 +135,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 42%, color-mix(in srgb, var(--bg), #ffffff 6%) 100%);
+  background: var(--bg);
   color: var(--ink);
   font-family: var(--font);
   letter-spacing: 0;
@@ -142,7 +144,7 @@ body {
 
 body::before,
 body::after {
-  content: "";
+  content: none;
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -2932,8 +2934,8 @@ textarea {
   border-color: var(--material-stroke);
   background: var(--material);
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(28px) saturate(1.45);
-  -webkit-backdrop-filter: blur(28px) saturate(1.45);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .day-cell,
@@ -2957,7 +2959,7 @@ textarea {
   overflow: visible;
   border-bottom: 1px solid var(--material-stroke);
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-strong), transparent 8%), color-mix(in srgb, var(--surface), transparent 12%));
-  box-shadow: 0 1px 0 var(--material-highlight) inset, 0 16px 36px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
 }
 
 .workspace-bar.account-open {
@@ -3032,9 +3034,9 @@ textarea {
   border-color: var(--material-stroke);
   background: var(--control-bg);
   color: var(--ink);
-  box-shadow: inset 0 1px 0 var(--material-highlight), 0 8px 22px rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(18px) saturate(1.25);
-  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 input::placeholder,
@@ -3050,7 +3052,7 @@ textarea::placeholder {
   border-color: transparent;
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent), transparent 74%);
+  box-shadow: none;
 }
 
 .danger-button {
@@ -3122,7 +3124,7 @@ textarea::placeholder {
 .timeline-event-card::after,
 .legend-item::after,
 .conflict-day::after {
-  display: block;
+  display: none;
   background: linear-gradient(135deg, var(--material-highlight), transparent 48%);
 }
 
@@ -3141,11 +3143,8 @@ textarea::placeholder {
 .agenda-day {
   isolation: isolate;
   transition:
-    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    box-shadow 220ms ease,
-    border-color 220ms ease,
-    background 220ms ease,
-    filter 220ms ease;
+    transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 160ms ease;
 }
 
 .focus-card:hover,
@@ -3161,7 +3160,7 @@ textarea::placeholder {
 .metric-item:hover,
 .day-cell:hover,
 .agenda-day:hover {
-  filter: saturate(1.04) brightness(1.02);
+  filter: none;
   box-shadow: var(--shadow-lift);
 }
 
@@ -4307,6 +4306,235 @@ textarea::placeholder {
     width: min(520px, calc(100vw - 32px));
     border-width: 1px 1px 0;
     transform: translateX(-50%);
+  }
+}
+
+/* Quiet working surfaces; translucency is reserved for floating navigation. */
+.side-panel {
+  background: var(--bg-soft);
+  box-shadow: none;
+}
+
+.side-section,
+.projects-page,
+.calendar-scroll,
+.calendar-day-details,
+.agenda-day {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.side-section {
+  border-width: 0 0 1px;
+  padding: 16px 0;
+}
+
+.side-event-row,
+.side-conflict-row,
+.side-progress-row {
+  box-shadow: none;
+}
+
+.project-card,
+.calendar-detail-card,
+.timeline-event-card,
+.milestone-chip {
+  background: var(--surface-strong);
+  border-radius: 8px;
+}
+
+.calendar-grid {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.calendar-grid.agenda-grid {
+  border: 0;
+}
+
+.agenda-day,
+.calendar-day-details {
+  border: 0;
+  padding: 12px 0;
+}
+
+.agenda-day-head {
+  padding-bottom: 10px;
+}
+
+.metric-item,
+.focus-card {
+  box-shadow: none;
+}
+
+.metric-value,
+.date-number,
+.calendar-period-label,
+.project-meta {
+  font-variant-numeric: tabular-nums;
+}
+
+button:focus-visible,
+[tabindex="0"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.view.active {
+  animation: view-enter 180ms ease-out;
+}
+
+dialog[open] {
+  animation: view-enter 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes view-enter {
+  from { opacity: 0; translate: 0 5px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .project-card:hover,
+  .timeline-event-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--project-color, var(--accent)), var(--line) 55%);
+  }
+}
+
+@media (hover: none) {
+  .project-card:hover,
+  .day-cell:hover,
+  .agenda-day:hover,
+  .icon-button:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .workspace-bar {
+    background: var(--bg-soft);
+  }
+  .mobile-tabbar {
+    background: var(--bg-soft);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 -1px 0 var(--line);
+  }
+  .calendar-detail-main strong {
+    line-height: 1.5;
+  }
+}
+
+/* Colored event materials inspired by the supplied calendar motion reference. */
+.calendar-scroll {
+  padding: 0;
+  border: 0;
+}
+
+.calendar-grid:not(.agenda-grid) {
+  background: var(--calendar-line);
+}
+
+.calendar-grid:not(.agenda-grid) .weekday-cell,
+.calendar-grid:not(.agenda-grid) .day-cell:not(.high-density):not(.medium-density):not(.drag-over) {
+  background: var(--bg-soft);
+}
+
+.milestone-chip:not(.completed),
+.calendar-detail-card:not(.completed),
+.timeline-event-card:not(.completed) {
+  background: color-mix(in srgb, var(--project-color) var(--event-tint), var(--bg-soft));
+  border-color: color-mix(in srgb, var(--project-color) 28%, var(--line));
+  box-shadow: inset 0 1px 0 var(--material-highlight), 0 2px 3px rgba(0, 0, 0, 0.04);
+}
+
+.milestone-chip,
+.calendar-detail-card,
+.timeline-event-card {
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.25, 1.15), border-color 160ms ease, opacity 160ms ease;
+  transform: none;
+}
+
+.milestone-chip.is-dragging {
+  opacity: 0.4;
+  transform: scale(0.96);
+}
+
+.day-cell.drag-over {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.calendar-grid .chip-date {
+  display: none;
+}
+
+.calendar-detail-main strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 861px) {
+  .calendar-grid .milestone-chip {
+    grid-template-columns: 3px minmax(0, 1fr) 24px;
+    min-height: 56px;
+    gap: 7px;
+    padding: 4px 7px 4px 0;
+  }
+  .calendar-grid .chip-rail {
+    grid-column: 1;
+    grid-row: 1;
+    border-radius: 0 2px 2px 0;
+  }
+  .calendar-grid .chip-text {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 4px;
+  }
+  .calendar-grid .chip-check {
+    grid-column: 3;
+    grid-row: 1;
+    width: 24px;
+    height: 24px;
+  }
+  .calendar-grid .chip-project {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+    font-weight: 650;
+    line-height: 16px;
+    color: var(--ink);
+  }
+  .calendar-grid .chip-stage {
+    font-size: 11px;
+    line-height: 14px;
+    font-weight: 500;
+    color: var(--muted-strong);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .milestone-chip:hover,
+  .calendar-detail-card:hover,
+  .timeline-event-card:hover {
+    transform: translateY(-2px) scale(1.015);
+    z-index: 2;
+    border-color: var(--project-color);
+  }
+  .milestone-chip:active,
+  .calendar-detail-card:active,
+  .timeline-event-card:active {
+    transform: scale(0.985);
   }
 }
 

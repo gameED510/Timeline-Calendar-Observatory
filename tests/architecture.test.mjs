@@ -19,7 +19,7 @@ test("manual theme preference loads before the interface and stays local", async
     read("app.js")
   ]);
 
-  assert.match(html, /theme\.js\?v=1[\s\S]*styles\.css\?v=4/);
+  assert.match(html, /theme\.js\?v=1[\s\S]*styles\.css\?v=\d+/);
   assert.match(theme, /localStorage\.getItem\(key\)/);
   assert.match(theme, /document\.documentElement\.dataset\.theme/);
   assert.match(app, /localStorage\.setItem\(THEME_KEY, nextTheme\)/);
@@ -56,16 +56,18 @@ test("deployment proxies enforce request limits and timeouts", async () => {
 
   for (const path of proxyFiles) {
     const source = await read(path);
-    assert.match(source, /MAX_BODY_BYTES/);
-    assert.match(source, /sec-fetch-site/i);
-    assert.match(source, /AbortSignal\.timeout/);
+    assert.match(source, /shared\/proxy\.mjs/);
   }
+  const shared = await read("shared/proxy.mjs");
+  assert.match(shared, /MAX_BODY_BYTES/);
+  assert.match(shared, /sec-fetch-site/i);
+  assert.match(shared, /AbortSignal\.timeout/);
 });
 
 test("offline cache never stores API responses", async () => {
   const serviceWorker = await read("sw.js");
 
   assert.match(serviceWorker, /pathname\.includes\("\/api\/"\)/);
-  assert.match(serviceWorker, /request\.mode === "navigate"[\s\S]*fetch\(request\)[\s\S]*caches\.match\("\.\/index\.html"\)/);
-  assert.match(serviceWorker, /caches\.match\(request\)[\s\S]*const refresh = fetch\(request\)/);
+  assert.match(serviceWorker, /shellUrls\.has\(url\.href\)/);
+  assert.match(serviceWorker, /if \(cached\) return cached/);
 });

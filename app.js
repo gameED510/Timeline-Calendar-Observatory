@@ -105,6 +105,10 @@ const syncState = {
   schemaVersion: 2
 };
 
+let iconFrame = null;
+let syncRetryCount = 0;
+let snapshotPending = Boolean(localState.sync.snapshotPending);
+
 const elements = {
   appShell: document.querySelector("#appShell"),
   projectCount: document.querySelector("#projectCount"),
@@ -291,7 +295,8 @@ function normalizeLocalSyncState(value = {}) {
     versions: { ...versions },
     projects: Object.fromEntries(Object.entries(baseProjects).filter(([, project]) => project && typeof project === "object")),
     tombstones: Object.fromEntries(Object.entries(tombstones).filter(([, item]) => item && typeof item === "object")),
-    dirtyIds
+    dirtyIds,
+    snapshotPending: Boolean(value?.snapshotPending)
   };
 }
 
@@ -336,6 +341,12 @@ function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[character]);
+}
+
 function inferPriority(project, index = 0) {
   if (getProjectConflictCountSafe(project) > 1) return "high";
   return index === 0 ? "high" : "medium";
@@ -356,9 +367,10 @@ function persistLocalProjects(updatedAt = new Date().toISOString()) {
       versions: projectSyncVersions,
       projects: syncedProjects,
       tombstones: projectTombstones,
-      dirtyIds: [...dirtyProjectIds]
+      dirtyIds: [...dirtyProjectIds],
+      snapshotPending
     }
-  }, null, 2));
+  }));
 }
 
 function saveProjects(options = {}) {
@@ -565,13 +577,13 @@ function render() {
   elements.rangeCount.textContent = visibleMilestones.length ? String(daysBetween(dateToIso(min), dateToIso(max)) + 1) : "0";
   elements.rangeTitle.textContent = visibleMilestones.length ? `${formatDateShort(dateToIso(min))} 至 ${formatDateShort(dateToIso(max))}` : "所有项目已完成";
 
-  renderProjectList();
+  if (currentView === "projects") renderProjectList();
   renderSideInsights(grouped, allMilestones, conflictDays);
   renderFocusRow(grouped, visibleMilestones);
   renderLegend();
-  renderCalendar(grouped);
-  renderTimeline();
-  renderConflicts(grouped);
+  if (currentView === "calendar") renderCalendar(grouped);
+  if (currentView === "timeline") renderTimeline();
+  if (currentView === "conflicts") renderConflicts(grouped);
   renderInspector();
   renderSyncPanel();
   activateIcons();
@@ -824,7 +836,7 @@ function renderSideInsights(grouped, allMilestones, conflictDays) {
       button.className = "side-event-row";
       if (getOverdueDays(item.date)) button.classList.add("overdue");
       button.style.setProperty("--project-color", item.project.color);
-      button.innerHTML = `<span class="side-project-rail"></span><span class="side-event-copy"><strong>${getClientName(item.project.name)}</strong><em>${item.stage} · ${formatDateWithWeekday(item.date)} · ${describeRelativeDate(item.date)}</em></span>`;
+      button.innerHTML = `<span class="side-project-rail"></span><span class="side-event-copy"><strong>${escapeHtml(getClientName(item.project.name))}</strong><em>${item.stage} · ${formatDateWithWeekday(item.date)} · ${describeRelativeDate(item.date)}</em></span>`;
       button.addEventListener("click", () => openMilestoneInCalendar(item.project.id, item.stage));
       nextSection.append(button);
     });
@@ -842,7 +854,7 @@ function renderSideInsights(grouped, allMilestones, conflictDays) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "side-conflict-row";
-      button.innerHTML = `<strong>${formatDateWithWeekday(iso)}</strong><span>${items.map((item) => getClientName(item.project.name)).join(" / ")}</span>`;
+      button.innerHTML = `<strong>${formatDateWithWeekday(iso)}</strong><span>${escapeHtml(items.map((item) => getClientName(item.project.name)).join(" / "))}</span>`;
       button.addEventListener("click", () => {
         selectedCalendarDate = iso;
         switchView("conflicts");
@@ -865,7 +877,8 @@ function renderSideInsights(grouped, allMilestones, conflictDays) {
     row.type = "button";
     row.className = "side-progress-row";
     row.style.setProperty("--project-color", project.color);
-    row.innerHTML = `<span><strong>${getClientName(project.name)}</strong><em>${progress}% · ${completedCount}/${stageCount}</em></span><b><i style="width:${progress}%"></i></b>`;
+    row.innerHTML = `<span><strong>${escapeHtml(getClientName(project.name))}</strong><em>${progress}% · ${completedCount}/${stageCount}</em></span><b><i></i></b>`;
+    row.querySelector("b i").style.width = `${progress}%`;
     row.addEventListener("click", () => {
       selected = { projectId: project.id, stage: getNextPendingMilestone(project)?.stage || getFirstScheduledStage(project)?.name };
       switchView("projects");
@@ -1311,7 +1324,7 @@ function renderCalendarDayDetails(iso, items) {
     const main = document.createElement("button");
     main.type = "button";
     main.className = "calendar-detail-main";
-    main.innerHTML = `<span class="detail-dot"></span><strong>${getClientName(project.name)}</strong><em>${stage}${completed ? " · 已完成" : ""}</em>`;
+    main.innerHTML = `<span class="detail-dot"></span><strong>${escapeHtml(getClientName(project.name))}</strong><em>${stage}${completed ? " · 已完成" : ""}</em>`;
     main.addEventListener("click", () => selectMilestone(project.id, stage));
 
     const actions = document.createElement("div");
@@ -1438,6 +1451,7 @@ function createTimelineEvent(item) {
 
   card.addEventListener("click", () => openMilestoneInCalendar(project.id, stage));
   card.addEventListener("keydown", (event) => {
+    if (event.target !== card) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       openMilestoneInCalendar(project.id, stage);
@@ -1585,6 +1599,7 @@ function createMilestoneChip(project, stage, iso, draggable) {
     selectMilestone(project.id, stage);
   });
   chip.addEventListener("keydown", (event) => {
+    if (event.target !== chip) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       selectedCalendarDate = iso;
@@ -1595,6 +1610,11 @@ function createMilestoneChip(project, stage, iso, draggable) {
     selected = { projectId: project.id, stage };
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("application/json", JSON.stringify({ projectId: project.id, stage }));
+    requestAnimationFrame(() => chip.classList.add("is-dragging"));
+  });
+  chip.addEventListener("dragend", () => {
+    chip.classList.remove("is-dragging");
+    document.querySelectorAll(".drag-over").forEach((node) => node.classList.remove("drag-over"));
   });
 
   return chip;
@@ -1669,7 +1689,6 @@ function openMilestoneInCalendar(projectId, stage) {
   selectedCalendarDate = targetDate;
   if (isMobileLayout()) setMobilePage("plan");
   switchView("calendar");
-  render();
 
   requestAnimationFrame(() => {
     const dayCell = document.querySelector(`.day-cell[data-date="${targetDate}"], .agenda-day[data-date="${targetDate}"]`);
@@ -2168,19 +2187,19 @@ async function signOutCloud() {
 }
 
 function queueCloudSave() {
-  if (!syncState.client || !syncState.user || syncState.loadingRemote) return;
+  if (!syncState.client || !syncState.user || syncState.loadingRemote || !navigator.onLine) return;
   window.clearTimeout(syncState.pendingSaveTimer);
   syncState.pendingSaveTimer = window.setTimeout(() => {
     saveCloudProjects();
-  }, 700);
+  }, syncRetryCount ? Math.min(60000, 2000 * 2 ** Math.min(syncRetryCount - 1, 5)) : 700);
 }
 
 async function saveCloudProjects(options = {}) {
-  if (!syncState.client || !syncState.user || syncState.saving) return;
+  if (!syncState.client || !syncState.user || syncState.saving || syncState.loadingRemote || !navigator.onLine) return;
   window.clearTimeout(syncState.pendingSaveTimer);
   syncState.pendingSaveTimer = null;
   markDirtyProjects();
-  if (!dirtyProjectIds.size) {
+  if (!dirtyProjectIds.size && !snapshotPending) {
     syncState.lastSavedAt = new Date().toISOString();
     renderSyncPanel();
     return;
@@ -2211,12 +2230,14 @@ async function saveCloudProjects(options = {}) {
         if (!result) throw new Error("云端未返回同步结果");
 
         if (result.status === "conflict") {
-          const latestLocalProject = projects.find((project) => project.id === projectId) || localProject;
+          const latestLocalProject = projects.find((project) => project.id === projectId) || null;
           resolveCloudConflict(projectId, latestLocalProject, result);
           continue;
         }
 
         applySyncedCloudRow(result, sentFingerprint, !localProject);
+        snapshotPending = true;
+        persistLocalProjects();
       }
     }
 
@@ -2228,21 +2249,24 @@ async function saveCloudProjects(options = {}) {
       p_reason: options.reason || "auto"
     });
     if (snapshotError) throw snapshotError;
+    snapshotPending = false;
+    syncRetryCount = 0;
     syncState.lastSavedAt = new Date().toISOString();
     persistLocalProjects();
     render();
     renderSyncPanel();
   } catch (error) {
+    syncRetryCount += 1;
     showToast(getCloudErrorMessage(error, "云同步失败"));
   } finally {
     syncState.saving = false;
     renderSyncPanel();
-    if (dirtyProjectIds.size) queueCloudSave();
+    if (dirtyProjectIds.size || snapshotPending) queueCloudSave();
   }
 }
 
 async function loadCloudProjects(options = {}) {
-  if (!syncState.client || !syncState.user || syncState.saving) return;
+  if (!syncState.client || !syncState.user || syncState.saving || syncState.loadingRemote || !navigator.onLine) return;
   syncState.loadingRemote = true;
   renderSyncPanel();
 
@@ -2259,13 +2283,14 @@ async function loadCloudProjects(options = {}) {
       rows = await bootstrapVersionedCloudData();
     }
 
+    const previousProjects = JSON.stringify(projects);
     createLocalRecoveryPoint(options.manual ? "手动刷新前" : "云端合并前");
     mergeRemoteProjectRows(rows);
     persistLocalProjects();
-    render();
+    if (JSON.stringify(projects) !== previousProjects) render();
     syncState.lastSavedAt = new Date().toISOString();
 
-    if (dirtyProjectIds.size) {
+    if (dirtyProjectIds.size || snapshotPending) {
       syncState.loadingRemote = false;
       await saveCloudProjects({ reason: "merge" });
     }
@@ -2366,8 +2391,8 @@ function applyRemoteCloudRow(row) {
 function applySyncedCloudRow(row, sentFingerprint = null, sentAsDeleted = false) {
   const projectId = row.project_id;
   const latestLocalProject = projects.find((project) => project.id === projectId) || null;
-  const changedWhileSaving = sentFingerprint && latestLocalProject
-    && projectFingerprint(latestLocalProject) !== sentFingerprint;
+  const changedWhileSaving = sentFingerprint !== null
+    && (!latestLocalProject || projectFingerprint(latestLocalProject) !== sentFingerprint);
   const recreatedWhileDeleting = sentAsDeleted && latestLocalProject;
 
   if (!changedWhileSaving && !recreatedWhileDeleting) {
@@ -2586,7 +2611,11 @@ function formatClock(iso) {
 }
 
 function activateIcons() {
-  if (window.lucide) window.lucide.createIcons();
+  if (!window.lucide || iconFrame !== null) return;
+  iconFrame = requestAnimationFrame(() => {
+    iconFrame = null;
+    window.lucide.createIcons();
+  });
 }
 
 function decodeSmartPasteText(value) {
@@ -3032,6 +3061,7 @@ function switchView(view) {
     node.classList.toggle("active", key === view);
   });
   if (isMobileLayout()) setMobilePage(view === "projects" || view === "timeline" || view === "conflicts" ? view : "plan");
+  render();
 }
 
 function jumpToToday() {
@@ -3040,11 +3070,12 @@ function jumpToToday() {
   if (isMobileLayout() && calendarMode === "agenda") calendarMode = "month";
   if (isMobileLayout()) setMobilePage("plan");
   switchView("calendar");
-  render();
   requestAnimationFrame(() => {
     const todayCell = document.querySelector(`[data-date="${TODAY_ISO}"]`);
     if (!todayCell) return;
-    todayCell.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    todayCell.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center", inline: "center" });
+    if (reduced) return;
     todayCell.animate(
       [{ boxShadow: "inset 0 0 0 4px rgba(40, 124, 142, 0.62)" }, { boxShadow: "inset 0 0 0 2px rgba(40, 124, 142, 1)" }],
       { duration: 680, easing: "ease-out" }
@@ -3178,6 +3209,10 @@ function wireEvents() {
     if (event.target === elements.historyDialog) elements.historyDialog.close();
   });
   window.addEventListener("focus", () => loadCloudProjects({ preferNewer: true }));
+  window.addEventListener("online", () => {
+    syncRetryCount = 0;
+    loadCloudProjects({ preferNewer: true });
+  });
   window.addEventListener("resize", () => {
     if (!elements.accountPopover.classList.contains("hidden")) positionAccountPopover();
   });
