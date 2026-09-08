@@ -9,7 +9,7 @@
     "build:edgeone": "npm run build:vendor && node scripts/build-edgeone.mjs",
     "build:netlify": "npm run build:vendor && node scripts/build-netlify.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check theme.js && node --check app.js && node --check sw.js && node --check netlify-functions/supabase-proxy.mjs && node --check edge-functions/api/supabase-proxy.js && node --check api/supabase-proxy.js && npm test"
+    "check": "node --check theme.js && node --check app.js && node --check calendar-motion.js && node --check sw.js && node --check netlify-functions/supabase-proxy.mjs && node --check edge-functions/api/supabase-proxy.js && node --check api/supabase-proxy.js && npm test"
   },
   "devDependencies": {
     "@supabase/supabase-js": "2.112.3",

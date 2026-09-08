@@ -47,7 +47,6 @@ let mobilePage = "plan";
 let selectedCalendarDate = getInitialCalendarDate();
 let calendarMode = getInitialCalendarMode();
 let calendarMonthAnchor = startOfMonthIso(selectedCalendarDate);
-const expandedCalendarDates = new Set();
 let toastTimer = null;
 let syncRefreshTimer = null;
 let smartParseTimer = null;
@@ -272,7 +271,7 @@ function changeCloudAccount(user) {
   selected = null;
   editingProjectId = null;
   selectedCalendarDate = TODAY_ISO;
-  expandedCalendarDates.clear();
+  window.CalendarMotion?.close(false);
   calendarMonthAnchor = startOfMonthIso(TODAY_ISO);
   for (const key of ["projectList", "timelineShell", "conflictList", "calendarGrid", "calendarDayDetails", "historyList", "selectedProject", "selectedStage", "stageStack"]) {
     if (elements[key]) elements[key].replaceChildren();
@@ -597,6 +596,7 @@ function groupMilestonesByDate(items = getAllMilestones()) {
 }
 
 function render() {
+  window.CalendarMotion?.close(false);
   ensureValidSelection();
   const allMilestones = getAllMilestones();
   const visibleMilestones = allMilestones.filter((item) => !isProjectComplete(item.project));
@@ -1275,10 +1275,10 @@ function renderCalendar(grouped) {
       stack.append(more);
     }
     if (!compactMonth && items.length >= 3) {
-      const pile = document.createElement("details");
+      const pile = document.createElement("div");
       pile.className = "day-pile";
-      pile.open = expandedCalendarDates.has(iso);
-      const summary = document.createElement("summary");
+      const summary = document.createElement("button");
+      summary.type = "button";
       summary.className = "day-pile-cover";
       summary.setAttribute("aria-label", `${formatTinyDate(iso)}，展开 ${items.length} 个节点`);
       items.slice(0, 3).reverse().forEach((item, index) => {
@@ -1293,15 +1293,15 @@ function renderCalendar(grouped) {
       count.className = "pile-count";
       count.textContent = `${items.length} 个节点`;
       summary.append(count);
-      pile.append(summary, stack);
-      pile.addEventListener("click", (event) => event.stopPropagation());
-      pile.addEventListener("toggle", () => {
-        if (!pile.isConnected) return;
-        if (pile.open) expandedCalendarDates.add(iso);
-        else expandedCalendarDates.delete(iso);
-      });
-      pile.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") { pile.open = false; summary.focus(); }
+      pile.append(summary);
+      summary.addEventListener("click", (event) => {
+        event.stopPropagation();
+        window.CalendarMotion.open(items, summary, {
+          edit: item => openProjectDialog(item.project.id),
+          toggle: item => toggleMilestoneCompleted(item.project.id, item.stage),
+          move: (item, date) => moveMilestone(item.project.id, item.stage, date),
+          icons: activateIcons
+        });
       });
       cell.append(pile);
     } else cell.append(stack);

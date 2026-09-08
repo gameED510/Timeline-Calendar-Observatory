@@ -2,6 +2,13 @@
 
 Review date: 2026-09-08.
 
+Revision: replaced the first implementation's cover-plus-scroll-list with a
+floating deck of real project cards, following the user's annotated screenshots.
+Cards now use translucent backdrop-filter material, staggered rotation, focus
+translation and scale, pointer-captured dragging, neighbor wobble, destination
+date emphasis, and squash/stretch on drop. The deck is transient and does not
+store or merge project records itself.
+
 Source: user-provided local MP4, 960 x 720, 30 fps, 22.44 seconds,
 673 decoded video frames. Reviewed all frames as 23 sequential contact sheets
 (30 frames per sheet, last sheet partial), alongside larger key frames.
@@ -10,13 +17,13 @@ The video is reference material only and is not included in the deployed site.
 | Time | Observed behavior | Application adaptation |
 | --- | --- | --- |
 | 0-1 s | Week overview zooms toward a three-card pile | Same-day groups of three or more form a compact pile on desktop |
-| 1-4 s | Hover separates and tilts cards with soft shadows | Pointer/keyboard focus fans the cover cards; click or Enter expands actionable rows |
+| 1-4 s | Hover separates and tilts cards with soft shadows | Click or Enter opens the actual cards in an overlapping fan; selecting a card brings it forward and straightens it |
 | 4-6 s | Detached card displays destination time, then settles | Drop target displays destination date; successful move settles over 340 ms |
 | 6-8 s | Return to a quiet white calendar overview | Hairline calendar grid, neutral segmented controls, restrained surfaces |
 | 8-12 s | Pink and purple events join an orange stack | Multiple project colors remain distinct within a same-day pile |
 | 12-16 s | Cards move between dates and shrink into stacks | Existing date-change semantics are retained; no artificial hourly fields are added |
-| 16-20 s | More cards gather into one group | Dense groups have bounded scrollable rows, with expansion retained after completion toggles |
-| 20-22.44 s | Large radial fan opens and collapses | Adapted to readable vertical expansion, not a literal radial fan covering neighboring dates |
+| 16-20 s | More cards gather into one group | A pointer-following glass card compresses into the destination group and rebounds; neighboring cards wobble |
+| 20-22.44 s | Large radial fan opens and collapses | Floating tilted cards overlap above the calendar; focus reveals the full name and edit/completion actions |
 
 ## Intentional Differences
 
@@ -25,7 +32,8 @@ The video is reference material only and is not included in the deployed site.
 - No camera zoom, content blur during normal reading, or promotional scattering.
 - Existing project colors are preserved; no user data is recolored or migrated.
 - Dark theme and reduced-motion preferences remain supported.
-- The implementation uses native details/summary, CSS transforms, and Web Animations;
+- Groups over six nodes use pages to bound simultaneous backdrop filters.
+- The implementation uses the Popover API with a fixed-position fallback, Pointer Events, CSS transforms, and Web Animations;
   there is no added animation framework.
 
 ## Account Data Boundary
@@ -43,8 +51,11 @@ The video is reference material only and is not included in the deployed site.
 
 ## Verification
 
-- 25 automated tests cover sync, account transitions, request limits, and offline shell behavior.
+- 26 automated tests cover sync, account transitions, request limits, motion build integration, and offline shell behavior.
 - Browser checks: 1440 x 900, 834 x 1194, 390 x 844, light and dark.
-- Verified empty signed-out state, zero horizontal overflow, pile expansion,
-  and no project content remaining visible after logout using synthetic local data.
+- Verified empty signed-out state, zero horizontal overflow, floating expansion,
+  focus, editing, mouse drag, touch drag into an existing group, pagination,
+  reduced-motion support, and no project content remaining visible after logout
+  using synthetic local data. A six-project fixture retained six projects after
+  one node moved into a date already containing six nodes (seven nodes total).
 - Production data was not edited for testing.

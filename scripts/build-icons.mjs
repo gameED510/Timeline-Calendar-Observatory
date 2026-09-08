@@ -4,7 +4,7 @@ import { build } from "esbuild";
 import * as lucide from "lucide";
 
 const root = resolve(import.meta.dirname, "..");
-const source = ["index.html", "app.js"].map((file) => readFileSync(resolve(root, file), "utf8")).join("\n");
+const source = ["index.html", "app.js", "calendar-motion.js"].map((file) => readFileSync(resolve(root, file), "utf8")).join("\n");
 const names = new Set();
 for (const match of source.matchAll(/["']([a-z][a-z0-9-]*)["']/g)) {
   const name = match[1].replace(/(^|-)([a-z0-9])/g, (_, prefix, letter) => letter.toUpperCase());

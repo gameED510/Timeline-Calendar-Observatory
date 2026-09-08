@@ -4,6 +4,17 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
+test("calendar motion is local, included in both builds and offline shell", async () => {
+  for (const path of ["index.html", "sw.js", "scripts/build-netlify.mjs", "scripts/build-edgeone.mjs", "scripts/prepare-static.mjs"]) {
+    assert.match(await read(path), /calendar-motion\.js/);
+  }
+  const motion = await read("calendar-motion.js");
+  assert.doesNotMatch(motion, /localStorage|fetch\(/);
+  assert.match(motion, /prefers-reduced-motion/);
+  assert.match(motion, /pointercancel/);
+  assert.match(motion, /layer !== owner/);
+});
+
 test("browser dependencies are served locally", async () => {
   const [html, app] = await Promise.all([read("index.html"), read("app.js")]);
 

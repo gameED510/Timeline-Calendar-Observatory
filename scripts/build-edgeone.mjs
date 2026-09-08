@@ -9,6 +9,7 @@ const entries = [
   "styles.css",
   "theme.js",
   "app.js",
+  "calendar-motion.js",
   "favicon.svg",
   "site.webmanifest",
   "sw.js",
