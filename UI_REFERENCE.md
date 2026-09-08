@@ -53,6 +53,15 @@ The video is reference material only and is not included in the deployed site.
 
 ## Verification
 
+### Click-only interaction update
+
+- GSAP Flip is bundled locally with the offline shell and owns card layout transitions.
+- Mouse hover lifts the stack slightly; only a click expands it. Leaving the stack does not collapse it.
+- Single-node dates use the same card component and focus on the first click.
+- Touch dragging collapses the other cards and disables text selection/callouts on cards.
+- This update was checked at 1440 x 900, 834 x 1194 and 390 x 844 with synthetic projects.
+- Real iOS hardware validation remains necessary for browser-specific touch behavior.
+
 - 26 automated tests cover sync, account transitions, request limits, motion build integration, and offline shell behavior.
 - Browser checks: 1440 x 900, 834 x 1194, 390 x 844, light and dark.
 - Verified empty signed-out state, zero horizontal overflow, floating expansion,

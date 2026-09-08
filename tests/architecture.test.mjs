@@ -15,7 +15,9 @@ test("calendar motion is local, included in both builds and offline shell", asyn
   assert.match(motion, /layer !== owner/);
   assert.match(motion, /function mount/);
   assert.doesNotMatch(motion, /showPopover|document\.body\.append|role.*dialog/);
-  assert.match(await read("app.js"), /items\.length >= 2/);
+  assert.match(await read("app.js"), /items\.length >= 1/);
+  assert.match(motion, /Flip\.from/);
+  assert.doesNotMatch(motion, /pointerType==='mouse'\)open/);
 });
 
 test("browser dependencies are served locally", async () => {

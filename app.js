@@ -1274,7 +1274,7 @@ function renderCalendar(grouped) {
       more.setAttribute("aria-label", `还有 ${items.length - visibleItems.length} 个节点，点击日期查看`);
       stack.append(more);
     }
-    if (items.length >= 2) {
+    if (items.length >= 1) {
       const pile = document.createElement("div");
       window.CalendarMotion.mount(items, pile, {
         label: item => getClientName(item.project.name),

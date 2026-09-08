@@ -2,6 +2,13 @@
 window.CalendarMotion = (() => {
   let layer = null, callbacks = null, focused = -1, drag = null, leaveTimer;
   const groups = new WeakMap();
+  const { gsap, Flip } = window.CalendarAnimator;
+  function layout(group, change) {
+    const cards = [...group.querySelectorAll('.motion-card:not(.motion-ghost)')];
+    const state = Flip.getState(cards);
+    change();
+    if (!reduced()) Flip.from(state, { duration: .48, ease: 'power3.out', scale: true, nested: true });
+  }
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const animate = (node, frames, options = {}) => reduced() ? null : node.animate(frames, { duration: 520, easing: 'cubic-bezier(.2,.8,.25,1)', ...options });
   function icon(name, label, action) {
@@ -16,11 +23,13 @@ window.CalendarMotion = (() => {
     document.querySelectorAll('.motion-near').forEach(node=>node.classList.remove('motion-near'));
     if(layer) {
       const old=layer;
-      old.classList.remove('expanded'); old.closest('.day-cell')?.classList.remove('pile-active');
+      layout(old, () => {
+      old.classList.remove('expanded','dragging'); old.closest('.day-cell')?.classList.remove('pile-active');
       old.querySelectorAll('.motion-card').forEach((card,i)=>{
         card.classList.remove('focused','receded','drag-origin');card.style.zIndex=String(i+1);
         card.querySelector('.motion-card-main').setAttribute('aria-expanded','false');
         const data=groups.get(old);card.querySelector('strong').textContent=data.handlers.label(data.items[i]);
+      });
       });
       if(restoreFocus) old.querySelector('.motion-card-main')?.focus({preventScroll:true});
     }
@@ -44,15 +53,18 @@ window.CalendarMotion = (() => {
       card.style.setProperty('--angle', `${side*(i===0?18:8)}deg`);
       card.querySelector('.motion-card-main').setAttribute('aria-expanded','true');
     });
-    group.classList.add('expanded');group.closest('.day-cell')?.classList.add('pile-active');
+    layout(group, () => {
+      group.classList.add('expanded');group.closest('.day-cell')?.classList.add('pile-active');
+      if(cards.length===1){ cards[0].classList.add('focused');focused=0; }
+    });
   }
   function focus(index) {
     if(!layer||drag||focused===index)return;
     focused=index;
-    layer.querySelectorAll('.motion-card').forEach((card,i)=>{
+    layout(layer, () => layer.querySelectorAll('.motion-card').forEach((card,i)=>{
       card.classList.toggle('focused',i===index);card.classList.toggle('receded',i!==index);
       card.style.zIndex=String(i===index?100:i+1);
-    });
+    }));
   }
   function mount(items, group, handlers) {
     group.className='inline-pile';
@@ -79,8 +91,11 @@ window.CalendarMotion = (() => {
       actions.append(icon('pencil','编辑项目',()=>{close(false);handlers.edit(item);}),icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>{close(false);handlers.toggle(item);}));
       card.append(main,actions);group.append(card);
     });
-    group.addEventListener('pointerenter',event=>{clearTimeout(leaveTimer);if(event.pointerType==='mouse')open(group);});
-    group.addEventListener('pointerleave',event=>{if(event.pointerType==='mouse'&&!drag)leaveTimer=setTimeout(()=>{if(layer===group)close(false);},350);});
+    group.addEventListener('pointerenter',event=>{
+      if(event.pointerType==='mouse' && layer!==group && !drag) gsap.to(group,{y:reduced()?0:-4,duration:.2,overwrite:true});
+    });
+    group.addEventListener('pointerleave',()=>gsap.to(group,{y:0,duration:reduced()?0:.2,overwrite:true}));
+    group.addEventListener('contextmenu',event=>event.preventDefault());
     group.addEventListener('click',event=>event.stopPropagation());
   }
   document.addEventListener('pointerdown',event=>{if(layer&&!layer.contains(event.target)&&!drag)close(false);},true);
@@ -100,9 +115,13 @@ window.CalendarMotion = (() => {
         ghost=card.cloneNode(true); ghost.className='motion-card motion-ghost';
         ghost.querySelector('.motion-card-actions')?.remove();
         const label=document.createElement('span');label.className='motion-drop-date';ghost.append(label);
-        layer.append(ghost); card.classList.add('drag-origin'); drag={ghost};
-        layer.querySelectorAll('.motion-card:not(.motion-ghost)').forEach((neighbor,i)=>{
-          if(neighbor !== card) animate(neighbor,[{rotate:'0deg'},{rotate:'-2.5deg',offset:.25},{rotate:'2deg',offset:.55},{rotate:'-.7deg',offset:.8},{rotate:'0deg'}],{duration:650,delay:i*25});
+        ghost.style.transform=''; ghost.style.width=''; ghost.style.height='';
+        layer.append(ghost); drag={ghost};
+        window.getSelection()?.removeAllRanges();
+        layout(layer,()=>{
+          layer.classList.remove('expanded');layer.classList.add('dragging');
+          layer.querySelectorAll('.motion-card:not(.motion-ghost)').forEach(neighbor=>neighbor.classList.remove('focused','receded'));
+          card.classList.add('drag-origin');
         });
       }
       const box=layer.getBoundingClientRect();
@@ -133,7 +152,7 @@ window.CalendarMotion = (() => {
         const fn=callbacks.move;close(false);fn(item,destination);
         const cell=[...document.querySelectorAll('.day-cell')].find(n=>n.dataset.date===destination);
         if(cell)animate(cell.querySelector('.inline-pile,.chip-stack')||cell,[{scale:'1.08 .88'},{scale:'.96 1.06',offset:.55},{scale:'1'}],{duration:460});
-      } else { ghost.remove(); card.classList.remove('drag-origin'); drag=null; }
+      } else { close(false); }
     };
     const cancel=e=>finish(e);
     main.addEventListener('pointermove',move);main.addEventListener('pointerup',finish);main.addEventListener('pointercancel',cancel);

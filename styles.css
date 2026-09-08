@@ -4498,7 +4498,20 @@ body:has(.account-locked) .mobile-tabbar { display: none !important; }
 .motion-card.focused .motion-card-main strong { display: block; overflow: visible; }
 .motion-card.focused .motion-card-actions { opacity: 1; visibility: visible; }
 .motion-card.receded { scale: .96; }
-@media (hover: hover) and (pointer: fine) { .motion-card:not(.focused):hover { translate: 0 -6px; z-index: 15 !important; } }
+/* GSAP owns layout transitions; CSS must not animate the same transforms. */
+.inline-pile .motion-card { transition: box-shadow .2s, opacity .2s; translate: none; scale: none; }
+.inline-pile.expanded .motion-card.focused:not(.motion-ghost) { height: 164px; min-height: 164px; }
+.inline-pile.expanded .motion-card.focused .motion-card-main { height: 164px; min-height: 164px; overflow: hidden; }
+.motion-card, .motion-card * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.inline-pile:not(.expanded):not(.dragging) .motion-card-main { touch-action: pan-y; cursor: pointer; }
+.inline-pile.dragging .motion-card:not(.motion-ghost) { pointer-events: none; }
+.calendar-scroll:has(.inline-pile.dragging), .calendar-grid:has(.inline-pile.dragging) { overflow: visible; }
+.inline-pile .motion-ghost { transition: none; }
+.inline-pile.dragging .motion-ghost { width: 208px; height: 136px; border-radius: 16px; }
+.inline-pile.dragging .motion-ghost .motion-card-main { padding: 16px; gap: 8px; }
+.inline-pile.dragging .motion-ghost .motion-card-main strong { font-size: 15px; line-height: 1.4; white-space: normal; -webkit-line-clamp: 3; }
+.inline-pile.dragging .motion-ghost .motion-card-stage { display: block; font-size: 12px; }
+@media (max-width: 550px) { .inline-pile.dragging .motion-ghost { width: 168px; } }
 .motion-card.drag-origin { opacity: .3; }
 .motion-ghost { top: 0; left: 0; z-index: 100; pointer-events: none; transition: none; }
 .motion-ghost .motion-card-main { cursor: grabbing; }
