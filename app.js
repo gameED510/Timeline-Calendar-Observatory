@@ -1274,34 +1274,14 @@ function renderCalendar(grouped) {
       more.setAttribute("aria-label", `还有 ${items.length - visibleItems.length} 个节点，点击日期查看`);
       stack.append(more);
     }
-    if (!compactMonth && items.length >= 3) {
+    if (items.length >= 2) {
       const pile = document.createElement("div");
-      pile.className = "day-pile";
-      const summary = document.createElement("button");
-      summary.type = "button";
-      summary.className = "day-pile-cover";
-      summary.setAttribute("aria-label", `${formatTinyDate(iso)}，展开 ${items.length} 个节点`);
-      items.slice(0, 3).reverse().forEach((item, index) => {
-        const card = document.createElement("span");
-        card.className = "pile-leaf";
-        card.style.setProperty("--project-color", item.project.color);
-        card.style.setProperty("--leaf", String(index));
-        card.textContent = getClientName(item.project.name);
-        summary.append(card);
-      });
-      const count = document.createElement("span");
-      count.className = "pile-count";
-      count.textContent = `${items.length} 个节点`;
-      summary.append(count);
-      pile.append(summary);
-      summary.addEventListener("click", (event) => {
-        event.stopPropagation();
-        window.CalendarMotion.open(items, summary, {
-          edit: item => openProjectDialog(item.project.id),
-          toggle: item => toggleMilestoneCompleted(item.project.id, item.stage),
-          move: (item, date) => moveMilestone(item.project.id, item.stage, date),
-          icons: activateIcons
-        });
+      window.CalendarMotion.mount(items, pile, {
+        label: item => getClientName(item.project.name),
+        edit: item => openProjectDialog(item.project.id),
+        toggle: item => toggleMilestoneCompleted(item.project.id, item.stage),
+        move: (item, date) => moveMilestone(item.project.id, item.stage, date),
+        icons: activateIcons
       });
       cell.append(pile);
     } else cell.append(stack);

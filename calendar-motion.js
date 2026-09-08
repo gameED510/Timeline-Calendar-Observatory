@@ -1,90 +1,90 @@
-/* A transient presentation layer; all mutations go through the app callbacks. */
+/* Calendar cards stay in their original day cell throughout expansion. */
 window.CalendarMotion = (() => {
-  let layer, origin, callbacks, entries = [], page = 0, focused = -1, drag = null;
+  let layer = null, callbacks = null, focused = -1, drag = null, leaveTimer;
+  const groups = new WeakMap();
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const animate = (node, frames, options = {}) => reduced() ? null : node.animate(frames, { duration: 520, easing: 'cubic-bezier(.2,.8,.25,1)', ...options });
-  const icon = (name, label, action) => {
+  function icon(name, label, action) {
     const button = document.createElement('button');
-    button.type = 'button'; button.className = 'motion-icon'; button.title = label;
-    button.setAttribute('aria-label', label);
-    const i = document.createElement('i'); i.dataset.lucide = name; button.append(i);
-    button.addEventListener('click', action); return button;
-  };
+    button.type='button'; button.className='motion-icon'; button.title=label; button.setAttribute('aria-label',label);
+    const i=document.createElement('i'); i.dataset.lucide=name; button.append(i);
+    button.addEventListener('click',event=>{event.stopPropagation();action();}); return button;
+  }
   function close(restoreFocus = true) {
-    if (drag) { drag.ghost.remove(); drag = null; }
-    document.querySelectorAll('.motion-near').forEach(node => node.classList.remove('motion-near'));
-    if (layer) { layer.remove(); layer = null; }
-    document.removeEventListener('pointerdown', outside, true);
-    document.removeEventListener('keydown', keyboard);
-    if (restoreFocus && origin?.isConnected) origin.focus({preventScroll:true});
-    entries = []; callbacks = null;
-  }
-  function outside(event) { if (layer && !layer.contains(event.target) && !origin?.contains(event.target) && !drag) close(false); }
-  function keyboard(event) { if (event.key === 'Escape') { event.preventDefault(); close(); } }
-  function open(items, anchor, handlers) {
-    close(false); entries = items; origin = anchor; callbacks = handlers; page = 0; focused = -1;
-    layer = document.createElement('section'); layer.className = 'motion-fan';
-    layer.setAttribute('role', 'dialog'); layer.setAttribute('aria-label', '当天项目');
-    layer.setAttribute('popover', 'manual'); document.body.append(layer);
-    if (layer.showPopover) layer.showPopover();
-    const bounds = anchor.getBoundingClientRect();
-    const width = Math.min(520, innerWidth - 20), height = Math.min(520, innerHeight - 100);
-    layer.style.width = `${width}px`; layer.style.height = `${height}px`;
-    layer.style.left = `${Math.max(10, Math.min(innerWidth - width - 10, bounds.left + bounds.width / 2 - width / 2))}px`;
-    layer.style.top = `${Math.max(10, Math.min(innerHeight - height - 80, bounds.top - 90))}px`;
-    render();
-    layer.querySelector('.motion-icon')?.focus({preventScroll:true});
-    document.addEventListener('pointerdown', outside, true);
-    document.addEventListener('keydown', keyboard);
-  }
-  function render() {
-    layer.replaceChildren();
-    const bar = document.createElement('div'); bar.className = 'motion-fan-bar';
-    const title = document.createElement('strong'); title.textContent = `${entries[0]?.date?.slice(5).replace('-', '.')} · ${entries.length} 个节点`;
-    bar.append(title, icon('x', '收起项目', () => close())); layer.append(bar);
-    const deck = document.createElement('div'); deck.className = 'motion-deck'; layer.append(deck);
-    const visible = entries.slice(page * 6, page * 6 + 6);
-    visible.forEach((item, index) => {
-      const card = document.createElement('article'); card.className = 'motion-card';
-      card.style.setProperty('--project-color', item.project.color);
-      const narrow = innerWidth < 550, spread = narrow ? 64 : 100;
-      const row = Math.floor(index / 2), side = index % 2 ? 1 : -1;
-      const x = visible.length === 1 ? 0 : side * spread;
-      const y = row * 72 - (visible.length > 4 ? 50 : 15);
-      const rotate = side * (index === 0 ? 18 : 8 - row * 2);
-      card.style.setProperty('--x', `${x}px`); card.style.setProperty('--y', `${y}px`);
-      card.style.setProperty('--angle', `${rotate}deg`); card.style.zIndex = String(index + 1);
-      const main = document.createElement('button'); main.type = 'button'; main.className = 'motion-card-main';
-      const stage = document.createElement('span'); stage.className = 'motion-card-stage'; stage.textContent = item.stage + (item.completed ? ' · 已完成' : '');
-      const name = document.createElement('strong'); name.textContent = item.project.name;
-      main.append(name, stage); main.setAttribute('aria-label', `${item.project.name} ${item.stage}，聚焦项目`);
-      main.addEventListener('click', () => { if (main.dataset.dragged) { delete main.dataset.dragged; return; } focus(index); });
-      main.addEventListener('focus', () => focus(index));
-      main.addEventListener('pointerdown', event => startDrag(event, card, main, item));
-      const actions = document.createElement('div'); actions.className = 'motion-card-actions';
-      actions.append(icon('pencil', '编辑项目', () => { const fn = callbacks.edit; close(false); fn(item); }),
-        icon(item.completed ? 'rotate-ccw' : 'check', item.completed ? '标记未完成' : '标记完成', () => { const fn = callbacks.toggle; close(false); fn(item); }));
-      card.append(main, actions); deck.append(card);
-      animate(card, [{transform:'translate(-50%, -50%) scale(.72) rotate(0)',opacity:0}, {transform:`translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(${rotate}deg)`,opacity:1}], {delay:index * 28});
-    });
-    if (entries.length > 6) {
-      const pager = document.createElement('div'); pager.className = 'motion-pager';
-      const back = icon('chevron-left', '上一组', () => {page--;focused=-1;render();}); back.disabled = page === 0;
-      const next = icon('chevron-right', '下一组', () => {page++;focused=-1;render();}); next.disabled = (page+1)*6 >= entries.length;
-      const label = document.createElement('span'); label.textContent = `${page+1} / ${Math.ceil(entries.length/6)}`;
-      pager.append(back,label,next); layer.append(pager);
+    clearTimeout(leaveTimer);
+    if (drag) { drag.ghost.remove(); drag=null; }
+    document.querySelectorAll('.motion-near').forEach(node=>node.classList.remove('motion-near'));
+    if(layer) {
+      const old=layer;
+      old.classList.remove('expanded'); old.closest('.day-cell')?.classList.remove('pile-active');
+      old.querySelectorAll('.motion-card').forEach((card,i)=>{
+        card.classList.remove('focused','receded','drag-origin');card.style.zIndex=String(i+1);
+        card.querySelector('.motion-card-main').setAttribute('aria-expanded','false');
+        const data=groups.get(old);card.querySelector('strong').textContent=data.handlers.label(data.items[i]);
+      });
+      if(restoreFocus) old.querySelector('.motion-card-main')?.focus({preventScroll:true});
     }
-    callbacks.icons();
+    layer=null; callbacks=null; focused=-1;
+  }
+  function open(group) {
+    clearTimeout(leaveTimer);
+    if(layer===group)return;
+    close(false);layer=group;callbacks=groups.get(group).handlers;focused=-1;
+    const rect=group.getBoundingClientRect(), mobile=innerWidth<550;
+    const width=mobile?168:208, spread=mobile?62:88;
+    const center=Math.max(width/2+spread+24,Math.min(innerWidth-width/2-spread-24,rect.left+rect.width/2));
+    const cards=[...group.querySelectorAll('.motion-card')];
+    const step=Math.min(62,Math.max(8,(innerHeight-360)/Math.max(cards.length-1,1)));
+    const top=Math.max(100,Math.min(innerHeight-190-step*(cards.length-1),rect.top-35));
+    cards.forEach((card,i)=>{
+      card.querySelector('strong').textContent=groups.get(group).items[i].project.name;
+      const side=i%2 ? 1 : -1;
+      card.style.setProperty('--x', `${center-rect.left-rect.width/2+side*spread}px`);
+      card.style.setProperty('--y', `${top-rect.top+i*step}px`);
+      card.style.setProperty('--angle', `${side*(i===0?18:8)}deg`);
+      card.querySelector('.motion-card-main').setAttribute('aria-expanded','true');
+    });
+    group.classList.add('expanded');group.closest('.day-cell')?.classList.add('pile-active');
   }
   function focus(index) {
-    if (!layer || focused === index || drag) return;
-    focused = index;
-    layer.querySelectorAll('.motion-card').forEach((card, i) => {
-      card.getAnimations().forEach(a=>a.cancel());
-      card.classList.toggle('focused', i === index); card.classList.toggle('receded', i !== index);
-      card.style.zIndex = String(i === index ? 20 : i + 1);
+    if(!layer||drag||focused===index)return;
+    focused=index;
+    layer.querySelectorAll('.motion-card').forEach((card,i)=>{
+      card.classList.toggle('focused',i===index);card.classList.toggle('receded',i!==index);
+      card.style.zIndex=String(i===index?100:i+1);
     });
   }
+  function mount(items, group, handlers) {
+    group.className='inline-pile';
+    group.setAttribute('aria-label',`${items.length} 个节点`);
+    groups.set(group,{handlers,items});
+    items.forEach((item,index)=>{
+      const card=document.createElement('article');card.className='motion-card';
+      card.style.setProperty('--project-color',item.project.color);
+      card.style.setProperty('--stack',String(Math.min(index,3)));
+      card.style.zIndex=String(index+1);
+      const main=document.createElement('button');main.type='button';main.className='motion-card-main';
+      main.setAttribute('aria-expanded','false');main.setAttribute('aria-label',`${item.project.name} ${item.stage}，展开并聚焦`);
+      const name=document.createElement('strong');name.textContent=handlers.label(item);
+      const stage=document.createElement('span');stage.className='motion-card-stage';stage.textContent=item.stage+(item.completed?' · 已完成':'');
+      main.append(name,stage);
+      main.addEventListener('click',event=>{
+        event.stopPropagation();
+        if(main.dataset.dragged){delete main.dataset.dragged;return;}
+        if(layer!==group)open(group);else focus(index);
+      });
+      main.addEventListener('keydown',event=>{if(event.key==='Escape'){event.stopPropagation();close();}});
+      main.addEventListener('pointerdown',event=>{if(layer===group)startDrag(event,card,main,item);});
+      const actions=document.createElement('div');actions.className='motion-card-actions';
+      actions.append(icon('pencil','编辑项目',()=>{close(false);handlers.edit(item);}),icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>{close(false);handlers.toggle(item);}));
+      card.append(main,actions);group.append(card);
+    });
+    group.addEventListener('pointerenter',event=>{clearTimeout(leaveTimer);if(event.pointerType==='mouse')open(group);});
+    group.addEventListener('pointerleave',event=>{if(event.pointerType==='mouse'&&!drag)leaveTimer=setTimeout(()=>{if(layer===group)close(false);},350);});
+    group.addEventListener('click',event=>event.stopPropagation());
+  }
+  document.addEventListener('pointerdown',event=>{if(layer&&!layer.contains(event.target)&&!drag)close(false);},true);
+  document.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
   function startDrag(event, card, main, item) {
     if (event.button !== 0 || drag) return;
     const owner = layer;
@@ -113,7 +113,7 @@ window.CalendarMotion = (() => {
       layer.style.pointerEvents='';
       if (target !== lastTarget) {
         lastTarget?.classList.remove('motion-near'); target?.classList.add('motion-near');
-        if(target) target.querySelectorAll('.pile-leaf,.milestone-chip').forEach((node,i)=>animate(node,[{translate:'0 0',rotate:'0deg'},{translate:'-3px -3px',rotate:'-3deg'},{translate:'3px 1px',rotate:'2deg'},{translate:'0 0',rotate:'0deg'}],{duration:420,delay:i*25}));
+        if(target) target.querySelectorAll('.motion-card,.milestone-chip').forEach((node,i)=>animate(node,[{translate:'0 0',rotate:'0deg'},{translate:'-3px -3px',rotate:'-3deg'},{translate:'3px 1px',rotate:'2deg'},{translate:'0 0',rotate:'0deg'}],{duration:420,delay:i*25}));
         lastTarget=target;
       }
       ghost.querySelector('.motion-drop-date').textContent = target?.dataset.date?.slice(5).replace('-','.') || '';
@@ -122,7 +122,7 @@ window.CalendarMotion = (() => {
     const finish = async e => {
       main.removeEventListener('pointermove',move);main.removeEventListener('pointerup',finish);main.removeEventListener('pointercancel',cancel);
       if(main.hasPointerCapture(event.pointerId))main.releasePointerCapture(event.pointerId);
-      if(!moving)return;
+      if(!moving || layer !== owner)return;
       lastTarget?.classList.remove('motion-near');
       const destination=target?.dataset.date;
       if(destination && e.type !== 'pointercancel') {
@@ -132,12 +132,12 @@ window.CalendarMotion = (() => {
         if(layer !== owner)return;
         const fn=callbacks.move;close(false);fn(item,destination);
         const cell=[...document.querySelectorAll('.day-cell')].find(n=>n.dataset.date===destination);
-        if(cell)animate(cell.querySelector('.day-pile-cover,.chip-stack')||cell,[{scale:'1.08 .88'},{scale:'.96 1.06',offset:.55},{scale:'1'}],{duration:460});
+        if(cell)animate(cell.querySelector('.inline-pile,.chip-stack')||cell,[{scale:'1.08 .88'},{scale:'.96 1.06',offset:.55},{scale:'1'}],{duration:460});
       } else { ghost.remove(); card.classList.remove('drag-origin'); drag=null; }
     };
     const cancel=e=>finish(e);
     main.addEventListener('pointermove',move);main.addEventListener('pointerup',finish);main.addEventListener('pointercancel',cancel);
   }
   window.addEventListener('resize', () => close(false));
-  return {open,close};
+  return {mount,close};
 })();
