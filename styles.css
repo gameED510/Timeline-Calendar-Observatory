@@ -4500,10 +4500,17 @@ body:has(.account-locked) .mobile-tabbar { display: none !important; }
 .motion-card.receded { scale: .96; }
 /* GSAP owns layout transitions; CSS must not animate the same transforms. */
 .inline-pile .motion-card { transition: box-shadow .2s, opacity .2s; translate: none; scale: none; }
-.inline-pile.expanded .motion-card.focused:not(.motion-ghost) { height: 164px; min-height: 164px; }
-.inline-pile.expanded .motion-card.focused .motion-card-main { height: 164px; min-height: 164px; overflow: hidden; }
+.inline-pile.expanded .motion-card.focused:not(.motion-ghost) { height: 96px; min-height: 96px; transform: translate(calc(-50% + var(--x)), var(--y)) rotate(0) scale(1.03); }
+.inline-pile.expanded .motion-card.focused .motion-card-main { height: 96px; min-height: 96px; padding: 12px 42px 12px 12px; overflow: hidden; }
+.inline-pile.expanded .motion-card.focused .motion-card-main strong { font-size: 13px; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 2; overflow: hidden; }
+.inline-pile.expanded .motion-card.focused .motion-card-stage { margin-top: auto; }
+.motion-more { position: absolute; top: 4px; right: 4px; border: 0; background: transparent; visibility: hidden; }
+.motion-card.focused .motion-more { visibility: visible; }
+.motion-card-menu { position: absolute; top: 38px; right: 4px; z-index: 110; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px #0003; }
+.motion-card-menu[hidden] { display: none; }
+.motion-card-menu .motion-icon { width: 124px; display: flex; gap: 8px; padding: 8px 12px; font-size: 13px; }
 .motion-card, .motion-card * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.inline-pile:not(.expanded):not(.dragging) .motion-card-main { touch-action: pan-y; cursor: pointer; }
+.inline-pile:not(.expanded):not(.dragging) .motion-card-main { touch-action: none; cursor: grab; }
 .inline-pile.dragging .motion-card:not(.motion-ghost) { pointer-events: none; }
 .calendar-scroll:has(.inline-pile.dragging), .calendar-grid:has(.inline-pile.dragging) { overflow: visible; }
 .inline-pile .motion-ghost { transition: none; }

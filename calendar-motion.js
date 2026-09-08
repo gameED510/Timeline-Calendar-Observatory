@@ -26,6 +26,8 @@ window.CalendarMotion = (() => {
       layout(old, () => {
       old.classList.remove('expanded','dragging'); old.closest('.day-cell')?.classList.remove('pile-active');
       old.querySelectorAll('.motion-card').forEach((card,i)=>{
+        card.querySelector('.motion-card-menu').hidden=true;
+        card.querySelector('.motion-more').setAttribute('aria-expanded','false');
         card.classList.remove('focused','receded','drag-origin');card.style.zIndex=String(i+1);
         card.querySelector('.motion-card-main').setAttribute('aria-expanded','false');
         const data=groups.get(old);card.querySelector('strong').textContent=data.handlers.label(data.items[i]);
@@ -63,6 +65,7 @@ window.CalendarMotion = (() => {
     focused=index;
     layout(layer, () => layer.querySelectorAll('.motion-card').forEach((card,i)=>{
       card.classList.toggle('focused',i===index);card.classList.toggle('receded',i!==index);
+      if(i!==index){card.querySelector('.motion-card-menu').hidden=true;card.querySelector('.motion-more').setAttribute('aria-expanded','false');}
       card.style.zIndex=String(i===index?100:i+1);
     }));
   }
@@ -86,10 +89,20 @@ window.CalendarMotion = (() => {
         if(layer!==group)open(group);else focus(index);
       });
       main.addEventListener('keydown',event=>{if(event.key==='Escape'){event.stopPropagation();close();}});
-      main.addEventListener('pointerdown',event=>{if(layer===group)startDrag(event,card,main,item);});
+      main.addEventListener('pointerdown',event=>startDrag(event,card,main,item,group));
       const actions=document.createElement('div');actions.className='motion-card-actions';
-      actions.append(icon('pencil','编辑项目',()=>{close(false);handlers.edit(item);}),icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>{close(false);handlers.toggle(item);}));
-      card.append(main,actions);group.append(card);
+      actions.append(icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>{close(false);handlers.toggle(item);}));
+      const menu=document.createElement('div');menu.className='motion-card-menu';menu.hidden=true;
+      const edit=icon('pencil','编辑项目',()=>{close(false);handlers.edit(item);});
+      edit.append(document.createTextNode('编辑项目'));menu.append(edit);
+      const more=icon('ellipsis','更多操作',()=>{
+        const next=menu.hidden;
+        group.querySelectorAll('.motion-card-menu').forEach(node=>node.hidden=true);
+        group.querySelectorAll('.motion-more').forEach(node=>node.setAttribute('aria-expanded','false'));
+        menu.hidden=!next;more.setAttribute('aria-expanded',String(next));
+      });
+      more.classList.add('motion-more');more.setAttribute('aria-expanded','false');
+      card.append(main,actions,more,menu);group.append(card);
     });
     group.addEventListener('pointerenter',event=>{
       if(event.pointerType==='mouse' && layer!==group && !drag) gsap.to(group,{y:reduced()?0:-4,duration:.2,overwrite:true});
@@ -100,20 +113,24 @@ window.CalendarMotion = (() => {
   }
   document.addEventListener('pointerdown',event=>{if(layer&&!layer.contains(event.target)&&!drag)close(false);},true);
   document.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
-  function startDrag(event, card, main, item) {
+  function startDrag(event, card, main, item, group) {
     if (event.button !== 0 || drag) return;
-    const owner = layer;
+    const owner = group;
     const startX = event.clientX, startY = event.clientY;
     let moving = false, ghost, target = null, lastTarget = null;
     main.setPointerCapture(event.pointerId);
     const move = e => {
-      if(layer !== owner) return;
+      if(moving && layer !== owner) return;
       const dx=e.clientX-startX, dy=e.clientY-startY;
       if (!moving && Math.hypot(dx,dy) < 8) return;
       if (!moving) {
+        if(layer!==owner){close(false);layer=owner;callbacks=groups.get(owner).handlers;}
+        owner.closest('.day-cell')?.classList.add('pile-active');
         moving=true; main.dataset.dragged='true';
         ghost=card.cloneNode(true); ghost.className='motion-card motion-ghost';
         ghost.querySelector('.motion-card-actions')?.remove();
+        ghost.querySelector('.motion-more')?.remove();ghost.querySelector('.motion-card-menu')?.remove();
+        ghost.querySelector('strong').textContent=item.project.name;
         const label=document.createElement('span');label.className='motion-drop-date';ghost.append(label);
         ghost.style.transform=''; ghost.style.width=''; ghost.style.height='';
         layer.append(ghost); drag={ghost};
