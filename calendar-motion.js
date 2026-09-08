@@ -19,7 +19,7 @@ window.CalendarMotion = (() => {
   }
   function close(restoreFocus = true) {
     clearTimeout(leaveTimer);
-    if (drag) { drag.ghost.remove(); drag=null; }
+    if (drag) { gsap.killTweensOf(drag.ghost); drag.ghost.remove(); drag=null; }
     document.querySelectorAll('.motion-near').forEach(node=>node.classList.remove('motion-near'));
     if(layer) {
       const old=layer;
@@ -146,12 +146,17 @@ window.CalendarMotion = (() => {
       const destination=target?.dataset.date;
       if(destination && e.type !== 'pointercancel') {
         const b=target.getBoundingClientRect(), l=layer.getBoundingClientRect();
-        const a=animate(ghost,[{left:ghost.style.left,top:ghost.style.top,transform:ghost.style.transform},{left:`${b.left+b.width/2-l.left}px`,top:`${b.top+75-l.top}px`,transform:'translate(-50%, -50%) scale(1.12,.7)',offset:.65},{left:`${b.left+b.width/2-l.left}px`,top:`${b.top+75-l.top}px`,transform:'translate(-50%, -50%) scale(.7,1.08)',offset:.82},{left:`${b.left+b.width/2-l.left}px`,top:`${b.top+75-l.top}px`,transform:'translate(-50%, -50%) scale(.75)'}],{duration:560});
-        try{await a?.finished;}catch{}
+        const dx=b.left+b.width/2-l.left-parseFloat(ghost.style.left);
+        const dy=b.top+Math.min(75,b.height/2)-l.top-parseFloat(ghost.style.top);
+        await new Promise(resolve=>{
+          gsap.to(ghost,{x:`+=${dx}`,y:`+=${dy}`,rotation:0,scaleX:.7,scaleY:.6,
+            duration:reduced()?0:.28,ease:'power2.inOut',overwrite:true,onComplete:resolve,onInterrupt:resolve});
+        });
         if(layer !== owner)return;
         const fn=callbacks.move;close(false);fn(item,destination);
         const cell=[...document.querySelectorAll('.day-cell')].find(n=>n.dataset.date===destination);
-        if(cell)animate(cell.querySelector('.inline-pile,.chip-stack')||cell,[{scale:'1.08 .88'},{scale:'.96 1.06',offset:.55},{scale:'1'}],{duration:460});
+        if(cell&&!reduced())gsap.fromTo(cell.querySelector('.inline-pile,.chip-stack')||cell,
+          {scaleX:1.035,scaleY:.94},{scaleX:1,scaleY:1,duration:.4,ease:'elastic.out(1,.65)',clearProps:'transform'});
       } else { close(false); }
     };
     const cancel=e=>finish(e);

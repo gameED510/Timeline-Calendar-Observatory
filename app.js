@@ -305,7 +305,7 @@ function renderAccountGate() {
   if (title) title.textContent = activeAccountId ? (syncState.loadingRemote ? "正在读取云端排期" : "云端排期尚未加载") : "登录后查看排期";
   if (button) {
     button.disabled = syncState.initializing || syncState.loadingRemote;
-    button.textContent = activeAccountId ? "重新读取" : "登录";
+    button.textContent = syncState.initializing ? "正在连接…" : syncState.loadingRemote ? "正在读取…" : activeAccountId ? "重新读取" : "登录";
   }
 }
 

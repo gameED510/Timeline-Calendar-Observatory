@@ -4442,7 +4442,7 @@ dialog[open] {
 .account-locked .focus-row, .account-locked .legend-strip,
 .account-locked .view, .account-locked .side-panel,
 .account-locked .mobile-tabbar, .account-locked .inspector { display: none !important; }
-.account-locked { grid-template-columns: minmax(0, 1fr) !important; }
+.account-locked { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "workspace" !important; }
 body:has(.account-locked) .mobile-tabbar { display: none !important; }
 .account-locked .workspace-tools > .segmented,
 .account-locked .data-menu-wrap { display: none; }
@@ -4517,6 +4517,8 @@ body:has(.account-locked) .mobile-tabbar { display: none !important; }
 .motion-ghost .motion-card-main { cursor: grabbing; }
 .motion-drop-date { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; font-size: 24px; font-weight: 650; pointer-events: none; }
 .motion-ghost.over-date .motion-card-main { filter: blur(5px); opacity: .4; }
+.inline-pile .motion-ghost { backdrop-filter: none; -webkit-backdrop-filter: none; will-change: transform; }
+.inline-pile .motion-ghost.over-date .motion-card-main { filter: none; opacity: .12; }
 .motion-ghost.over-date .motion-drop-date { display: flex; }
 .motion-near { box-shadow: inset 0 0 0 2px var(--accent) !important; }
 @media (max-width: 550px) { .motion-card { width: 172px; height: 140px; } .motion-card-main { padding: 12px; } .motion-card-main strong { font-size: 13px; } }
