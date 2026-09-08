@@ -20,7 +20,7 @@ window.CalendarMotion = (() => {
   }
   function close(restoreFocus = true) {
     clearTimeout(leaveTimer);
-    if (drag) { gsap.killTweensOf(drag.ghost); drag.ghost.remove(); drag=null; }
+    if (drag) { const proxy=drag.ghost;drag=null;gsap.killTweensOf(proxy);proxy.remove(); }
     document.querySelectorAll('.motion-near').forEach(node=>node.classList.remove('motion-near'));
     if(layer) {
       const old=layer;
@@ -77,6 +77,7 @@ window.CalendarMotion = (() => {
     groups.set(group,{handlers,items});
     items.forEach((item,index)=>{
       const card=document.createElement('article');card.className='motion-card';
+      card.dataset.projectId=item.project.id;card.dataset.stage=item.stage;
       card.style.setProperty('--project-color',item.project.color);
       card.style.setProperty('--stack',String(Math.min(index,3)));
       card.style.zIndex=String(index+1);
@@ -164,20 +165,29 @@ window.CalendarMotion = (() => {
       lastTarget?.classList.remove('motion-near');
       const destination=target?.dataset.date;
       if(destination && e.type !== 'pointercancel') {
-        const b=target.getBoundingClientRect(), l=layer.getBoundingClientRect();
-        const landing=target.querySelector('.inline-pile,.chip-stack');
-        const destinationBox=landing?.getBoundingClientRect() || b;
-        const x=destinationBox.left+destinationBox.width/2-l.left-ghost.offsetWidth/2;
-        const y=destinationBox.top+Math.min(34,destinationBox.height/2)-l.top-ghost.offsetHeight/2;
+        const box=ghost.getBoundingClientRect(), width=ghost.offsetWidth, height=ghost.offsetHeight;
+        const rotation=Number(gsap.getProperty(ghost,'rotation'))||0;
+        const fn=callbacks.move;
+        // Only the drag proxy survives the data render; expanded cards remain inline.
+        document.querySelector('.app-shell').append(ghost);
+        gsap.set(ghost,{position:'fixed',left:box.left+box.width/2-width/2,top:box.top+box.height/2-height/2,
+          width,height,x:0,y:0,xPercent:0,yPercent:0,rotation,zIndex:2000});
+        drag=null;layer=null;callbacks=null;focused=-1;
+        try { fn(item,destination); } catch(error) { ghost.remove();throw error; }
+        const landing=[...document.querySelectorAll('.day-cell .motion-card')].find(node=>node.dataset.projectId===item.project.id&&node.dataset.stage===item.stage);
+        if(!landing){ghost.remove();return;}
+        const destinationBox=landing.getBoundingClientRect();
+        landing.style.opacity='0';
+        const cleanup=()=>{landing.style.opacity='';ghost.remove();if(drag?.ghost===ghost)drag=null;};
+        drag={ghost};
         await new Promise(resolve=>{
-          gsap.to(ghost,{x,y,rotation:0,scaleX:Math.min(1,destinationBox.width/ghost.offsetWidth),scaleY:.5,
-            duration:reduced()?0:.34,ease:'power3.out',overwrite:true,onComplete:resolve,onInterrupt:resolve});
+          gsap.to(ghost,{x:destinationBox.left+destinationBox.width/2-box.left-box.width/2,
+            y:destinationBox.top+destinationBox.height/2-box.top-box.height/2,
+            rotation:Number(gsap.getProperty(landing,'rotation'))||0,
+            scaleX:landing.offsetWidth/width,scaleY:landing.offsetHeight/height,
+            duration:reduced()?0:.3,ease:'power2.out',overwrite:true,
+            onComplete:()=>{cleanup();resolve();},onInterrupt:()=>{cleanup();resolve();}});
         });
-        if(layer !== owner)return;
-        const fn=callbacks.move;close(false);fn(item,destination);
-        const cell=[...document.querySelectorAll('.day-cell')].find(n=>n.dataset.date===destination);
-        if(cell&&!reduced())gsap.fromTo(cell.querySelector('.inline-pile,.chip-stack')||cell,
-          {scaleX:1.035,scaleY:.94},{scaleX:1,scaleY:1,duration:.4,ease:'elastic.out(1,.65)',clearProps:'transform'});
       } else { close(false); }
     };
     const cancel=e=>finish(e);
