@@ -4,6 +4,15 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
+test("blank day selection preserves cards until collapse finishes", async () => {
+  const app = await read('app.js');
+  const handler = app.slice(app.indexOf('cell.addEventListener("click"'), app.indexOf('const head = document.createElement("div")', app.indexOf('cell.addEventListener("click"')));
+  assert.match(handler, /renderCalendarDayDetails/);
+  assert.doesNotMatch(handler, /render\(\)/);
+  assert.match(await read('calendar-motion.js'), /onComplete: complete/);
+  assert.match(await read('styles.css'), /has\(\.inline-pile\.closing\)/);
+});
+
 test("calendar motion is local, included in both builds and offline shell", async () => {
   for (const path of ["index.html", "sw.js", "scripts/build-netlify.mjs", "scripts/build-edgeone.mjs", "scripts/prepare-static.mjs"]) {
     assert.match(await read(path), /calendar-motion\.js/);

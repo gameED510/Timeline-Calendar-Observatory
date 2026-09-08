@@ -1237,7 +1237,9 @@ function renderCalendar(grouped) {
     cell.addEventListener("click", (event) => {
       if (event.target.closest(".milestone-chip, button")) return;
       selectedCalendarDate = iso;
-      render();
+      elements.calendarGrid.querySelectorAll('.selected-day').forEach(node=>node.classList.remove('selected-day'));
+      cell.classList.add('selected-day');
+      renderCalendarDayDetails(iso, grouped.get(iso) || []);
     });
 
     const head = document.createElement("div");

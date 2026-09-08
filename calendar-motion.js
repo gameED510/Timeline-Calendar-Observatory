@@ -3,11 +3,12 @@ window.CalendarMotion = (() => {
   let layer = null, callbacks = null, focused = -1, drag = null, leaveTimer;
   const groups = new WeakMap();
   const { gsap, Flip } = window.CalendarAnimator;
-  function layout(group, change) {
+  function layout(group, change, complete = () => {}) {
     const cards = [...group.querySelectorAll('.motion-card:not(.motion-ghost)')];
     const state = Flip.getState(cards);
     change();
-    if (!reduced()) Flip.from(state, { duration: .48, ease: 'power3.out', scale: true, nested: true });
+    if (!reduced()) Flip.from(state, { duration: .48, ease: 'power3.out', scale: true, nested: true, onComplete: complete });
+    else complete();
   }
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const animate = (node, frames, options = {}) => reduced() ? null : node.animate(frames, { duration: 520, easing: 'cubic-bezier(.2,.8,.25,1)', ...options });
@@ -23,8 +24,9 @@ window.CalendarMotion = (() => {
     document.querySelectorAll('.motion-near').forEach(node=>node.classList.remove('motion-near'));
     if(layer) {
       const old=layer;
+      old.classList.add('closing');
       layout(old, () => {
-      old.classList.remove('expanded','dragging'); old.closest('.day-cell')?.classList.remove('pile-active');
+      old.classList.remove('expanded','dragging');
       old.querySelectorAll('.motion-card').forEach((card,i)=>{
         card.querySelector('.motion-card-menu').hidden=true;
         card.querySelector('.motion-more').setAttribute('aria-expanded','false');
@@ -32,7 +34,7 @@ window.CalendarMotion = (() => {
         card.querySelector('.motion-card-main').setAttribute('aria-expanded','false');
         const data=groups.get(old);card.querySelector('strong').textContent=data.handlers.label(data.items[i]);
       });
-      });
+      },()=>{old.classList.remove('closing');if(!old.classList.contains('expanded')&&!old.classList.contains('dragging'))old.closest('.day-cell')?.classList.remove('pile-active');});
       if(restoreFocus) old.querySelector('.motion-card-main')?.focus({preventScroll:true});
     }
     layer=null; callbacks=null; focused=-1;
@@ -142,8 +144,8 @@ window.CalendarMotion = (() => {
         });
       }
       const box=layer.getBoundingClientRect();
-      ghost.style.left=`${e.clientX-box.left}px`;ghost.style.top=`${e.clientY-box.top}px`;
-      ghost.style.transform=`translate(-50%, -50%) rotate(${Math.max(-9,Math.min(9,dx/25))}deg)`;
+      ghost.style.left='0px';ghost.style.top='0px';
+      gsap.set(ghost,{xPercent:0,yPercent:0,x:e.clientX-box.left-ghost.offsetWidth/2,y:e.clientY-box.top-ghost.offsetHeight/2,rotation:Math.max(-7,Math.min(7,dx/35))});
       layer.style.pointerEvents='none';
       target=document.elementFromPoint(e.clientX,e.clientY)?.closest('.day-cell[data-date], .agenda-day[data-date]') || null;
       layer.style.pointerEvents='';
@@ -163,11 +165,13 @@ window.CalendarMotion = (() => {
       const destination=target?.dataset.date;
       if(destination && e.type !== 'pointercancel') {
         const b=target.getBoundingClientRect(), l=layer.getBoundingClientRect();
-        const dx=b.left+b.width/2-l.left-parseFloat(ghost.style.left);
-        const dy=b.top+Math.min(75,b.height/2)-l.top-parseFloat(ghost.style.top);
+        const landing=target.querySelector('.inline-pile,.chip-stack');
+        const destinationBox=landing?.getBoundingClientRect() || b;
+        const x=destinationBox.left+destinationBox.width/2-l.left-ghost.offsetWidth/2;
+        const y=destinationBox.top+Math.min(34,destinationBox.height/2)-l.top-ghost.offsetHeight/2;
         await new Promise(resolve=>{
-          gsap.to(ghost,{x:`+=${dx}`,y:`+=${dy}`,rotation:0,scaleX:.7,scaleY:.6,
-            duration:reduced()?0:.28,ease:'power2.inOut',overwrite:true,onComplete:resolve,onInterrupt:resolve});
+          gsap.to(ghost,{x,y,rotation:0,scaleX:Math.min(1,destinationBox.width/ghost.offsetWidth),scaleY:.5,
+            duration:reduced()?0:.34,ease:'power3.out',overwrite:true,onComplete:resolve,onInterrupt:resolve});
         });
         if(layer !== owner)return;
         const fn=callbacks.move;close(false);fn(item,destination);

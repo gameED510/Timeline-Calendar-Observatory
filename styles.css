@@ -4431,6 +4431,10 @@ dialog[open] {
 }
 
 /* Account content is hidden before auth hydration, including the first paint. */
+.app-title .tl-wordmark { display: flex; align-items: center; gap: 10px; margin: 0; }
+.tl-monogram { font-family: 'Arial Black', 'Segoe UI', sans-serif; font-size: 38px; line-height: 1; font-weight: 900; font-style: italic; letter-spacing: 0; }
+.tl-dot { color: var(--accent); }
+.tl-wordmark-name { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 16px; font-weight: 600; line-height: 1.5; border-left: 1px solid var(--line); padding-left: 10px; }
 .account-gate { display: none; }
 .account-locked .account-gate {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -4513,6 +4517,7 @@ body:has(.account-locked) .mobile-tabbar { display: none !important; }
 .inline-pile:not(.expanded):not(.dragging) .motion-card-main { touch-action: none; cursor: grab; }
 .inline-pile.dragging .motion-card:not(.motion-ghost) { pointer-events: none; }
 .calendar-scroll:has(.inline-pile.dragging), .calendar-grid:has(.inline-pile.dragging) { overflow: visible; }
+.calendar-scroll:has(.inline-pile.closing), .calendar-grid:has(.inline-pile.closing) { overflow: visible; }
 .inline-pile .motion-ghost { transition: none; }
 .inline-pile.dragging .motion-ghost { width: 208px; height: 136px; border-radius: 16px; }
 .inline-pile.dragging .motion-ghost .motion-card-main { padding: 16px; gap: 8px; }
