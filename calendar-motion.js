@@ -3,11 +3,21 @@ window.CalendarMotion = (() => {
   let layer = null, callbacks = null, focused = -1, drag = null, leaveTimer;
   const groups = new WeakMap();
   const { gsap, Flip } = window.CalendarAnimator;
+  function springEase(t) {
+    if(t<=0)return 0;
+    if(t>=1)return 1;
+    const damping=9, frequency=11;
+    const response=x=>1-Math.exp(-damping*x)*(Math.cos(frequency*x)+damping/frequency*Math.sin(frequency*x));
+    const residual=response(1)-1;
+    const velocity=Math.exp(-damping)*(frequency*frequency+damping*damping)/frequency*Math.sin(frequency);
+    // Endpoint correction preserves overshoot while bringing velocity to zero.
+    return response(t)-residual*t*t*(3-2*t)-velocity*t*t*(t-1);
+  }
   function layout(group, change, complete = () => {}) {
     const cards = [...group.querySelectorAll('.motion-card:not(.motion-ghost)')];
     const state = Flip.getState(cards);
     change();
-    if (!reduced()) Flip.from(state, { duration: .48, ease: 'power3.out', scale: true, nested: true, onComplete: complete });
+    if (!reduced()) Flip.from(state, { duration: .72, ease: springEase, scale: true, nested: true, onComplete: complete });
     else complete();
   }
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -108,9 +118,9 @@ window.CalendarMotion = (() => {
       card.append(main,actions,more,menu);group.append(card);
     });
     group.addEventListener('pointerenter',event=>{
-      if(event.pointerType==='mouse' && layer!==group && !drag) gsap.to(group,{y:reduced()?0:-4,duration:.2,overwrite:true});
+      if(event.pointerType==='mouse' && layer!==group && !drag) gsap.to(group,{y:reduced()?0:-4,duration:.45,ease:springEase,overwrite:true});
     });
-    group.addEventListener('pointerleave',()=>gsap.to(group,{y:0,duration:reduced()?0:.2,overwrite:true}));
+    group.addEventListener('pointerleave',()=>gsap.to(group,{y:0,duration:reduced()?0:.45,ease:springEase,overwrite:true}));
     group.addEventListener('contextmenu',event=>event.preventDefault());
     group.addEventListener('click',event=>event.stopPropagation());
   }
@@ -185,7 +195,7 @@ window.CalendarMotion = (() => {
             y:destinationBox.top+destinationBox.height/2-box.top-box.height/2,
             rotation:Number(gsap.getProperty(landing,'rotation'))||0,
             scaleX:landing.offsetWidth/width,scaleY:landing.offsetHeight/height,
-            duration:reduced()?0:.3,ease:'power2.out',overwrite:true,
+            duration:reduced()?0:.65,ease:springEase,overwrite:true,
             onComplete:()=>{cleanup();resolve();},onInterrupt:()=>{cleanup();resolve();}});
         });
       } else { close(false); }
