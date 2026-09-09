@@ -300,9 +300,11 @@ function accountRequest(request) {
 function renderAccountGate() {
   const locked = !activeAccountId || !accountHydrated;
   elements.appShell?.classList.toggle("account-locked", locked);
+  const busy=syncState.initializing || syncState.loadingRemote;
+  elements.appShell?.classList.toggle('account-loading',locked&&busy);
   const title = document.querySelector("#accountGateTitle");
   const button = document.querySelector("#accountGateButton");
-  if (title) title.textContent = activeAccountId ? (syncState.loadingRemote ? "正在读取云端排期" : "云端排期尚未加载") : "登录后查看排期";
+  if (title) title.textContent = busy ? '正在准备你的日历' : activeAccountId ? '云端排期尚未加载' : '你的时间，从这里开始';
   if (button) {
     button.disabled = syncState.initializing || syncState.loadingRemote;
     button.textContent = syncState.initializing ? "正在连接…" : syncState.loadingRemote ? "正在读取…" : activeAccountId ? "重新读取" : "登录";
@@ -2070,7 +2072,7 @@ async function initCloudSync() {
   syncState.error = null;
   renderSyncPanel();
   try {
-    const response = await fetch(SUPABASE_CONFIG_ENDPOINT, { cache: "no-store" });
+    const response = await fetch(SUPABASE_CONFIG_ENDPOINT, { cache: "no-store", signal: AbortSignal.timeout(12000) });
     const config = response.ok ? await response.json() : {};
     if (!config.supabaseUrl || !config.supabaseAnonKey) {
       syncState.configured = false;
@@ -2083,15 +2085,6 @@ async function initCloudSync() {
     syncState.configured = true;
     const { createClient } = await import(SUPABASE_CLIENT_MODULE);
     const proxyFetch = config.supabaseProxyUrl ? createSupabaseProxyFetch(config.supabaseProxyUrl) : undefined;
-    if (proxyFetch) {
-      const healthResponse = await proxyFetch(`${config.supabaseUrl}/auth/v1/health`, {
-        headers: { apikey: config.supabaseAnonKey }
-      });
-      if (!healthResponse.ok) {
-        const healthError = await healthResponse.json().catch(() => ({}));
-        throw new Error(healthError.message || "云服务暂时无法连接，请稍后重试");
-      }
-    }
     syncState.client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
       auth: {
         persistSession: true,

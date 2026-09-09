@@ -10,10 +10,10 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="site.webmanifest" />
     <script src="theme.js?v=1"></script>
-    <link rel="stylesheet" href="styles.css?v=14" />
+    <link rel="stylesheet" href="styles.css?v=17" />
   </head>
   <body>
-    <div class="app-shell mobile-page-plan account-locked" id="appShell">
+    <div class="app-shell mobile-page-plan account-locked account-loading" id="appShell">
       <aside class="side-panel" aria-label="项目总览">
         <div class="app-title">
           <div>
@@ -170,8 +170,9 @@
         </header>
 
         <section class="account-gate" aria-live="polite">
-          <i data-lucide="calendar-days"></i>
-          <h2 id="accountGateTitle">登录后查看排期</h2>
+          <div class="welcome-wordmark" aria-label="TL 日历观察台">TL<span>.</span></div>
+          <h2 id="accountGateTitle">正在准备你的日历</h2>
+          <div class="calendar-skeleton" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
           <button type="button" class="primary-button" id="accountGateButton">登录</button>
         </section>
 
@@ -416,8 +417,8 @@
     </dialog>
 
     <script src="vendor/motion.js?v=1"></script>
-    <script src="calendar-motion.js?v=8"></script>
-    <script src="app.js?v=14"></script>
+    <script src="calendar-motion.js?v=9"></script>
+    <script src="app.js?v=17"></script>
     <script src="vendor/lucide.min.js?v=5" defer></script>
   </body>
 </html>

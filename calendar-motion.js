@@ -187,8 +187,10 @@ window.CalendarMotion = (() => {
         const landing=[...document.querySelectorAll('.day-cell .motion-card')].find(node=>node.dataset.projectId===item.project.id&&node.dataset.stage===item.stage);
         if(!landing){ghost.remove();return;}
         const destinationBox=landing.getBoundingClientRect();
+        const previousTransition=landing.style.transition;
+        landing.style.transition='none';
         landing.style.opacity='0';
-        const cleanup=()=>{landing.style.opacity='';ghost.remove();if(drag?.ghost===ghost)drag=null;};
+        const cleanup=()=>{landing.style.opacity='1';landing.style.transition=previousTransition;ghost.remove();if(drag?.ghost===ghost)drag=null;};
         drag={ghost};
         await new Promise(resolve=>{
           gsap.to(ghost,{x:destinationBox.left+destinationBox.width/2-box.left-box.width/2,
@@ -196,6 +198,7 @@ window.CalendarMotion = (() => {
             rotation:Number(gsap.getProperty(landing,'rotation'))||0,
             scaleX:landing.offsetWidth/width,scaleY:landing.offsetHeight/height,
             duration:reduced()?0:.65,ease:springEase,overwrite:true,
+            onUpdate:function(){const blend=Math.max(0,(this.progress()-.55)/.45);ghost.style.opacity=String(1-blend);landing.style.opacity=String(blend);},
             onComplete:()=>{cleanup();resolve();},onInterrupt:()=>{cleanup();resolve();}});
         });
       } else { close(false); }

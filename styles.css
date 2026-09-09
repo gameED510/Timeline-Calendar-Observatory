@@ -4435,7 +4435,25 @@ dialog[open] {
 .tl-monogram { font-family: 'Arial Black', 'Segoe UI', sans-serif; font-size: 38px; line-height: 1; font-weight: 900; font-style: italic; letter-spacing: 0; }
 .tl-dot { color: var(--accent); }
 .tl-wordmark-name { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 16px; font-weight: 600; line-height: 1.5; border-left: 1px solid var(--line); padding-left: 10px; }
+@media (min-width: 1100px) {
+  .focus-row { gap: 0; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+  .focus-row .focus-card { border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .focus-row .focus-card + .focus-card { border-left: 1px solid var(--line); }
+  .side-panel .metric-grid { gap: 0; border-block: 1px solid var(--line); padding: 8px 0; }
+  .side-panel .metric-item { border: 0; background: transparent; box-shadow: none; }
+}
 .account-gate { display: none; }
+.welcome-wordmark { font: italic 900 64px/1 'Arial Black','Segoe UI',sans-serif; letter-spacing: 0; }
+.welcome-wordmark span { color: var(--accent); }
+.calendar-skeleton { display: none; }
+.account-loading .account-gate button { display: none; }
+.account-loading .calendar-skeleton { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); width: min(480px,85%); height: 112px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.calendar-skeleton span { border-right: 1px solid var(--line); background: var(--panel); animation: calendar-breathe 1.8s ease-in-out infinite alternate; }
+.calendar-skeleton span:nth-child(2n) { animation-delay: .2s; }
+.calendar-skeleton span:nth-child(3n) { animation-delay: .4s; }
+@keyframes calendar-breathe { from { opacity: .35; } to { opacity: .85; } }
+.account-gate .welcome-wordmark { margin-bottom: 2px; }
+.account-gate h2 { color: var(--muted-strong); }
 .account-locked .account-gate {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 55vh; gap: 20px; text-align: center;
@@ -4471,6 +4489,9 @@ body:has(.account-locked) .mobile-tabbar { display: none !important; }
 .inline-pile.expanded .motion-card.focused .motion-card-main { min-height: 128px; padding-bottom: 48px; }
 .inline-pile .motion-ghost { width: 208px; height: 136px; transition: none; }
 .calendar-grid .day-cell.pile-active { z-index: 50; }
+.calendar-grid .day-cell:has(.inline-pile.expanded),
+.calendar-grid .day-cell:has(.inline-pile.dragging) { z-index: 100 !important; isolation: auto; }
+.calendar-grid .day-cell:has(.inline-pile.closing):not(:has(.inline-pile.expanded)) { z-index: 90 !important; }
 .calendar-scroll:has(.inline-pile.expanded), .calendar-grid:has(.inline-pile.expanded) { overflow: visible; }
 @media (max-width: 550px) {
   .inline-pile { height: 48px; }
