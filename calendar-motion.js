@@ -55,7 +55,16 @@ window.CalendarMotion = (() => {
     close(false);layer=group;callbacks=groups.get(group).handlers;focused=-1;
     const rect=group.getBoundingClientRect(), mobile=innerWidth<550;
     const width=mobile?168:208, spread=mobile?62:88;
-    const center=Math.max(width/2+spread+24,Math.min(innerWidth-width/2-spread-24,rect.left+rect.width/2));
+    const calendarRect=group.closest('.calendar-scroll')?.getBoundingClientRect();
+    const visibleLeft=Math.max(0,calendarRect?.left ?? 0);
+    const visibleRight=Math.min(innerWidth,calendarRect?.right ?? innerWidth);
+    // Keep the rotated fan inside the calendar instead of letting it slide under the desktop sidebar.
+    const edgeRoom=width/2+spread+(mobile?16:28);
+    const minCenter=visibleLeft+edgeRoom, maxCenter=visibleRight-edgeRoom;
+    const preferredCenter=rect.left+rect.width/2;
+    const center=minCenter<=maxCenter
+      ? Math.max(minCenter,Math.min(maxCenter,preferredCenter))
+      : (visibleLeft+visibleRight)/2;
     const cards=[...group.querySelectorAll('.motion-card')];
     const step=Math.min(62,Math.max(8,(innerHeight-360)/Math.max(cards.length-1,1)));
     const top=Math.max(100,Math.min(innerHeight-190-step*(cards.length-1),rect.top-35));

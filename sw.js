@@ -1,11 +1,11 @@
-const CACHE_NAME = "tl-calendar-shell-v18";
+const CACHE_NAME = "tl-calendar-shell-v19";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./theme.js?v=1",
   "./styles.css?v=18",
   "./vendor/motion.js?v=1",
-  "./calendar-motion.js?v=9",
+  "./calendar-motion.js?v=10",
   "./app.js?v=17",
   "./vendor/lucide.min.js?v=5",
   "./vendor/supabase-client.js?v=2",

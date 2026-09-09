@@ -18,6 +18,7 @@ test("calendar motion is local, included in both builds and offline shell", asyn
     assert.match(await read(path), /calendar-motion\.js/);
   }
   const motion = await read("calendar-motion.js");
+  assert.match(motion, /closest\('\.calendar-scroll'\)/, "expanded cards use the visible calendar as their horizontal boundary");
   assert.doesNotMatch(motion, /localStorage|fetch\(/);
   assert.match(motion, /prefers-reduced-motion/);
   assert.match(motion, /pointercancel/);
