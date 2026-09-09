@@ -4445,13 +4445,16 @@ dialog[open] {
 .account-gate { display: none; }
 .welcome-wordmark { font: italic 900 64px/1 'Arial Black','Segoe UI',sans-serif; letter-spacing: 0; }
 .welcome-wordmark span { color: var(--accent); }
-.calendar-skeleton { display: none; }
+.startup-progress { display: none; }
 .account-loading .account-gate button { display: none; }
-.account-loading .calendar-skeleton { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); width: min(480px,85%); height: 112px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.calendar-skeleton span { border-right: 1px solid var(--line); background: var(--panel); animation: calendar-breathe 1.8s ease-in-out infinite alternate; }
-.calendar-skeleton span:nth-child(2n) { animation-delay: .2s; }
-.calendar-skeleton span:nth-child(3n) { animation-delay: .4s; }
-@keyframes calendar-breathe { from { opacity: .35; } to { opacity: .85; } }
+.account-loading .startup-progress { display: block; width: min(280px,65%); height: 3px; margin-top: 12px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.startup-progress span { display: block; width: 42%; height: 100%; border-radius: inherit; background: var(--ink); animation: startup-progress 2.6s cubic-bezier(.4,0,.2,1) infinite; }
+.account-loading .welcome-wordmark { animation: startup-arrive 900ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes startup-progress { 0% { transform: translateX(-110%) scaleX(.5); } 50% { transform: translateX(70%) scaleX(1); } 100% { transform: translateX(350%) scaleX(.5); } }
+@keyframes startup-arrive { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .account-loading .startup-progress span { animation: none; transform: none; width: 100%; opacity: .4; }
+}
 .account-gate .welcome-wordmark { margin-bottom: 2px; }
 .account-gate h2 { color: var(--muted-strong); }
 .account-locked .account-gate {
