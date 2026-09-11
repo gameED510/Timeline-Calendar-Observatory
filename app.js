@@ -65,6 +65,9 @@ const syncState = {
   pendingSaveTimer: null,
   lastSavedAt: null,
   authError: null,
+  authNotice: null,
+  resendBusy: false,
+  resendAvailableAt: 0,
   connectionError: null,
   conflicts: 0,
   schemaVersion: 2
@@ -157,6 +160,7 @@ const elements = {
   syncLoginButton: document.querySelector("#syncLoginButton"),
   syncAuthModeButtons: [...document.querySelectorAll("[data-sync-mode]")],
   syncResetPasswordButton: document.querySelector("#syncResetPasswordButton"),
+  syncResendButton: document.querySelector("#syncResendButton"),
   syncUserPanel: document.querySelector("#syncUserPanel"),
   syncUserEmail: document.querySelector("#syncUserEmail"),
   syncLastSaved: document.querySelector("#syncLastSaved"),
@@ -1947,6 +1951,11 @@ function toggleAccountPopover() {
 function getCloudErrorMessage(error, fallback = "云服务操作失败") {
   const message = String(error?.message || "").trim();
   const normalized = message.toLowerCase();
+  const code = String(error?.code || "");
+
+  if (code === "over_email_send_rate_limit" || /email.*rate limit/.test(normalized)) return "邮件发送额度已用完，请稍后再试；若持续出现，请联系管理员检查发信服务";
+  if (code === "email_address_not_authorized" || /email address not authorized|email address.*not allowed/.test(normalized)) return "邮件服务暂不支持向这个邮箱发信，请联系管理员配置正式发信服务";
+  if (/error sending (confirmation|recovery|magic link) email|smtp/.test(normalized)) return "验证邮件发送失败，请联系管理员检查发信服务";
 
   if (/failed to fetch|networkerror|network request failed|load failed|fetch failed/.test(normalized)) {
     return "无法连接云服务，请检查网络或代理设置后重试";
@@ -1982,6 +1991,7 @@ function createSupabaseProxyFetch(proxyUrl) {
 }
 
 function renderSyncPanel() {
+  if (elements.syncResendButton) elements.syncResendButton.disabled = !syncState.ready || syncState.resendBusy || Date.now() < syncState.resendAvailableAt;
   renderAccountGate();
   if (!elements.syncStatus) return;
 
@@ -2031,7 +2041,7 @@ function renderSyncPanel() {
   if (!syncState.user) {
     elements.syncStatus.textContent = syncState.ready ? "未登录" : "连接中";
     elements.syncStatus.className = "sync-status";
-    elements.syncNote.textContent = syncState.authError || (syncState.ready ? "邮箱密码登录后自动同步" : "连接云端中");
+    elements.syncNote.textContent = syncState.authError || syncState.authNotice || (syncState.ready ? "邮箱密码登录后自动同步" : "连接云端中");
     activateIcons();
     return;
   }
@@ -2145,6 +2155,7 @@ async function submitPasswordAuth(event) {
   elements.syncResetPasswordButton.disabled = true;
   syncState.authError = null;
   elements.syncNote.textContent = syncAuthMode === "signup" ? "创建账号中" : "登录中";
+  syncState.authNotice = null;
   try {
     const redirectTo = getAuthRedirectUrl();
     const result = syncAuthMode === "signup"
@@ -2166,8 +2177,9 @@ async function submitPasswordAuth(event) {
       await loadCloudProjects({ preferNewer: true });
       startCloudRefresh();
     } else {
-      elements.syncNote.textContent = "账号已创建，请先完成邮箱确认";
-      showToast("请确认邮箱后再登录");
+      syncState.authNotice = "注册请求已受理，请检查收件箱和垃圾邮件。未收到可重新发送验证邮件；已注册账号请直接登录或找回密码。";
+      elements.syncNote.textContent = syncState.authNotice;
+      showToast("请检查邮箱完成验证");
     }
   } catch (error) {
     syncState.authError = getCloudErrorMessage(error, syncAuthMode === "signup" ? "注册失败" : "登录失败");
@@ -2178,6 +2190,33 @@ async function submitPasswordAuth(event) {
     elements.syncResetPasswordButton.disabled = false;
     renderSyncPanel();
     activateIcons();
+  }
+}
+
+async function resendConfirmationEmail() {
+  if (!syncState.client || !syncState.ready || syncState.resendBusy || Date.now() < syncState.resendAvailableAt) return;
+  const email = elements.syncEmail.value.trim();
+  if (!email || !elements.syncEmail.checkValidity()) {
+    showToast("请输入有效邮箱");
+    return;
+  }
+  syncState.resendBusy = true;
+  syncState.authError = null;
+  syncState.authNotice = "正在请求重新发送验证邮件";
+  renderSyncPanel();
+  try {
+    const { error } = await syncState.client.auth.resend({ type: "signup", email, options: { emailRedirectTo: getAuthRedirectUrl() } });
+    if (error) throw error;
+    syncState.authNotice = "验证邮件重发请求已受理，请检查收件箱和垃圾邮件；若仍未收到，请联系管理员检查发信服务。";
+    showToast("重发请求已受理");
+  } catch (error) {
+    syncState.authError = getCloudErrorMessage(error, "重发失败，请稍后重试");
+    showToast(syncState.authError);
+  } finally {
+    syncState.resendBusy = false;
+    syncState.resendAvailableAt = Date.now() + 60000;
+    renderSyncPanel();
+    setTimeout(() => renderSyncPanel(), 60000);
   }
 }
 
@@ -2196,8 +2235,10 @@ async function sendPasswordReset() {
       redirectTo: getAuthRedirectUrl()
     });
     if (error) throw error;
-    elements.syncNote.textContent = "请打开邮件设置新密码";
-    showToast("密码重置邮件已发送");
+    syncState.authError = null;
+    syncState.authNotice = "密码重置请求已受理，请检查收件箱和垃圾邮件。";
+    elements.syncNote.textContent = syncState.authNotice;
+    showToast("请检查密码重置邮件");
   } catch (error) {
     elements.syncNote.textContent = "密码重置失败";
     showToast(getCloudErrorMessage(error, "密码重置失败"));
@@ -3281,6 +3322,7 @@ function wireEvents() {
   });
   elements.syncLoginForm.addEventListener("submit", submitPasswordAuth);
   elements.syncResetPasswordButton.addEventListener("click", sendPasswordReset);
+  elements.syncResendButton.addEventListener("click", resendConfirmationEmail);
   elements.syncPasswordUpdateForm.addEventListener("submit", updateCloudPassword);
   elements.syncNowButton.addEventListener("click", () => saveCloudProjects({ reason: "manual" }));
   elements.syncRefreshButton.addEventListener("click", () => loadCloudProjects({ manual: true }));
