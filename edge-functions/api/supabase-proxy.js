@@ -8,3 +8,5 @@ export function onRequest(context) {
     ip: context.request.headers.get("eo-connecting-ip") || "unknown"
   });
 }
+
+export default onRequest;

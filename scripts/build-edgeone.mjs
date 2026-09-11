@@ -1,6 +1,7 @@
 import { copyFileSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { prepareStatic } from "./prepare-static.mjs";
+import { build } from "esbuild";
 
 const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "output", "edgeone");
@@ -48,4 +49,9 @@ for (const entry of entries) {
 }
 
 await prepareStatic(output, resolve(output, "edge-functions", "api", "_runtime-config.js"));
+await build({
+  entryPoints: [resolve(output, "edge-functions", "api", "supabase-proxy.js")],
+  outfile: resolve(output, "edge-functions", "api", "supabase-proxy.js"),
+  bundle: true, format: "esm", platform: "browser", target: "es2020", allowOverwrite: true
+});
 console.log(`Prepared EdgeOne deployment in ${output}`);
