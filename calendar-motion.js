@@ -59,7 +59,8 @@ window.CalendarMotion = (() => {
     const visibleLeft=Math.max(0,calendarRect?.left ?? 0);
     const visibleRight=Math.min(innerWidth,calendarRect?.right ?? innerWidth);
     // Keep the rotated fan inside the calendar instead of letting it slide under the desktop sidebar.
-    const edgeRoom=width/2+spread+(mobile?16:28);
+    const isSingle=cards.length===1;
+    const edgeRoom=width/2+(isSingle?0:spread)+(mobile?16:28);
     const minCenter=visibleLeft+edgeRoom, maxCenter=visibleRight-edgeRoom;
     const preferredCenter=rect.left+rect.width/2;
     const center=minCenter<=maxCenter
@@ -67,13 +68,16 @@ window.CalendarMotion = (() => {
       : (visibleLeft+visibleRight)/2;
     const cards=[...group.querySelectorAll('.motion-card')];
     const step=Math.min(62,Math.max(8,(innerHeight-360)/Math.max(cards.length-1,1)));
-    const top=Math.max(100,Math.min(innerHeight-190-step*(cards.length-1),rect.top-35));
+    const top=isSingle
+      ? Math.max(96,Math.min(innerHeight-230,rect.top-42))
+      : Math.max(100,Math.min(innerHeight-190-step*(cards.length-1),rect.top-35));
     cards.forEach((card,i)=>{
       card.querySelector('strong').textContent=groups.get(group).items[i].project.name;
       const side=i%2 ? 1 : -1;
-      card.style.setProperty('--x', `${center-rect.left-rect.width/2+side*spread}px`);
+      const xOffset=isSingle ? 0 : side*spread;
+      card.style.setProperty('--x', `${center-rect.left-rect.width/2+xOffset}px`);
       card.style.setProperty('--y', `${top-rect.top+i*step}px`);
-      card.style.setProperty('--angle', `${side*(i===0?18:8)}deg`);
+      card.style.setProperty('--angle', `${isSingle ? 0 : side*(i===0?18:8)}deg`);
       card.querySelector('.motion-card-main').setAttribute('aria-expanded','true');
     });
     layout(group, () => {
