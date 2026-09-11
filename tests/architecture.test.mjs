@@ -19,6 +19,7 @@ test("calendar motion is local, included in both builds and offline shell", asyn
   }
   const motion = await read("calendar-motion.js");
   assert.match(motion, /closest\('\.calendar-scroll'\)/, "expanded cards use the visible calendar as their horizontal boundary");
+  assert.match(motion, /const xOffset=isSingle \? 0/, "a single expanded card stays centered in its day cell");
   assert.doesNotMatch(motion, /localStorage|fetch\(/);
   assert.match(motion, /prefers-reduced-motion/);
   assert.match(motion, /pointercancel/);
@@ -28,6 +29,14 @@ test("calendar motion is local, included in both builds and offline shell", asyn
   assert.match(await read("app.js"), /items\.length >= 1/);
   assert.match(motion, /Flip\.from/);
   assert.doesNotMatch(motion, /pointerType==='mouse'\)open/);
+});
+
+test("calendar motion cache version matches the page", async () => {
+  const [html, serviceWorker] = await Promise.all([read("index.html"), read("sw.js")]);
+  const pageVersion = html.match(/calendar-motion\.js\?v=(\d+)/)?.[1];
+  const cacheVersion = serviceWorker.match(/calendar-motion\.js\?v=(\d+)/)?.[1];
+  assert.ok(pageVersion, "page declares a calendar motion version");
+  assert.equal(cacheVersion, pageVersion);
 });
 
 test("browser dependencies are served locally", async () => {

@@ -53,20 +53,22 @@ window.CalendarMotion = (() => {
     clearTimeout(leaveTimer);
     if(layer===group)return;
     close(false);layer=group;callbacks=groups.get(group).handlers;focused=-1;
+    const cards=[...group.querySelectorAll('.motion-card')];
     const rect=group.getBoundingClientRect(), mobile=innerWidth<550;
     const width=mobile?168:208, spread=mobile?62:88;
-    const calendarRect=group.closest('.calendar-scroll')?.getBoundingClientRect();
-    const visibleLeft=Math.max(0,calendarRect?.left ?? 0);
-    const visibleRight=Math.min(innerWidth,calendarRect?.right ?? innerWidth);
-    // Keep the rotated fan inside the calendar instead of letting it slide under the desktop sidebar.
     const isSingle=cards.length===1;
-    const edgeRoom=width/2+(isSingle?0:spread)+(mobile?16:28);
-    const minCenter=visibleLeft+edgeRoom, maxCenter=visibleRight-edgeRoom;
-    const preferredCenter=rect.left+rect.width/2;
-    const center=minCenter<=maxCenter
-      ? Math.max(minCenter,Math.min(maxCenter,preferredCenter))
-      : (visibleLeft+visibleRight)/2;
-    const cards=[...group.querySelectorAll('.motion-card')];
+    let center=rect.left+rect.width/2;
+    if(!isSingle) {
+      const calendarRect=group.closest('.calendar-scroll')?.getBoundingClientRect();
+      const visibleLeft=Math.max(0,calendarRect?.left ?? 0);
+      const visibleRight=Math.min(innerWidth,calendarRect?.right ?? innerWidth);
+      // Keep a rotated fan inside the visible calendar; a single card stays centered in its own cell.
+      const edgeRoom=width/2+spread+(mobile?16:28);
+      const minCenter=visibleLeft+edgeRoom, maxCenter=visibleRight-edgeRoom;
+      center=minCenter<=maxCenter
+        ? Math.max(minCenter,Math.min(maxCenter,center))
+        : (visibleLeft+visibleRight)/2;
+    }
     const step=Math.min(62,Math.max(8,(innerHeight-360)/Math.max(cards.length-1,1)));
     const top=isSingle
       ? Math.max(96,Math.min(innerHeight-230,rect.top-42))
@@ -74,8 +76,8 @@ window.CalendarMotion = (() => {
     cards.forEach((card,i)=>{
       card.querySelector('strong').textContent=groups.get(group).items[i].project.name;
       const side=i%2 ? 1 : -1;
-      const xOffset=isSingle ? 0 : side*spread;
-      card.style.setProperty('--x', `${center-rect.left-rect.width/2+xOffset}px`);
+      const xOffset=isSingle ? 0 : center-rect.left-rect.width/2+side*spread;
+      card.style.setProperty('--x', `${xOffset}px`);
       card.style.setProperty('--y', `${top-rect.top+i*step}px`);
       card.style.setProperty('--angle', `${isSingle ? 0 : side*(i===0?18:8)}deg`);
       card.querySelector('.motion-card-main').setAttribute('aria-expanded','true');
