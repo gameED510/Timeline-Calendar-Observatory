@@ -4,7 +4,7 @@ const requestHeaders = ["accept", "authorization", "content-type", "prefer", "ra
 const responseHeaders = ["content-location", "content-range", "content-type", "preference-applied", "range-unit", "x-supabase-api-version"];
 
 function json(message, status) {
-  return Response.json({ message }, { status, headers: { "cache-control": "no-store" } });
+  return new Response(JSON.stringify({ message }), { status, headers: { "cache-control": "no-store", "content-type": "application/json" } });
 }
 
 export function isRateLimited(ip, path, now = Date.now()) {
@@ -81,10 +81,12 @@ export async function proxyRequest(request, { supabaseUrl, anonKey, ip = "unknow
   for (const name of requestHeaders) {
     if (request.headers.has(name)) headers.set(name, request.headers.get(name));
   }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
     const body = await readBody(request);
     const upstream = await fetch(target, {
-      method: request.method, headers, body, redirect: "manual", signal: AbortSignal.timeout(15000)
+      method: request.method, headers, body, redirect: "manual", signal: controller.signal
     });
     const forwarded = new Headers({ "cache-control": "no-store" });
     for (const name of responseHeaders) {
@@ -94,5 +96,7 @@ export async function proxyRequest(request, { supabaseUrl, anonKey, ip = "unknow
   } catch (error) {
     if (error instanceof RangeError) return json("请求内容过大", 413);
     return json("云服务暂时无法连接，请稍后重试", 502);
+  } finally {
+    clearTimeout(timeout);
   }
 }

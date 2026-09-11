@@ -96,7 +96,7 @@ test("deployment proxies enforce request limits and timeouts", async () => {
   const shared = await read("shared/proxy.mjs");
   assert.match(shared, /MAX_BODY_BYTES/);
   assert.match(shared, /sec-fetch-site/i);
-  assert.match(shared, /AbortSignal\.timeout/);
+  assert.match(shared, /controller\.abort\(\), 15000/);
 });
 
 test("offline cache never stores API responses", async () => {
