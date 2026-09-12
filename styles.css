@@ -4468,6 +4468,69 @@ dialog[open] {
 .account-locked .view, .account-locked .side-panel,
 .account-locked .mobile-tabbar, .account-locked .inspector { display: none !important; }
 .account-locked { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "workspace" !important; }
+
+.showing-performance .focus-row, .showing-performance .legend-strip { display: none; }
+.performance-view { padding: 24px 0; min-width: 0; }
+.performance-heading, .performance-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.performance-heading h2 { margin: 4px 0; font-size: 26px; }
+.performance-period { display: flex; align-items: center; gap: 8px; }
+.performance-period input { width: 158px; min-width: 0; min-height: 42px; padding: 8px; font: inherit; font-size: 14px; color: var(--ink); background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; }
+.performance-range, .performance-footnote, .publication-note { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.performance-range { margin: 16px 0; }
+.performance-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block: 1px solid var(--line); padding: 22px 0; }
+.performance-metric { display: flex; flex-direction: column; gap: 8px; padding: 0 22px; min-width: 0; border-left: 1px solid var(--line); }
+.performance-metric:first-child { border-left: 0; padding-left: 0; }
+.performance-metric > span { font-size: 13px; color: var(--muted-strong); }
+.performance-metric > strong { font-size: 36px; font-variant-numeric: tabular-nums; font-weight: 650; line-height: 1.2; overflow-wrap: anywhere; }
+.performance-metric small { font-size: 13px; color: var(--muted); font-weight: 400; }
+.performance-metric em { font-style: normal; font-size: 11px; color: var(--muted); }
+.platform-dot { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: #138b88; }
+.xiaohongshu .platform-dot { background: #df4d70; }
+.performance-commission { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; padding: 28px 0 20px; border-bottom: 1px solid var(--line); }
+.commission-amount { display: block; font-size: 40px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; line-height: 1.4; }
+.commission-amount > span { font-size: 22px; margin-right: 6px; color: var(--accent); }
+.performance-commission p { font-size: 12px; color: var(--muted); line-height: 1.7; margin: 8px 0; }
+.commission-breakdown { align-self: center; min-width: 0; }
+.commission-breakdown > div { display: flex; justify-content: space-between; gap: 12px; margin: 12px 0; font-size: 14px; }
+.commission-breakdown > div strong { font-variant-numeric: tabular-nums; }
+.performance-detail-heading { margin-top: 30px; }
+.performance-detail-heading h3, .performance-missing h3 { font-size: 16px; margin: 0; }
+.performance-table-wrap { overflow-x: auto; }
+.performance-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.performance-table th { color: var(--muted); font-size: 11px; font-weight: 500; text-align: left; white-space: nowrap; }
+.performance-table th, .performance-table td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
+.performance-table td:first-child { width: 45%; min-width: 125px; }
+.performance-table td:first-child strong { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.performance-table td:not(:first-child) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.performance-platform { display: block; font-size: 11px; margin-top: 5px; color: #138b88; }
+.performance-platform.xiaohongshu { color: #df4d70; }
+.performance-empty { padding: 30px 0; color: var(--muted); text-align: center; font-size: 14px; }
+.performance-missing { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 20px; }
+.performance-missing > p { color: var(--muted); font-size: 12px; }
+.performance-missing-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 14px; text-align: left; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); }
+.performance-missing-row span { overflow-wrap: anywhere; }
+.performance-missing-row svg { width: 16px; height: 16px; flex-shrink: 0; }
+.publication-fields { border: 0; border-top: 1px solid var(--line); padding: 16px 0 0; margin: 24px 0; min-width: 0; }
+.publication-fields legend { padding-right: 12px; font-weight: 600; }
+.publication-field-row { display: grid; grid-template-columns: 58px 100px minmax(0, 1fr); align-items: center; gap: 12px; margin-top: 14px; }
+.publication-field-row > strong { font-size: 13px; white-space: nowrap; }
+.publication-field-row label { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--muted); min-width: 0; }
+.publication-field-row input { width: 100%; min-width: 0; padding: 9px; font: inherit; font-size: 14px; color: var(--ink); background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; }
+@media (max-width: 860px) {
+  .mobile-tabbar { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .performance-view { padding-top: 18px; }
+  .performance-heading h2 { font-size: 22px; }
+  .performance-heading { align-items: flex-start; }
+  .performance-metric { padding: 0 10px; }
+  .performance-metric > strong { font-size: 28px; }
+  .performance-commission { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .commission-amount { font-size: 36px; }
+  .performance-table th, .performance-table td { padding: 12px 5px; font-size: 11px; }
+  .performance-table td:first-child strong { font-size: 12px; }
+  .performance-table .icon-button { width: 32px; min-width: 32px; height: 36px; }
+  .publication-field-row { grid-template-columns: 44px 68px minmax(0, 1fr); gap: 8px; }
+  .performance-detail-heading { gap: 8px; }
+}
 body:has(.account-locked) .mobile-tabbar { display: none !important; }
 .account-locked .workspace-tools > .segmented,
 .account-locked .data-menu-wrap { display: none; }

@@ -36,6 +36,8 @@ let syncedProjects = localState.sync.projects;
 let projectTombstones = localState.sync.tombstones;
 let dirtyProjectIds = new Set(localState.sync.dirtyIds);
 let currentView = "calendar";
+let performanceMonth = TODAY_ISO.slice(0, 7);
+let performanceDetail = "current";
 let selected = null;
 let editingProjectId = null;
 let selectedProjectColor = PROJECT_COLORS[0];
@@ -102,7 +104,8 @@ const elements = {
     calendar: document.querySelector("#calendarView"),
     projects: document.querySelector("#projectsView"),
     timeline: document.querySelector("#timelineView"),
-    conflicts: document.querySelector("#conflictsView")
+    conflicts: document.querySelector("#conflictsView"),
+    performance: document.querySelector("#performanceView")
   },
   inspectorTitle: document.querySelector("#inspectorTitle"),
   emptyInspector: document.querySelector("#emptyInspector"),
@@ -343,6 +346,7 @@ function normalizeProjects(value) {
     priority: PRIORITY_OPTIONS[project.priority] ? project.priority : inferPriority(project, index),
     notes: normalizeText(project.notes),
     link: normalizeText(project.link),
+    publication: TLPerformance.normalize(project.publication),
     milestones: normalizeMilestones(project.milestones),
     completedMilestones: normalizeCompletedMilestones(project.completedMilestones, project.milestones)
   }));
@@ -484,6 +488,7 @@ function cloneProject(project) {
     priority: PRIORITY_OPTIONS[project.priority] ? project.priority : "medium",
     notes: normalizeText(project.notes),
     link: normalizeText(project.link),
+    publication: TLPerformance.normalize(project.publication),
     milestones: normalizeMilestones(project.milestones),
     completedMilestones: normalizeCompletedMilestones(project.completedMilestones, project.milestones)
   };
@@ -624,9 +629,83 @@ function render() {
   if (currentView === "calendar") renderCalendar(grouped);
   if (currentView === "timeline") renderTimeline();
   if (currentView === "conflicts") renderConflicts(grouped);
+  if (currentView === "performance") renderPerformance();
   renderInspector();
   renderSyncPanel();
   activateIcons();
+}
+
+function openPerformanceRecord(projectId) {
+  openProjectDialog(projectId);
+  requestAnimationFrame(() => {
+    const form = elements.projectForm;
+    const field = form.querySelector(".publication-fields");
+    form.scrollTo({ top: form.scrollTop + field.getBoundingClientRect().top - form.getBoundingClientRect().top - 100, behavior: "auto" });
+    form.elements.douyinCount.focus({ preventScroll: true });
+  });
+}
+
+function renderPerformance() {
+  const period = TLPerformance.cycle(performanceMonth);
+  const earnedPeriod = TLPerformance.cycle(performanceMonth, -3);
+  const today = dateToIso(new Date());
+  const current = TLPerformance.summarize(projects, period, today);
+  const earned = TLPerformance.summarize(projects, earnedPeriod, today);
+  const money = (amount) => amount.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+  const range = (value) => `${value.start.replaceAll("-", ".")} — ${value.last.replaceAll("-", ".")}`;
+  document.querySelector("#performanceMonth").value = performanceMonth;
+  document.querySelector("#performanceSummary").innerHTML = `
+    <p class="performance-range">本期发布 · ${range(period)}${current.missing.length ? ` · ${current.missing.length} 个项目待补平台，尚未计入总数` : ""}</p>
+    <div class="performance-metrics">
+      <div class="performance-metric"><span>发布总数</span><strong>${current.total}<small> 条</small></strong><em>${current.projects} 个项目 · 按平台分别计数</em></div>
+      <div class="performance-metric douyin"><span><b class="platform-dot"></b>抖音</span><strong>${current.counts.douyin}<small> 条</small></strong><em>预计提成 ¥2,700 / 条</em></div>
+      <div class="performance-metric xiaohongshu"><span><b class="platform-dot"></b>小红书</span><strong>${current.counts.xiaohongshu}<small> 条</small></strong><em>预计提成 ¥1,000 / 条</em></div>
+    </div>
+    <section class="performance-commission" aria-label="当月预估提成">
+      <div><p class="eyebrow">${performanceMonth.replace("-", " 年 ")} 月 · 预估到账</p><strong class="commission-amount"><span>¥</span>${money(earned.commission)}</strong><p>对应发布周期 ${range(earnedPeriod)}</p></div>
+      <div class="commission-breakdown"><div><span>抖音 · ${earned.counts.douyin} 条</span><strong>¥${money(earned.counts.douyin * 2700)}</strong></div><div><span>小红书 · ${earned.counts.xiaohongshu} 条</span><strong>¥${money(earned.counts.xiaohongshu * 1000)}</strong></div><p>（抖音条数 × 54,000 + 小红书条数 × 20,000）÷ 2 × 10%</p></div>
+    </section>
+    <p class="performance-footnote">仅计入已完成发布且发布日期不晚于今天的视频。本月 15 日计入本月，16 日起计入下月；金额为估算，以公司结算为准。${earned.missing.length ? `提成周期有 ${earned.missing.length} 个项目待补平台，尚未计入金额。` : ""}</p>`;
+  const data = performanceDetail === "commission" ? earned : current;
+  const detailPeriod = performanceDetail === "commission" ? earnedPeriod : period;
+  document.querySelectorAll("[data-performance-detail]").forEach((button) => {
+    const active = button.dataset.performanceDetail === performanceDetail;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  const details = document.querySelector("#performanceDetails");
+  details.innerHTML = `<p class="performance-range">${range(detailPeriod)} · ${data.total} 条平台发布</p>`;
+  if (data.rows.length) {
+    const table = document.createElement("div");
+    table.className = "performance-table-wrap";
+    table.innerHTML = `<table class="performance-table"><thead><tr><th>项目 / 平台</th><th>发布日期</th><th>条数</th><th>预估提成</th><th><span class="visually-hidden">操作</span></th></tr></thead><tbody></tbody></table>`;
+    data.rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td><strong>${escapeHtml(row.project.name)}</strong><span class="performance-platform ${row.platform}">${row.platform === "douyin" ? "抖音" : "小红书"}</span></td><td>${row.date}</td><td>${row.count}</td><td>¥${money(row.estimated)}</td><td><button type="button" class="icon-button mini-button" title="编辑发布记录" aria-label="编辑发布记录"><i data-lucide="pencil"></i></button></td>`;
+      tr.querySelector("button").addEventListener("click", () => openPerformanceRecord(row.project.id));
+      table.querySelector("tbody").append(tr);
+    });
+    details.append(table);
+  } else {
+    const empty = document.createElement("p");
+    empty.className = "performance-empty";
+    empty.textContent = "这个周期暂无可统计的已发布视频";
+    details.append(empty);
+  }
+  if (data.missing.length) {
+    const missing = document.createElement("section");
+    missing.className = "performance-missing";
+    missing.innerHTML = `<h3>待补平台 · ${data.missing.length} 个项目</h3><p>以下项目已完成发布，补充平台数量后即可计入。</p>`;
+    data.missing.forEach((project) => {
+      const button = document.createElement("button");
+      button.className = "performance-missing-row";
+      button.type = "button";
+      button.innerHTML = `<span>${escapeHtml(project.name)}</span><i data-lucide="pencil"></i>`;
+      button.addEventListener("click", () => openPerformanceRecord(project.id));
+      missing.append(button);
+    });
+    details.append(missing);
+  }
 }
 
 function renderProjectList() {
@@ -1703,11 +1782,11 @@ function isMobileLayout() {
 }
 
 function setMobilePage(page) {
-  const nextPage = ["projects", "timeline", "conflicts"].includes(page) ? page : "plan";
+  const nextPage = ["projects", "timeline", "conflicts", "performance"].includes(page) ? page : "plan";
   const changed = mobilePage !== nextPage;
   mobilePage = nextPage;
   if (elements.appShell) {
-    ["plan", "projects", "timeline", "conflicts"].forEach((name) => {
+    ["plan", "projects", "timeline", "conflicts", "performance"].forEach((name) => {
       elements.appShell.classList.toggle(`mobile-page-${name}`, name === mobilePage);
     });
   }
@@ -2862,6 +2941,11 @@ function openProjectDialog(projectId = null) {
   editingProjectId = projectId;
   const editingProject = projects.find((project) => project.id === projectId) || null;
   elements.projectForm.reset();
+  const publication = TLPerformance.normalize(editingProject?.publication);
+  TLPerformance.platforms.forEach((platform) => {
+    elements.projectForm.elements[`${platform}Count`].value = publication[platform].count;
+    elements.projectForm.elements[`${platform}Date`].value = publication[platform].date;
+  });
   elements.projectDateFields.innerHTML = "";
   elements.projectColorFields.innerHTML = "";
   selectedProjectColor = editingProject?.color || PROJECT_COLORS[projects.length % PROJECT_COLORS.length];
@@ -2955,7 +3039,11 @@ function saveProjectFromForm() {
   }
 
   const editingProject = projects.find((project) => project.id === editingProjectId) || null;
+  const publication = TLPerformance.normalize(Object.fromEntries(TLPerformance.platforms.map((platform) => [platform, {
+    count: Number(formData.get(`${platform}Count`)), date: String(formData.get(`${platform}Date`) || "")
+  }])));
   if (editingProject) {
+    editingProject.publication = publication;
     editingProject.name = name;
     editingProject.color = selectedProjectColor;
     editingProject.milestones = milestones;
@@ -2968,6 +3056,7 @@ function saveProjectFromForm() {
       id: makeId(name),
       name,
       color: selectedProjectColor,
+      publication,
       milestones
     });
 
@@ -3147,7 +3236,8 @@ function switchView(view) {
   Object.entries(elements.views).forEach(([key, node]) => {
     node.classList.toggle("active", key === view);
   });
-  if (isMobileLayout()) setMobilePage(view === "projects" || view === "timeline" || view === "conflicts" ? view : "plan");
+  if (isMobileLayout()) setMobilePage(view === "calendar" ? "plan" : view);
+  elements.appShell.classList.toggle("showing-performance", view === "performance");
   render();
 }
 
@@ -3286,6 +3376,27 @@ function wireEvents() {
   elements.syncAuthModeButtons.forEach((button) => {
     button.addEventListener("click", () => {
       setSyncAuthMode(button.dataset.syncMode);
+      activateIcons();
+    });
+  });
+
+  document.querySelector("#performanceMonth").addEventListener("change", (event) => {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value)) return;
+    performanceMonth = event.target.value;
+    renderPerformance();
+    activateIcons();
+  });
+  [["#performancePrevious", -1], ["#performanceNext", 1]].forEach(([selector, offset]) => {
+    document.querySelector(selector).addEventListener("click", () => {
+      performanceMonth = TLPerformance.cycle(performanceMonth, offset).last.slice(0, 7);
+      renderPerformance();
+      activateIcons();
+    });
+  });
+  document.querySelectorAll("[data-performance-detail]").forEach((button) => {
+    button.addEventListener("click", () => {
+      performanceDetail = button.dataset.performanceDetail;
+      renderPerformance();
       activateIcons();
     });
   });
