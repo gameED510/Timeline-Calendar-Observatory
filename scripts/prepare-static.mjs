@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { transform } from "esbuild";
 
 export async function prepareStatic(directory, configPath) {
-  for (const file of ["app.js", "calendar-motion.js", "theme.js", "sw.js", "styles.css"]) {
+  for (const file of ["app.js", "performance.js", "calendar-motion.js", "theme.js", "sw.js", "styles.css"]) {
     const path = resolve(directory, file);
     const { code } = await transform(readFileSync(path, "utf8"), {
       loader: file.endsWith(".css") ? "css" : "js",

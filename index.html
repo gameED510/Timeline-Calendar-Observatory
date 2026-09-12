@@ -10,7 +10,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="site.webmanifest" />
     <script src="theme.js?v=1"></script>
-    <link rel="stylesheet" href="styles.css?v=18" />
+    <link rel="stylesheet" href="styles.css?v=19" />
   </head>
   <body>
     <div class="app-shell mobile-page-plan account-locked account-loading" id="appShell">
@@ -71,6 +71,10 @@
               <button class="segmented-button" type="button" data-view="conflicts" role="tab" aria-selected="false">
                 <i data-lucide="triangle-alert"></i>
                 风险
+              </button>
+              <button class="segmented-button" type="button" data-view="performance" role="tab" aria-selected="false">
+                <i data-lucide="chart-no-axes-combined"></i>
+                绩效
               </button>
             </div>
 
@@ -261,6 +265,26 @@
           <div class="timeline-shell" id="timelineShell"></div>
         </section>
 
+        <section class="view performance-view" id="performanceView" aria-label="发布绩效与提成">
+          <div class="performance-heading">
+            <div><p class="eyebrow">TL / PERFORMANCE</p><h2>发布与回报</h2></div>
+            <div class="performance-period">
+              <button class="icon-button" id="performancePrevious" type="button" aria-label="上一个绩效月" title="上一个绩效月"><i data-lucide="chevron-left"></i></button>
+              <input type="month" id="performanceMonth" aria-label="绩效月份" />
+              <button class="icon-button" id="performanceNext" type="button" aria-label="下一个绩效月" title="下一个绩效月"><i data-lucide="chevron-right"></i></button>
+            </div>
+          </div>
+          <div id="performanceSummary" aria-live="polite"></div>
+          <div class="performance-detail-heading">
+            <h3>发布明细</h3>
+            <div class="segmented compact" role="tablist" aria-label="绩效明细周期">
+              <button class="segmented-button active" data-performance-detail="current" type="button" role="tab" aria-selected="true">本期发布</button>
+              <button class="segmented-button" data-performance-detail="commission" type="button" role="tab" aria-selected="false">本月提成</button>
+            </div>
+          </div>
+          <div id="performanceDetails"></div>
+        </section>
+
         <section class="view" id="conflictsView" aria-label="撞期视图">
           <div class="mobile-view-head">
             <h2>撞期风险</h2>
@@ -336,6 +360,9 @@
         <i data-lucide="triangle-alert"></i>
         <span>风险</span>
       </button>
+      <button type="button" data-mobile-page="performance" aria-pressed="false">
+        <i data-lucide="chart-no-axes-combined"></i><span>绩效</span>
+      </button>
     </nav>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -376,6 +403,21 @@
 
         <p class="optional-stage-note">只填写项目需要的阶段，留空的阶段不会进入日历、完成率和 TL 内容。</p>
         <div class="dialog-grid" id="projectDateFields"></div>
+
+        <fieldset class="publication-fields">
+          <legend>平台发布</legend>
+          <p class="publication-note">数量为 0 表示不发布。实际日期留空时使用“发布”节点日期；发布完成后计入绩效。</p>
+          <div class="publication-field-row">
+            <strong>抖音</strong>
+            <label>视频数量<input name="douyinCount" type="number" min="0" max="10000" step="1" value="0" inputmode="numeric" /></label>
+            <label>实际发布日期<input name="douyinDate" type="date" /></label>
+          </div>
+          <div class="publication-field-row">
+            <strong>小红书</strong>
+            <label>视频数量<input name="xiaohongshuCount" type="number" min="0" max="10000" step="1" value="0" inputmode="numeric" /></label>
+            <label>实际发布日期<input name="xiaohongshuDate" type="date" /></label>
+          </div>
+        </fieldset>
 
         <div class="sequence-alert hidden" id="dialogSequenceAlert">
           <i data-lucide="circle-alert"></i>
@@ -418,7 +460,8 @@
 
     <script src="vendor/motion.js?v=1"></script>
     <script src="calendar-motion.js?v=12"></script>
-    <script src="app.js?v=19"></script>
-    <script src="vendor/lucide.min.js?v=5" defer></script>
+    <script src="performance.js?v=1"></script>
+    <script src="app.js?v=20"></script>
+    <script src="vendor/lucide.min.js?v=6" defer></script>
   </body>
 </html>
