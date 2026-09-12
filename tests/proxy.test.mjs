@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { proxyRequest, isRateLimited } from "../shared/proxy.mjs";
+import { proxyRequest, isRateLimited, readBody } from "../shared/proxy.mjs";
 
 const config = { supabaseUrl: "https://database.example", anonKey: "public-key", ip: "test" };
 function request(path = "/rest/v1/timeline_projects", options = {}) {
@@ -27,6 +27,24 @@ test("proxy forwards POST bytes and only approved headers", async (t) => {
   assert.equal(result.headers.get("cache-control"), "no-store");
   assert.equal(result.headers.get("content-range"), "0-1/2");
   assert.deepEqual(await result.json(), { ok: true });
+});
+
+test("proxy preserves ArrayBuffer body chunks from edge runtimes", async () => {
+  const source = new TextEncoder().encode('{"email":"user@example.com","password":"secret"}');
+  const values = [source.slice(0, 17).buffer, source.slice(17).buffer];
+  const body = {
+    getReader() {
+      return {
+        async read() {
+          return values.length ? { value: values.shift(), done: false } : { done: true };
+        },
+        releaseLock() {}
+      };
+    }
+  };
+
+  const result = await readBody({ method: "POST", body });
+  assert.equal(new TextDecoder().decode(result), new TextDecoder().decode(source));
 });
 
 test("proxy rejects origin mismatch, traversal and external targets before fetch", async (t) => {

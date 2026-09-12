@@ -37,12 +37,19 @@ export async function readBody(request) {
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
-      length += value.byteLength;
+      const bytes = value instanceof Uint8Array
+        ? value
+        : value instanceof ArrayBuffer
+          ? new Uint8Array(value)
+          : ArrayBuffer.isView(value)
+            ? new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+            : new TextEncoder().encode(String(value));
+      length += bytes.byteLength;
       if (length > MAX_BODY_BYTES) {
         await reader.cancel();
         throw new RangeError("Request body too large");
       }
-      chunks.push(value);
+      chunks.push(bytes);
     }
   } finally {
     reader.releaseLock();
