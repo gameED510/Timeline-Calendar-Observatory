@@ -4864,3 +4864,12 @@ body:has(.account-locked) .mobile-tabbar { display: none !important; }
     transition-duration: 0.001ms !important;
   }
 }
+/* Account pricing shares the fixed-header editor layout. */
+html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hidden; }
+.pricing-account { padding: 16px 0; border-bottom: 1px solid var(--line); display: grid; gap: 12px; min-width: 0; }
+.pricing-account label { display: grid; gap: 8px; min-width: 0; }
+.pricing-account input { width: 100%; min-width: 0; box-sizing: border-box; min-height: 44px; padding: 10px 12px; font: inherit; color: var(--ink); background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px; }
+.pricing-dialog .secondary-button { min-height: 40px; padding: 8px 12px; font: inherit; color: var(--ink); background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.pricing-dialog .dialog-actions { grid-template-columns: 1fr; }
+.pricing-rates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pricing-add { margin-top: 16px; }
