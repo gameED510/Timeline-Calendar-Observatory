@@ -58,12 +58,12 @@ window.CalendarMotion = (() => {
     const width=mobile?168:208, spread=mobile?62:88;
     const isSingle=cards.length===1;
     let center=rect.left+rect.width/2;
-    if(!isSingle) {
+    {
       const calendarRect=group.closest('.calendar-scroll')?.getBoundingClientRect();
       const visibleLeft=Math.max(0,calendarRect?.left ?? 0);
       const visibleRight=Math.min(innerWidth,calendarRect?.right ?? innerWidth);
-      // Keep a rotated fan inside the visible calendar; a single card stays centered in its own cell.
-      const edgeRoom=width/2+spread+(mobile?16:28);
+      // Center when there is room; shift edge cards inward, including focused scale.
+      const edgeRoom=isSingle ? width*1.03/2+10 : width/2+spread+(mobile?16:28);
       const minCenter=visibleLeft+edgeRoom, maxCenter=visibleRight-edgeRoom;
       center=minCenter<=maxCenter
         ? Math.max(minCenter,Math.min(maxCenter,center))
@@ -76,7 +76,7 @@ window.CalendarMotion = (() => {
     cards.forEach((card,i)=>{
       card.querySelector('strong').textContent=groups.get(group).items[i].project.name;
       const side=i%2 ? 1 : -1;
-      const xOffset=isSingle ? 0 : center-rect.left-rect.width/2+side*spread;
+      const xOffset=center-rect.left-rect.width/2+(isSingle ? 0 : side*spread);
       card.style.setProperty('--x', `${xOffset}px`);
       card.style.setProperty('--y', `${top-rect.top+i*step}px`);
       card.style.setProperty('--angle', `${isSingle ? 0 : side*(i===0?18:8)}deg`);

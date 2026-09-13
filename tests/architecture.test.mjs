@@ -19,7 +19,8 @@ test("calendar motion is local, included in both builds and offline shell", asyn
   }
   const motion = await read("calendar-motion.js");
   assert.match(motion, /closest\('\.calendar-scroll'\)/, "expanded cards use the visible calendar as their horizontal boundary");
-  assert.match(motion, /const xOffset=isSingle \? 0/, "a single expanded card stays centered in its day cell");
+  assert.match(motion, /const xOffset=center-rect.left-rect.width\/2\+\(isSingle \? 0 : side\*spread\)/, "single cards use the clamped center without fan offsets");
+  assert.match(motion, /edgeRoom=isSingle \? width\*1.03\/2\+10/, "single card bounds include focused scale and edge padding");
   assert.doesNotMatch(motion, /localStorage|fetch\(/);
   assert.match(motion, /prefers-reduced-motion/);
   assert.match(motion, /pointercancel/);

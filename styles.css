@@ -4536,6 +4536,10 @@ html:has(#projectDialog[open]), body:has(#projectDialog[open]) { overflow: hidde
 .performance-view { padding: 24px 0; min-width: 0; }
 .performance-heading, .performance-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .performance-heading h2 { margin: 4px 0; font-size: 26px; }
+.performance-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.performance-heading > :first-child { min-width: 0; }
+.performance-heading #pricingSettings { width: 36px; min-width: 36px; height: 36px; padding: 8px; align-self: center; justify-self: end; background: transparent; }
+.performance-heading .performance-period { grid-column: 1 / -1; }
 .performance-period { display: flex; align-items: center; gap: 8px; }
 .performance-period input { width: 158px; min-width: 0; min-height: 42px; padding: 8px; font: inherit; font-size: 14px; color: var(--ink); background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; }
 .performance-range, .performance-footnote, .publication-note { color: var(--muted); font-size: 12px; line-height: 1.7; }
