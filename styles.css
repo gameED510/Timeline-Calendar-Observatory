@@ -4453,7 +4453,9 @@ dialog[open] {
 @keyframes startup-progress { 0% { transform: translateX(-110%) scaleX(.5); } 50% { transform: translateX(70%) scaleX(1); } 100% { transform: translateX(350%) scaleX(.5); } }
 @keyframes startup-arrive { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
 /* The dialog has one scroll surface; header and actions never participate. */
+html:has(#projectDialog[open]), body:has(#projectDialog[open]) { overflow: hidden; overscroll-behavior: none; }
 .project-dialog {
+  background: var(--bg-soft);
   box-sizing: border-box;
   height: min(900px, calc(100dvh - 32px));
   padding: 0;
