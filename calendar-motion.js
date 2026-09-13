@@ -132,10 +132,14 @@ window.CalendarMotion = (() => {
       more.classList.add('motion-more');more.setAttribute('aria-expanded','false');
       card.append(main,actions,more,menu);group.append(card);
     });
-    group.addEventListener('pointerenter',event=>{
-      if(event.pointerType==='mouse' && layer!==group && !drag) gsap.to(group,{y:reduced()?0:-4,duration:.45,ease:springEase,overwrite:true});
+    group.addEventListener('pointerover',event=>{
+      if(event.pointerType==='mouse' && event.target.closest('.motion-card:not(.motion-ghost)') && layer!==group && !drag)
+        gsap.to(group,{y:reduced()?0:-4,duration:.45,ease:springEase,overwrite:true});
     });
-    group.addEventListener('pointerleave',()=>gsap.to(group,{y:0,duration:reduced()?0:.45,ease:springEase,overwrite:true}));
+    group.addEventListener('pointerout',event=>{
+      if(event.pointerType==='mouse' && !event.relatedTarget?.closest('.motion-card:not(.motion-ghost)'))
+        gsap.to(group,{y:0,duration:reduced()?0:.45,ease:springEase,overwrite:true});
+    });
     group.addEventListener('contextmenu',event=>event.preventDefault());
     group.addEventListener('click',event=>event.stopPropagation());
   }
