@@ -4452,6 +4452,69 @@ dialog[open] {
 .account-loading .welcome-wordmark { animation: startup-arrive 900ms cubic-bezier(.2,.8,.2,1) both; }
 @keyframes startup-progress { 0% { transform: translateX(-110%) scaleX(.5); } 50% { transform: translateX(70%) scaleX(1); } 100% { transform: translateX(350%) scaleX(.5); } }
 @keyframes startup-arrive { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+/* The dialog has one scroll surface; header and actions never participate. */
+html:has(#projectDialog[open]), body:has(#projectDialog[open]) { overflow: hidden; overscroll-behavior: none; }
+.project-dialog {
+  background: var(--bg-soft);
+  box-sizing: border-box;
+  height: min(900px, calc(100dvh - 32px));
+  padding: 0;
+  overflow: hidden;
+}
+.project-dialog form {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+}
+.project-dialog .dialog-header,
+.project-dialog .dialog-actions {
+  position: static;
+  margin: 0;
+  max-width: 100%;
+  padding: 16px;
+  background: var(--bg-soft);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.project-dialog .dialog-header { border-bottom: 1px solid var(--line); }
+.project-dialog .dialog-actions { border-top: 1px solid var(--line); }
+.project-form-body {
+  box-sizing: border-box;
+  min-height: 0;
+  min-width: 0;
+  padding: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scroll-padding: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.project-form-body > input, .project-form-body > select { box-sizing: border-box; width: 100%; min-width: 0; }
+.gift-toggle { margin-top: 12px; }
+.project-dialog input[type="date"] {
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  min-inline-size: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.project-dialog input[type="date"]::-webkit-datetime-edit { min-width: 0; padding: 0; }
+@media (max-width: 860px) {
+  .project-dialog { height: 94dvh; max-height: 94dvh; width: 100%; margin: auto 0 0; }
+  .project-dialog .dialog-header { padding: 14px 16px; }
+  .project-dialog .dialog-actions { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .project-form-body .smart-import-panel { margin-top: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .account-loading .startup-progress span { animation: none; transform: none; width: 100%; opacity: .4; }
 }

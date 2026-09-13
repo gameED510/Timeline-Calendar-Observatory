@@ -39,8 +39,9 @@
         const item = publication[platform];
         const date = scheduled;
         if (!item.count || !validDate(date) || date < period.start || date >= period.end || date > today) continue;
-        const priced = account(project) === "wen";
-        rows.push({ project, platform, count: item.count, date, priced, estimated: priced ? item.count * rates[platform] / 2 * 0.1 : 0 });
+        const gifted = project.publicationGift === true;
+        const priced = account(project) === "wen" && !gifted;
+        rows.push({ project, platform, count: item.count, date, priced, gifted, estimated: priced ? item.count * rates[platform] / 2 * 0.1 : 0 });
       }
     }
     rows.sort((a, b) => a.date.localeCompare(b.date) || a.project.name.localeCompare(b.project.name));

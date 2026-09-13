@@ -48,3 +48,13 @@ test("legacy records stay unclassified and malformed counts cannot inflate estim
   assert.equal(normalize({ douyin: { count: -2 }, xiaohongshu: { count: 1.5, date: "2026-02-30" } }).xiaohongshu.date, "");
   assert.equal(normalize({ douyin: { count: -2 } }).douyin.count, 0);
 });
+test("gifted projects keep publication counts but contribute no commission", () => {
+  const p = {...project("gift", "2026-06-15", both), publicationGift:true};
+  const result = summarize([p],cycle("2026-06"),"2026-09-13");
+  assert.equal(result.total,2);
+  assert.equal(result.commission,0);
+  assert.deepEqual(result.commissionCounts,{douyin:0,xiaohongshu:0});
+  assert.ok(result.rows.every(row=>row.gifted));
+  p.publicationGift=false;
+  assert.equal(summarize([p],cycle("2026-06"),"2026-09-13").commission,3700);
+});

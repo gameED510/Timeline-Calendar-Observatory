@@ -348,6 +348,7 @@ function normalizeProjects(value) {
     link: normalizeText(project.link),
     publication: TLPerformance.normalize(project.publication),
     publicationAccount: ["wen", "other"].includes(project.publicationAccount) ? project.publicationAccount : "",
+    publicationGift: project.publicationGift === true,
     milestones: normalizeMilestones(project.milestones),
     completedMilestones: normalizeCompletedMilestones(project.completedMilestones, project.milestones)
   }));
@@ -491,6 +492,7 @@ function cloneProject(project) {
     link: normalizeText(project.link),
     publication: TLPerformance.normalize(project.publication),
     publicationAccount: ["wen", "other"].includes(project.publicationAccount) ? project.publicationAccount : "",
+    publicationGift: project.publicationGift === true,
     milestones: normalizeMilestones(project.milestones),
     completedMilestones: normalizeCompletedMilestones(project.completedMilestones, project.milestones)
   };
@@ -642,7 +644,8 @@ function openPerformanceRecord(projectId) {
   requestAnimationFrame(() => {
     const form = elements.projectForm;
     const field = form.querySelector(".publication-fields");
-    form.scrollTo({ top: form.scrollTop + field.getBoundingClientRect().top - form.getBoundingClientRect().top - 100, behavior: "auto" });
+    const body = form.querySelector(".project-form-body");
+    body.scrollTo({ top: body.scrollTop + field.getBoundingClientRect().top - body.getBoundingClientRect().top - 12, behavior: "auto" });
     form.elements.douyinPublished.focus({ preventScroll: true });
   });
 }
@@ -683,7 +686,7 @@ function renderPerformance() {
     table.innerHTML = `<table class="performance-table"><thead><tr><th>项目 / 平台</th><th>发布日期</th><th>条数</th><th>预估提成</th><th><span class="visually-hidden">操作</span></th></tr></thead><tbody></tbody></table>`;
     data.rows.forEach((row) => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td><strong>${escapeHtml(row.project.name)}</strong><span class="performance-platform ${row.platform}">${row.platform === "douyin" ? "抖音" : "小红书"}</span></td><td>${row.date}</td><td>${row.count}</td><td>${row.priced ? `¥${money(row.estimated)}` : "暂不计提成"}</td><td><button type="button" class="icon-button mini-button" title="编辑发布记录" aria-label="编辑发布记录"><i data-lucide="pencil"></i></button></td>`;
+      tr.innerHTML = `<td><strong>${escapeHtml(row.project.name)}</strong><span class="performance-platform ${row.platform}">${row.platform === "douyin" ? "抖音" : "小红书"}</span></td><td>${row.date}</td><td>${row.count}</td><td>${row.priced ? `¥${money(row.estimated)}` : row.gifted ? "赠送 · 不计提成" : "暂不计提成"}</td><td><button type="button" class="icon-button mini-button" title="编辑发布记录" aria-label="编辑发布记录"><i data-lucide="pencil"></i></button></td>`;
       tr.querySelector("button").addEventListener("click", () => openPerformanceRecord(row.project.id));
       table.querySelector("tbody").append(tr);
     });
@@ -2948,6 +2951,7 @@ function openProjectDialog(projectId = null) {
     elements.projectForm.elements[`${platform}Published`].checked = publication[platform].count > 0;
   });
   elements.projectForm.elements.publicationAccount.value = editingProject?.publicationAccount || "";
+  elements.projectForm.elements.publicationGift.checked = editingProject?.publicationGift === true;
   elements.projectDateFields.innerHTML = "";
   elements.projectColorFields.innerHTML = "";
   selectedProjectColor = editingProject?.color || PROJECT_COLORS[projects.length % PROJECT_COLORS.length];
@@ -2982,7 +2986,7 @@ function openProjectDialog(projectId = null) {
   elements.projectDialog.showModal();
   if (isMobileLayout()) {
     requestAnimationFrame(() => {
-      elements.projectForm.scrollTop = 0;
+      elements.projectForm.querySelector(".project-form-body").scrollTop = 0;
       elements.closeDialogButton.focus({ preventScroll: true });
     });
   } else {
@@ -3045,9 +3049,11 @@ function saveProjectFromForm() {
     count: formData.has(`${platform}Published`) ? 1 : 0, date: ""
   }])));
   const publicationAccount = ["wen", "other"].includes(formData.get("publicationAccount")) ? formData.get("publicationAccount") : "";
+  const publicationGift = formData.has("publicationGift");
   if (editingProject) {
     editingProject.publication = publication;
     editingProject.publicationAccount = publicationAccount;
+    editingProject.publicationGift = publicationGift;
     editingProject.name = name;
     editingProject.color = selectedProjectColor;
     editingProject.milestones = milestones;
@@ -3062,6 +3068,7 @@ function saveProjectFromForm() {
       color: selectedProjectColor,
       publication,
       publicationAccount,
+      publicationGift,
       milestones
     });
 
