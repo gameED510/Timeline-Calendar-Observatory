@@ -347,6 +347,7 @@ function normalizeProjects(value) {
     notes: normalizeText(project.notes),
     link: normalizeText(project.link),
     publication: TLPerformance.normalize(project.publication),
+    publicationAccount: ["wen", "other"].includes(project.publicationAccount) ? project.publicationAccount : "",
     milestones: normalizeMilestones(project.milestones),
     completedMilestones: normalizeCompletedMilestones(project.completedMilestones, project.milestones)
   }));
@@ -489,6 +490,7 @@ function cloneProject(project) {
     notes: normalizeText(project.notes),
     link: normalizeText(project.link),
     publication: TLPerformance.normalize(project.publication),
+    publicationAccount: ["wen", "other"].includes(project.publicationAccount) ? project.publicationAccount : "",
     milestones: normalizeMilestones(project.milestones),
     completedMilestones: normalizeCompletedMilestones(project.completedMilestones, project.milestones)
   };
@@ -641,7 +643,7 @@ function openPerformanceRecord(projectId) {
     const form = elements.projectForm;
     const field = form.querySelector(".publication-fields");
     form.scrollTo({ top: form.scrollTop + field.getBoundingClientRect().top - form.getBoundingClientRect().top - 100, behavior: "auto" });
-    form.elements.douyinCount.focus({ preventScroll: true });
+    form.elements.douyinPublished.focus({ preventScroll: true });
   });
 }
 
@@ -658,12 +660,12 @@ function renderPerformance() {
     <p class="performance-range">本期发布 · ${range(period)}${current.missing.length ? ` · ${current.missing.length} 个项目待补平台，尚未计入总数` : ""}</p>
     <div class="performance-metrics">
       <div class="performance-metric"><span>发布总数</span><strong>${current.total}<small> 条</small></strong><em>${current.projects} 个项目 · 按平台分别计数</em></div>
-      <div class="performance-metric douyin"><span><b class="platform-dot"></b>抖音</span><strong>${current.counts.douyin}<small> 条</small></strong><em>预计提成 ¥2,700 / 条</em></div>
-      <div class="performance-metric xiaohongshu"><span><b class="platform-dot"></b>小红书</span><strong>${current.counts.xiaohongshu}<small> 条</small></strong><em>预计提成 ¥1,000 / 条</em></div>
+      <div class="performance-metric douyin"><span><b class="platform-dot"></b>抖音</span><strong>${current.counts.douyin}<small> 条</small></strong><em>全部账号的发布记录</em></div>
+      <div class="performance-metric xiaohongshu"><span><b class="platform-dot"></b>小红书</span><strong>${current.counts.xiaohongshu}<small> 条</small></strong><em>全部账号的发布记录</em></div>
     </div>
     <section class="performance-commission" aria-label="当月预估提成">
       <div><p class="eyebrow">${performanceMonth.replace("-", " 年 ")} 月 · 预估到账</p><strong class="commission-amount"><span>¥</span>${money(earned.commission)}</strong><p>对应发布周期 ${range(earnedPeriod)}</p></div>
-      <div class="commission-breakdown"><div><span>抖音 · ${earned.counts.douyin} 条</span><strong>¥${money(earned.counts.douyin * 2700)}</strong></div><div><span>小红书 · ${earned.counts.xiaohongshu} 条</span><strong>¥${money(earned.counts.xiaohongshu * 1000)}</strong></div><p>（抖音条数 × 54,000 + 小红书条数 × 20,000）÷ 2 × 10%</p></div>
+      <div class="commission-breakdown"><p>拜托了闻学长 · 其他账号暂不计提成</p><div><span>抖音 · ${earned.commissionCounts.douyin} 条</span><strong>¥${money(earned.commissionCounts.douyin * 2700)}</strong></div><div><span>小红书 · ${earned.commissionCounts.xiaohongshu} 条</span><strong>¥${money(earned.commissionCounts.xiaohongshu * 1000)}</strong></div><p>（抖音条数 × 54,000 + 小红书条数 × 20,000）÷ 2 × 10%</p></div>
     </section>
     <p class="performance-footnote">仅计入已完成发布且发布日期不晚于今天的视频。本月 15 日计入本月，16 日起计入下月；金额为估算，以公司结算为准。${earned.missing.length ? `提成周期有 ${earned.missing.length} 个项目待补平台，尚未计入金额。` : ""}</p>`;
   const data = performanceDetail === "commission" ? earned : current;
@@ -681,7 +683,7 @@ function renderPerformance() {
     table.innerHTML = `<table class="performance-table"><thead><tr><th>项目 / 平台</th><th>发布日期</th><th>条数</th><th>预估提成</th><th><span class="visually-hidden">操作</span></th></tr></thead><tbody></tbody></table>`;
     data.rows.forEach((row) => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td><strong>${escapeHtml(row.project.name)}</strong><span class="performance-platform ${row.platform}">${row.platform === "douyin" ? "抖音" : "小红书"}</span></td><td>${row.date}</td><td>${row.count}</td><td>¥${money(row.estimated)}</td><td><button type="button" class="icon-button mini-button" title="编辑发布记录" aria-label="编辑发布记录"><i data-lucide="pencil"></i></button></td>`;
+      tr.innerHTML = `<td><strong>${escapeHtml(row.project.name)}</strong><span class="performance-platform ${row.platform}">${row.platform === "douyin" ? "抖音" : "小红书"}</span></td><td>${row.date}</td><td>${row.count}</td><td>${row.priced ? `¥${money(row.estimated)}` : "暂不计提成"}</td><td><button type="button" class="icon-button mini-button" title="编辑发布记录" aria-label="编辑发布记录"><i data-lucide="pencil"></i></button></td>`;
       tr.querySelector("button").addEventListener("click", () => openPerformanceRecord(row.project.id));
       table.querySelector("tbody").append(tr);
     });
@@ -695,7 +697,7 @@ function renderPerformance() {
   if (data.missing.length) {
     const missing = document.createElement("section");
     missing.className = "performance-missing";
-    missing.innerHTML = `<h3>待补平台 · ${data.missing.length} 个项目</h3><p>以下项目已完成发布，补充平台数量后即可计入。</p>`;
+    missing.innerHTML = `<h3>待补平台 · ${data.missing.length} 个项目</h3><p>以下项目已完成发布，选择平台后即可计入。</p>`;
     data.missing.forEach((project) => {
       const button = document.createElement("button");
       button.className = "performance-missing-row";
@@ -2943,9 +2945,9 @@ function openProjectDialog(projectId = null) {
   elements.projectForm.reset();
   const publication = TLPerformance.normalize(editingProject?.publication);
   TLPerformance.platforms.forEach((platform) => {
-    elements.projectForm.elements[`${platform}Count`].value = publication[platform].count;
-    elements.projectForm.elements[`${platform}Date`].value = publication[platform].date;
+    elements.projectForm.elements[`${platform}Published`].checked = publication[platform].count > 0;
   });
+  elements.projectForm.elements.publicationAccount.value = editingProject?.publicationAccount || "";
   elements.projectDateFields.innerHTML = "";
   elements.projectColorFields.innerHTML = "";
   selectedProjectColor = editingProject?.color || PROJECT_COLORS[projects.length % PROJECT_COLORS.length];
@@ -3040,10 +3042,12 @@ function saveProjectFromForm() {
 
   const editingProject = projects.find((project) => project.id === editingProjectId) || null;
   const publication = TLPerformance.normalize(Object.fromEntries(TLPerformance.platforms.map((platform) => [platform, {
-    count: Number(formData.get(`${platform}Count`)), date: String(formData.get(`${platform}Date`) || "")
+    count: formData.has(`${platform}Published`) ? 1 : 0, date: ""
   }])));
+  const publicationAccount = ["wen", "other"].includes(formData.get("publicationAccount")) ? formData.get("publicationAccount") : "";
   if (editingProject) {
     editingProject.publication = publication;
+    editingProject.publicationAccount = publicationAccount;
     editingProject.name = name;
     editingProject.color = selectedProjectColor;
     editingProject.milestones = milestones;
@@ -3057,6 +3061,7 @@ function saveProjectFromForm() {
       name,
       color: selectedProjectColor,
       publication,
+      publicationAccount,
       milestones
     });
 

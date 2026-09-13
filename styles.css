@@ -4512,6 +4512,24 @@ dialog[open] {
 .performance-missing-row svg { width: 16px; height: 16px; flex-shrink: 0; }
 .publication-fields { border: 0; border-top: 1px solid var(--line); padding: 16px 0 0; margin: 24px 0; min-width: 0; }
 .publication-fields legend { padding-right: 12px; font-weight: 600; }
+.publication-toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.publication-toggle { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--field-bg); cursor: pointer; min-width: 0; }
+.publication-toggle > input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
+.publication-switch { display: block; width: 42px; height: 26px; flex: 0 0 42px; border-radius: 20px; background: var(--line-strong); transition: background 160ms; pointer-events: none; }
+.publication-switch::before { content: ""; display: block; width: 22px; height: 22px; margin: 2px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; transition: transform 160ms; }
+.publication-toggle input:checked + .publication-switch { background: var(--accent); }
+.publication-toggle input:checked + .publication-switch::before { transform: translateX(16px); }
+.publication-toggle:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+#publicationAccount { width: 100%; min-width: 0; max-width: 100%; }
+@media (max-width: 860px) {
+  .project-dialog, .project-dialog form { box-sizing: border-box; min-width: 0; max-width: 100%; overflow-x: hidden; }
+  .project-dialog form { width: 100%; }
+  .project-dialog input[type="date"], .project-dialog select { box-sizing: border-box; display: block; width: 100%; min-width: 0; max-width: 100%; font-size: 16px; }
+  .project-dialog input[type="date"]::-webkit-date-and-time-value { min-width: 0; text-align: left; }
+  .project-dialog .dialog-grid > div { min-width: 0; }
+  .project-dialog .dialog-actions { box-sizing: border-box; max-width: calc(100% + 32px); }
+  .publication-toggle { gap: 6px; }
+}
 .publication-field-row { display: grid; grid-template-columns: 58px 100px minmax(0, 1fr); align-items: center; gap: 12px; margin-top: 14px; }
 .publication-field-row > strong { font-size: 13px; white-space: nowrap; }
 .publication-field-row label { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--muted); min-width: 0; }
