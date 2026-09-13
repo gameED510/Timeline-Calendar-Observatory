@@ -10,7 +10,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="site.webmanifest" />
     <script src="theme.js?v=1"></script>
-    <link rel="stylesheet" href="styles.css?v=20" />
+    <link rel="stylesheet" href="styles.css?v=21" />
   </head>
   <body>
     <div class="app-shell mobile-page-plan account-locked account-loading" id="appShell">
@@ -379,6 +379,7 @@
           </button>
         </div>
 
+        <div class="project-form-body">
         <section class="smart-import-panel" aria-label="智能识别排期">
           <div class="smart-import-head">
             <div>
@@ -398,12 +399,6 @@
         <label class="field-label" for="projectNameInput">项目名称</label>
         <input id="projectNameInput" name="name" type="text" placeholder="拜托了闻学长 & 新客户" required />
 
-        <label class="field-label">项目颜色</label>
-        <div class="color-swatch-row" id="projectColorFields" aria-label="项目颜色"></div>
-
-        <p class="optional-stage-note">只填写项目需要的阶段，留空的阶段不会进入日历、完成率和 TL 内容。</p>
-        <div class="dialog-grid" id="projectDateFields"></div>
-
         <fieldset class="publication-fields">
           <legend>平台发布</legend>
           <label class="field-label" for="publicationAccount">所属账号</label>
@@ -417,11 +412,19 @@
             <label class="publication-toggle"><span>抖音</span><input name="douyinPublished" type="checkbox" role="switch" aria-label="发布到抖音" /><span class="publication-switch" aria-hidden="true"></span></label>
             <label class="publication-toggle"><span>小红书</span><input name="xiaohongshuPublished" type="checkbox" role="switch" aria-label="发布到小红书" /><span class="publication-switch" aria-hidden="true"></span></label>
           </div>
+          <label class="publication-toggle gift-toggle"><span>赠送项目 · 不计提成</span><input name="publicationGift" type="checkbox" role="switch" aria-label="赠送项目" /><span class="publication-switch" aria-hidden="true"></span></label>
         </fieldset>
+
+        <label class="field-label">项目颜色</label>
+        <div class="color-swatch-row" id="projectColorFields" aria-label="项目颜色"></div>
+
+        <p class="optional-stage-note">只填写项目需要的阶段，留空的阶段不会进入日历、完成率和 TL 内容。</p>
+        <div class="dialog-grid" id="projectDateFields"></div>
 
         <div class="sequence-alert hidden" id="dialogSequenceAlert">
           <i data-lucide="circle-alert"></i>
           <span id="dialogSequenceAlertText"></span>
+        </div>
         </div>
 
         <div class="dialog-actions">
@@ -460,8 +463,8 @@
 
     <script src="vendor/motion.js?v=1"></script>
     <script src="calendar-motion.js?v=12"></script>
-    <script src="performance.js?v=3"></script>
-    <script src="app.js?v=21"></script>
+    <script src="performance.js?v=4"></script>
+    <script src="app.js?v=22"></script>
     <script src="vendor/lucide.min.js?v=6" defer></script>
   </body>
 </html>
