@@ -4,7 +4,7 @@
   const rates = { douyin: 54000, xiaohongshu: 20000 };
   function account(project) {
     if (["wen", "other"].includes(project.publicationAccount)) return project.publicationAccount;
-    return /^拜托了闻学长(?:\s|[&＆·:：]|$)/.test((project.name || "").trim()) ? "wen" : "other";
+    return (project.name || "").trim().startsWith("拜托了闻学长") ? "wen" : "other";
   }
   function validDate(value) {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;

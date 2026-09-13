@@ -29,6 +29,7 @@ test("project publication date is authoritative even for legacy platform dates",
   assert.equal(summarize([p], cycle("2026-07"), "2026-07-20").total, 2);
 });
 test("other accounts count publications but never inherit Wen's commission rates", () => {
+  assert.equal(globalThis.TLPerformance.account({name:"拜托了闻学长TCL"}),"wen");
   const wen = project("wen", "2026-06-10", both);
   const other = {...project("other", "2026-06-10", both), name:"拾光备忘录 & 合作"};
   const result = summarize([wen,other], cycle("2026-06"), "2026-09-13");
