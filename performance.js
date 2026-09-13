@@ -2,9 +2,19 @@
   "use strict";
   const platforms = ["douyin", "xiaohongshu"];
   const rates = { douyin: 54000, xiaohongshu: 20000 };
-  function account(project) {
-    if (["wen", "other"].includes(project.publicationAccount)) return project.publicationAccount;
-    return (project.name || "").trim().startsWith("拜托了闻学长") ? "wen" : "other";
+  function profiles(value) {
+    if (!Array.isArray(value)) return [{ id: "wen", name: "拜托了闻学长", keywords: "拜托了闻学长", rates: { ...rates } }];
+    const seen = new Set();
+    return value.slice(0, 50).filter((item) => item && typeof item.id === "string" && item.id !== "other" && !seen.has(item.id) && seen.add(item.id)).map((item) => ({
+      id: item.id.slice(0, 80), name: String(item.name || "").slice(0, 100), keywords: String(item.keywords || "").slice(0, 500),
+      rates: Object.fromEntries(platforms.map((key) => [key, item.rates?.[key] !== "" && item.rates?.[key] != null && Number.isFinite(Number(item.rates[key])) && Number(item.rates[key]) >= 0 ? Math.min(Number(item.rates[key]), 100000000) : null]))
+    }));
+  }
+  function account(project, config) {
+    if (project.publicationAccount) return project.publicationAccount;
+    const name = (project.name || "").trim().toLowerCase();
+    const matches = profiles(config).filter((item) => [item.name, ...item.keywords.split(/[,，\n]/)].some((word) => word.trim() && name.includes(word.trim().toLowerCase())));
+    return matches.length === 1 ? matches[0].id : "other";
   }
   function validDate(value) {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -27,7 +37,7 @@
     const iso = (delta, day) => new Date(Date.UTC(year, number - 1 + offset + delta, day)).toISOString().slice(0, 10);
     return { start: iso(-1, 16), end: iso(0, 16), last: iso(0, 15) };
   }
-  function summarize(projects, period, today) {
+  function summarize(projects, period, today, config) {
     const rows = [];
     const missing = [];
     for (const project of projects) {
@@ -40,8 +50,10 @@
         const date = scheduled;
         if (!item.count || !validDate(date) || date < period.start || date >= period.end || date > today) continue;
         const gifted = project.publicationGift === true;
-        const priced = account(project) === "wen" && !gifted;
-        rows.push({ project, platform, count: item.count, date, priced, gifted, estimated: priced ? item.count * rates[platform] / 2 * 0.1 : 0 });
+        const profile = profiles(config).find((entry) => entry.id === account(project, config));
+        const rate = profile?.rates[platform];
+        const priced = rate != null && !gifted;
+        rows.push({ project, platform, count: item.count, date, priced, gifted, estimated: priced ? item.count * rate / 2 * 0.1 : 0 });
       }
     }
     rows.sort((a, b) => a.date.localeCompare(b.date) || a.project.name.localeCompare(b.project.name));
@@ -49,5 +61,5 @@
     const commissionCounts = Object.fromEntries(platforms.map((platform) => [platform, rows.filter((row) => row.platform === platform && row.priced).reduce((sum, row) => sum + row.count, 0)]));
     return { rows, missing, counts, commissionCounts, total: counts.douyin + counts.xiaohongshu, projects: new Set(rows.map((row) => row.project.id)).size, commission: rows.reduce((sum, row) => sum + row.estimated, 0) };
   }
-  root.TLPerformance = { platforms, rates, account, normalize, cycle, summarize };
+  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, summarize };
 })(globalThis);

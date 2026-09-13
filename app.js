@@ -251,6 +251,7 @@ function loadLocalState(accountId = activeAccountId) {
 function changeCloudAccount(user) {
   const nextId = user?.id || null;
   syncState.user = user;
+  if (nextId !== activeAccountId) document.querySelectorAll(".pricing-dialog").forEach((dialog) => dialog.close());
   if (nextId === activeAccountId) return;
   if (activeAccountId && accountHydrated) createLocalRecoveryPoint("切换账号前");
   accountEpoch += 1;
@@ -347,7 +348,7 @@ function normalizeProjects(value) {
     notes: normalizeText(project.notes),
     link: normalizeText(project.link),
     publication: TLPerformance.normalize(project.publication),
-    publicationAccount: ["wen", "other"].includes(project.publicationAccount) ? project.publicationAccount : "",
+    publicationAccount: typeof project.publicationAccount === "string" ? project.publicationAccount.slice(0, 80) : "",
     publicationGift: project.publicationGift === true,
     milestones: normalizeMilestones(project.milestones),
     completedMilestones: normalizeCompletedMilestones(project.completedMilestones, project.milestones)
@@ -491,7 +492,7 @@ function cloneProject(project) {
     notes: normalizeText(project.notes),
     link: normalizeText(project.link),
     publication: TLPerformance.normalize(project.publication),
-    publicationAccount: ["wen", "other"].includes(project.publicationAccount) ? project.publicationAccount : "",
+    publicationAccount: typeof project.publicationAccount === "string" ? project.publicationAccount.slice(0, 80) : "",
     publicationGift: project.publicationGift === true,
     milestones: normalizeMilestones(project.milestones),
     completedMilestones: normalizeCompletedMilestones(project.completedMilestones, project.milestones)
@@ -650,12 +651,59 @@ function openPerformanceRecord(projectId) {
   });
 }
 
+function pricingProfiles() {
+  return TLPerformance.profiles(syncState.user?.user_metadata?.tl_pricing_profiles);
+}
+
+function openPricingSettings() {
+  if (!canEditProjects()) return;
+  const dialog = document.createElement("dialog");
+  dialog.className = "project-dialog pricing-dialog";
+  dialog.innerHTML = `<form><div class="dialog-header"><h2>账号报价</h2><button type="button" class="icon-button" aria-label="关闭">×</button></div><div class="project-form-body"><div class="pricing-list"></div><button type="button" class="secondary-button pricing-add">添加账号</button><p class="pricing-status" role="status"></p></div><div class="dialog-actions"><button type="submit" class="primary-button">保存报价</button></div></form>`;
+  const list = dialog.querySelector(".pricing-list");
+  function add(profile) {
+    const row = document.createElement("section");
+    row.className = "pricing-account";
+    row.dataset.id = profile.id;
+    row.innerHTML = `<label>账号名称<input name="accountName" required maxlength="100" value="${escapeHtml(profile.name)}"></label><label>识别关键词<input name="keywords" maxlength="500" value="${escapeHtml(profile.keywords)}" placeholder="多个关键词用逗号分隔"></label><div class="pricing-rates">${TLPerformance.platforms.map((key) => `<label>${key === "douyin" ? "抖音" : "小红书"}报价（元）<input name="${key}" type="number" min="0" max="100000000" step="0.01" placeholder="未设置" value="${profile.rates[key] ?? ""}"></label>`).join("")}</div><button type="button" class="secondary-button">删除账号</button>`;
+    row.querySelector("button").onclick = () => row.remove();
+    list.append(row);
+  }
+  pricingProfiles().forEach(add);
+  dialog.querySelector(".pricing-add").onclick = () => { if (list.children.length < 50) add({ id: crypto.randomUUID(), name: "", keywords: "", rates: {} }); };
+  dialog.querySelector(".dialog-header button").onclick = () => dialog.close();
+  dialog.onclose = () => dialog.remove();
+  const userId = syncState.user.id;
+  dialog.querySelector("form").onsubmit = async (event) => {
+    event.preventDefault();
+    if (syncState.user?.id !== userId) { dialog.close(); return; }
+    const button = dialog.querySelector('[type="submit"]');
+    const status = dialog.querySelector(".pricing-status");
+    const values = [...list.children].map((row) => ({ id: row.dataset.id, name: row.querySelector('[name="accountName"]').value.trim(), keywords: row.querySelector('[name="keywords"]').value.trim(), rates: Object.fromEntries(TLPerformance.platforms.map((key) => [key, row.querySelector(`[name="${key}"]`).value])) }));
+    if (values.some((item) => !item.name)) { status.textContent = "请填写账号名称"; return; }
+    button.disabled = true;
+    status.textContent = "正在保存";
+    try {
+      const { data, error } = await syncState.client.auth.updateUser({ data: { tl_pricing_profiles: TLPerformance.profiles(values) } });
+      if (error) throw error;
+      if (syncState.user?.id !== userId) { dialog.close(); return; }
+      syncState.user = data.user;
+      renderPerformance();
+      dialog.close();
+    } catch { status.textContent = "保存失败，请检查网络后重试"; }
+    finally { button.disabled = false; }
+  };
+  document.body.append(dialog);
+  dialog.showModal();
+}
+
 function renderPerformance() {
   const period = TLPerformance.cycle(performanceMonth);
   const earnedPeriod = TLPerformance.cycle(performanceMonth, -3);
   const today = dateToIso(new Date());
-  const current = TLPerformance.summarize(projects, period, today);
-  const earned = TLPerformance.summarize(projects, earnedPeriod, today);
+  const current = TLPerformance.summarize(projects, period, today, pricingProfiles());
+  const earned = TLPerformance.summarize(projects, earnedPeriod, today, pricingProfiles());
+  document.querySelector("#pricingSettings").onclick = openPricingSettings;
   const money = (amount) => amount.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
   const range = (value) => `${value.start.replaceAll("-", ".")} — ${value.last.replaceAll("-", ".")}`;
   document.querySelector("#performanceMonth").value = performanceMonth;
@@ -668,7 +716,7 @@ function renderPerformance() {
     </div>
     <section class="performance-commission" aria-label="当月预估提成">
       <div><p class="eyebrow">${performanceMonth.replace("-", " 年 ")} 月 · 预估到账</p><strong class="commission-amount"><span>¥</span>${money(earned.commission)}</strong><p>对应发布周期 ${range(earnedPeriod)}</p></div>
-      <div class="commission-breakdown"><p>拜托了闻学长 · 其他账号暂不计提成</p><div><span>抖音 · ${earned.commissionCounts.douyin} 条</span><strong>¥${money(earned.commissionCounts.douyin * 2700)}</strong></div><div><span>小红书 · ${earned.commissionCounts.xiaohongshu} 条</span><strong>¥${money(earned.commissionCounts.xiaohongshu * 1000)}</strong></div><p>（抖音条数 × 54,000 + 小红书条数 × 20,000）÷ 2 × 10%</p></div>
+      <div class="commission-breakdown"><p>按账号平台报价估算</p>${TLPerformance.platforms.map((key) => `<div><span>${key === "douyin" ? "抖音" : "小红书"} · ${earned.commissionCounts[key]} 条</span><strong>¥${money(earned.rows.filter((row) => row.platform === key).reduce((sum, row) => sum + row.estimated, 0))}</strong></div>`).join("")}<p>平台报价 × 条数 ÷ 2 × 10%</p></div>
     </section>
     <p class="performance-footnote">仅计入已完成发布且发布日期不晚于今天的视频。本月 15 日计入本月，16 日起计入下月；金额为估算，以公司结算为准。${earned.missing.length ? `提成周期有 ${earned.missing.length} 个项目待补平台，尚未计入金额。` : ""}</p>`;
   const data = performanceDetail === "commission" ? earned : current;
@@ -2950,7 +2998,19 @@ function openProjectDialog(projectId = null) {
   TLPerformance.platforms.forEach((platform) => {
     elements.projectForm.elements[`${platform}Published`].checked = publication[platform].count > 0;
   });
+  elements.projectForm.elements.publicationAccount.innerHTML = `<option value="">自动识别账号</option>${pricingProfiles().map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.name)}</option>`).join("")}<option value="other">其他账号（不计提成）</option>`;
+  if (editingProject?.publicationAccount && !["other", ...pricingProfiles().map((profile) => profile.id)].includes(editingProject.publicationAccount)) {
+    elements.projectForm.elements.publicationAccount.add(new Option("已移除账号（不计提成）", editingProject.publicationAccount));
+  }
   elements.projectForm.elements.publicationAccount.value = editingProject?.publicationAccount || "";
+  const accountNameInput = elements.projectForm.elements.name;
+  const updateAccountHint = () => {
+    const id = TLPerformance.account({ name: accountNameInput.value }, pricingProfiles());
+    const match = pricingProfiles().find((profile) => profile.id === id);
+    elements.projectForm.elements.publicationAccount.options[0].textContent = match ? `自动识别：${match.name}` : "自动识别：未匹配账号";
+  };
+  accountNameInput.oninput = updateAccountHint;
+  window.requestAnimationFrame(updateAccountHint);
   elements.projectForm.elements.publicationGift.checked = editingProject?.publicationGift === true;
   elements.projectDateFields.innerHTML = "";
   elements.projectColorFields.innerHTML = "";
@@ -3048,7 +3108,7 @@ function saveProjectFromForm() {
   const publication = TLPerformance.normalize(Object.fromEntries(TLPerformance.platforms.map((platform) => [platform, {
     count: formData.has(`${platform}Published`) ? 1 : 0, date: ""
   }])));
-  const publicationAccount = ["wen", "other"].includes(formData.get("publicationAccount")) ? formData.get("publicationAccount") : "";
+  const publicationAccount = String(formData.get("publicationAccount") || "").slice(0, 80);
   const publicationGift = formData.has("publicationGift");
   if (editingProject) {
     editingProject.publication = publication;

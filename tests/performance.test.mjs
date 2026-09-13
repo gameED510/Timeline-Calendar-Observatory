@@ -5,6 +5,17 @@ const { cycle, summarize, normalize } = globalThis.TLPerformance;
 const project = (id, date, publication, completed = true) => ({ id, name: `拜托了闻学长 & ${id}`, milestones: { "发布": date }, completedMilestones: { "发布": completed }, publication });
 const both = { douyin: { count: 1 }, xiaohongshu: { count: 1 } };
 
+test("custom profiles match names, honor explicit selection and avoid ambiguous rates", () => {
+  const config = TLPerformance.profiles([{id:"custom",name:"测试账号",keywords:"别名",rates:{douyin:10000,xiaohongshu:""}}]);
+  const p = {...project("p","2026-06-01",both),name:"别名 & 产品"};
+  assert.equal(TLPerformance.account(p,config),"custom");
+  assert.equal(summarize([p],cycle("2026-06"),"2026-09-13",config).commission,500);
+  assert.equal(summarize([{...p,publicationGift:true}],cycle("2026-06"),"2026-09-13",config).commission,0);
+  assert.equal(TLPerformance.account(p,[...config,{...config[0],id:"second"}]),"other");
+  assert.equal(summarize([{...p,publicationAccount:"deleted"}],cycle("2026-06"),"2026-09-13",config).commission,0);
+  assert.equal(summarize([p],cycle("2026-06"),"2026-09-13",[]).commission,0);
+});
+
 test("15th cycles are disjoint and commission offset crosses years", () => {
   assert.deepEqual(cycle("2027-01"), { start: "2026-12-16", end: "2027-01-16", last: "2027-01-15" });
   assert.equal(cycle("2026-02", -3).start, "2025-10-16");
