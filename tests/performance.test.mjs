@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import "../performance.js";
 const { cycle, summarize, normalize } = globalThis.TLPerformance;
-const project = (id, date, publication, completed = true) => ({ id, name: id, milestones: { "发布": date }, completedMilestones: { "发布": completed }, publication });
+const project = (id, date, publication, completed = true) => ({ id, name: `拜托了闻学长 & ${id}`, milestones: { "发布": date }, completedMilestones: { "发布": completed }, publication });
 const both = { douyin: { count: 1 }, xiaohongshu: { count: 1 } };
 
 test("15th cycles are disjoint and commission offset crosses years", () => {
@@ -20,10 +20,26 @@ test("completed platform publications count at the boundaries with exact commiss
   assert.equal(result.counts.xiaohongshu, 1);
   assert.equal(result.commission, 9100);
 });
-test("actual platform dates override schedule and future publications are excluded", () => {
+test("project publication date is authoritative even for legacy platform dates", () => {
   const p = project("split", "2026-05-20", { douyin: { count: 1, date: "2026-06-16" }, xiaohongshu: { count: 1, date: "2026-06-15" } });
-  assert.equal(summarize([p], cycle("2026-06"), "2026-07-20").commission, 1000);
+  assert.equal(summarize([p], cycle("2026-06"), "2026-07-20").commission, 3700);
   assert.equal(summarize([p], cycle("2026-07"), "2026-06-15").total, 0);
+  p.milestones["发布"] = "2026-06-16";
+  assert.equal(summarize([p], cycle("2026-06"), "2026-07-20").total, 0);
+  assert.equal(summarize([p], cycle("2026-07"), "2026-07-20").total, 2);
+});
+test("other accounts count publications but never inherit Wen's commission rates", () => {
+  assert.equal(globalThis.TLPerformance.account({name:"拜托了闻学长TCL"}),"wen");
+  const wen = project("wen", "2026-06-10", both);
+  const other = {...project("other", "2026-06-10", both), name:"拾光备忘录 & 合作"};
+  const result = summarize([wen,other], cycle("2026-06"), "2026-09-13");
+  assert.equal(result.total,4);
+  assert.equal(result.commission,3700);
+  assert.deepEqual(result.commissionCounts,{douyin:1,xiaohongshu:1});
+  wen.publicationAccount="other";
+  assert.equal(summarize([wen],cycle("2026-06"),"2026-09-13").commission,0);
+  other.publicationAccount="wen";
+  assert.equal(summarize([other],cycle("2026-06"),"2026-09-13").commission,3700);
 });
 test("legacy records stay unclassified and malformed counts cannot inflate estimates", () => {
   const result = summarize([project("legacy", "2026-06-10")], cycle("2026-06"), "2026-09-13");

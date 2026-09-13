@@ -10,7 +10,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="site.webmanifest" />
     <script src="theme.js?v=1"></script>
-    <link rel="stylesheet" href="styles.css?v=19" />
+    <link rel="stylesheet" href="styles.css?v=20" />
   </head>
   <body>
     <div class="app-shell mobile-page-plan account-locked account-loading" id="appShell">
@@ -406,16 +406,16 @@
 
         <fieldset class="publication-fields">
           <legend>平台发布</legend>
-          <p class="publication-note">数量为 0 表示不发布。实际日期留空时使用“发布”节点日期；发布完成后计入绩效。</p>
-          <div class="publication-field-row">
-            <strong>抖音</strong>
-            <label>视频数量<input name="douyinCount" type="number" min="0" max="10000" step="1" value="0" inputmode="numeric" /></label>
-            <label>实际发布日期<input name="douyinDate" type="date" /></label>
-          </div>
-          <div class="publication-field-row">
-            <strong>小红书</strong>
-            <label>视频数量<input name="xiaohongshuCount" type="number" min="0" max="10000" step="1" value="0" inputmode="numeric" /></label>
-            <label>实际发布日期<input name="xiaohongshuDate" type="date" /></label>
+          <label class="field-label" for="publicationAccount">所属账号</label>
+          <select id="publicationAccount" name="publicationAccount">
+            <option value="">自动识别账号</option>
+            <option value="wen">拜托了闻学长</option>
+            <option value="other">其他账号（暂不计提成）</option>
+          </select>
+          <p class="publication-note">发布日期跟随项目“发布”节点，完成发布后计入绩效。</p>
+          <div class="publication-toggles">
+            <label class="publication-toggle"><span>抖音</span><input name="douyinPublished" type="checkbox" role="switch" aria-label="发布到抖音" /><span class="publication-switch" aria-hidden="true"></span></label>
+            <label class="publication-toggle"><span>小红书</span><input name="xiaohongshuPublished" type="checkbox" role="switch" aria-label="发布到小红书" /><span class="publication-switch" aria-hidden="true"></span></label>
           </div>
         </fieldset>
 
@@ -460,8 +460,8 @@
 
     <script src="vendor/motion.js?v=1"></script>
     <script src="calendar-motion.js?v=12"></script>
-    <script src="performance.js?v=1"></script>
-    <script src="app.js?v=20"></script>
+    <script src="performance.js?v=3"></script>
+    <script src="app.js?v=21"></script>
     <script src="vendor/lucide.min.js?v=6" defer></script>
   </body>
 </html>
