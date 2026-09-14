@@ -4934,3 +4934,149 @@ html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden
   .actual-heading h3 { font-size: 16px; }.actual-actions { gap: 4px; }
   .actual-fields { grid-template-columns: minmax(0,1fr); }
 }
+
+/* TL visual system: quiet chrome keeps the colored schedule in focus. */
+:root {
+  --bg: #f5f5f7;
+  --bg-soft: #fafafc;
+  --panel: #f5f5f7;
+  --panel-soft: #f5f5f7;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --material: #ffffff;
+  --material-strong: #ffffff;
+  --material-muted: #fafafc;
+  --material-highlight: transparent;
+  --material-stroke: #e4e4e8;
+  --control-bg: #f0f0f3;
+  --control-bg-hover: #e8e8ed;
+  --field-bg: #fafafc;
+  --accent: #0066cc;
+  --accent-strong: #0055ad;
+  --accent-soft: #e9f2fc;
+  --line: #e4e4e8;
+  --calendar-line: #e8e8ed;
+  --calendar-cell: #ffffff;
+  --calendar-cell-soft: #fafafc;
+  --shadow-soft: none;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+}
+:root[data-theme="dark"] {
+  --bg: #161617;
+  --bg-soft: #202022;
+  --panel: #1c1c1e;
+  --panel-soft: #1c1c1e;
+  --surface: #242426;
+  --surface-strong: #2c2c2e;
+  --material: #242426;
+  --material-strong: #2c2c2e;
+  --material-muted: #202022;
+  --material-stroke: #38383b;
+  --control-bg: #303033;
+  --control-bg-hover: #3a3a3d;
+  --field-bg: #202022;
+  --accent: #2997ff;
+  --accent-strong: #82c2ff;
+  --accent-soft: #20374d;
+  --line: #38383b;
+  --calendar-line: #333336;
+  --calendar-cell: #242426;
+  --calendar-cell-soft: #202022;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #161617; --bg-soft: #202022; --panel: #1c1c1e; --panel-soft: #1c1c1e;
+    --surface: #242426; --surface-strong: #2c2c2e;
+    --material: #242426; --material-strong: #2c2c2e; --material-muted: #202022;
+    --material-stroke: #38383b; --control-bg: #303033; --control-bg-hover: #3a3a3d;
+    --field-bg: #202022; --accent: #2997ff; --accent-strong: #82c2ff;
+    --accent-soft: #20374d; --line: #38383b; --calendar-line: #333336;
+    --calendar-cell: #242426; --calendar-cell-soft: #202022;
+  }
+}
+body { font-size: 14px; line-height: 1.47; }
+button, input, select, textarea { letter-spacing: 0; }
+.eyebrow { font-weight: 400; text-transform: none; }
+.app-title .eyebrow, .workspace-bar > div > .eyebrow,
+.projects-page-head .eyebrow, .dialog-header .eyebrow,
+.performance-heading .eyebrow, .sync-card-head .eyebrow,
+.actual-heading .eyebrow { display: none; }
+.side-panel { background: var(--panel); box-shadow: none; }
+.app-title { padding: 8px 0 20px; }
+.app-title .tl-wordmark { gap: 12px; }
+.tl-monogram { font-size: 36px; }
+.tl-wordmark-name { border: 0; padding: 0; font-size: 14px; color: var(--muted); }
+.metric-grid { margin: 8px 0 24px; }
+.metric-value { font-size: 28px; font-weight: 600; }
+.metric-item { padding: 12px 8px; }
+.side-section { border: 0; border-radius: 0; background: transparent; padding: 16px 0; border-top: 1px solid var(--line); }
+.side-section-head { margin-bottom: 4px; }
+.side-event-row, .side-conflict-row, .side-progress-row { background: transparent; border-color: transparent; box-shadow: none; }
+.workspace-bar { background: var(--bg); min-height: 76px; box-shadow: none; }
+.workspace-bar h2, .dialog-header h2, .projects-page-head h2 { font-weight: 600; }
+.toolbar { gap: 8px; }
+.icon-button, .ghost-button, .text-button, .segmented,
+.segmented-button, .calendar-period-nav, .actual-entry { box-shadow: none; background-image: none; }
+.icon-button { border-color: transparent; background: var(--control-bg); border-radius: 8px; }
+.icon-button::after, .ghost-button::after, .text-button::after,
+.project-card::after, .focus-card::after, .legend-item::after { display: none; }
+.segmented { padding: 3px; gap: 2px; border: 0; background: var(--control-bg); border-radius: 8px; }
+.segmented-button { border-radius: 6px; font-weight: 600; }
+.segmented-button.active { color: var(--ink); background: var(--surface-strong); box-shadow: none; }
+.toolbar > .segmented .segmented-button.active { color: var(--accent); background: var(--surface); }
+.primary-button { background: var(--accent); background-image: none; box-shadow: none; font-weight: 600; }
+.focus-card { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+.focus-copy strong { font-weight: 600; }
+.focus-label { font-weight: 400; }
+.legend-item { border: 0; background: transparent; box-shadow: none; }
+.calendar-view-tools { padding-block: 16px; }
+.calendar-period-nav { border: 0; background: transparent; }
+#calendarPeriodLabel { font-size: 17px; font-weight: 600; }
+.calendar-scroll { background: transparent; box-shadow: none; }
+.weekday-cell { font-weight: 400; color: var(--muted); }
+.date-number { font-weight: 600; }
+.calendar-view-tools .segmented-button.active { background: var(--surface); color: var(--ink); box-shadow: none; }
+.inline-pile:not(.expanded):not(.dragging):not(.closing) .motion-card { box-shadow: none; }
+.motion-card-main strong { font-weight: 600; }
+.projects-page { background: transparent; box-shadow: none; border: 0; }
+.project-card { box-shadow: none; background: var(--surface); }
+.project-card h3 { font-weight: 600; }
+.project-dialog, .sync-card { background: var(--surface); }
+.project-dialog .dialog-header, .project-dialog .dialog-actions { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.smart-import-panel { background: var(--bg-soft); box-shadow: none; }
+.project-form-body input, .project-form-body textarea, .project-form-body select { background: var(--field-bg); box-shadow: none; }
+.performance-view { max-width: 1120px; margin-inline: auto; }
+.performance-heading h2 { font-weight: 600; font-size: 26px; }
+.performance-heading .performance-period { margin-top: 8px; }
+.performance-metrics { padding-block: 28px; }
+.performance-metric > strong, .actual-comparison strong { font-weight: 600; }
+.actual-comparison { padding: 22px 0; border-block: 1px solid var(--line); }
+.actual-comparison > div + div { padding-left: 20px; border-left: 1px solid var(--line); }
+.performance-table th { font-weight: 600; padding-block: 16px; }
+.performance-table tbody tr:hover { background: var(--bg-soft); }
+.actual-chart-tabs { border: 0; background: var(--control-bg); }
+.actual-chart-tabs button.active { color: var(--ink); background: var(--surface); }
+.mobile-tabbar { background: var(--surface); box-shadow: none; }
+@media (min-width: 1100px) {
+  .workspace { padding: 24px 32px; }
+  .workspace-bar { margin: -24px -32px 0; padding: 18px 32px; }
+  .side-panel { padding: 24px 20px; }
+  .focus-row { margin-top: 16px; }
+}
+@media (max-width: 760px) {
+  .workspace-bar { min-height: 68px; }
+  .workspace-bar h2 { font-size: 17px; }
+  .toolbar { gap: 6px; }
+  .focus-row { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+  .focus-row .focus-card { padding: 12px 0; }
+  .calendar-view-tools { padding-block: 12px; }
+  .performance-heading h2 { font-size: 22px; }
+  .performance-metrics { padding-block: 22px; }
+  .actual-comparison { gap: 10px; }
+  .actual-comparison > div + div { padding-left: 10px; }
+  .actual-comparison strong { font-size: 20px; }
+  .mobile-tabbar button { font-weight: 600; }
+  .project-dialog .dialog-header { padding-block: 16px; }
+  .project-dialog .dialog-header h2 { font-size: 20px; }
+  .project-dialog .dialog-actions { gap: 10px; }
+}
