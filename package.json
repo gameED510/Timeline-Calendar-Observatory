@@ -6,22 +6,18 @@
     "build:icons": "node scripts/build-icons.mjs",
     "build:supabase": "esbuild vendor/supabase-entry.mjs --bundle --format=esm --platform=browser --target=es2020 --minify --outfile=vendor/supabase-client.js",
     "build:motion": "esbuild vendor/motion-entry.mjs --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=vendor/motion.js",
-    "build:ocr": "node scripts/build-ocr.mjs",
     "build:charts": "esbuild vendor/chart-entry.mjs --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=vendor/charts.js",
-    "build:vendor": "npm run build:icons && npm run build:supabase && npm run build:motion && npm run build:ocr && npm run build:charts",
+    "build:vendor": "npm run build:icons && npm run build:supabase && npm run build:motion && npm run build:charts",
     "build:edgeone": "npm run build:vendor && node scripts/build-edgeone.mjs",
     "build:netlify": "npm run build:vendor && node scripts/build-netlify.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check theme.js && node --check app.js && node --check performance.js && node --check actual-performance.js && node --check actual-import.js && node --check calendar-motion.js && node --check sw.js && node --check netlify-functions/supabase-proxy.mjs && node --check edge-functions/api/supabase-proxy.js && node --check api/supabase-proxy.js && npm test"
+    "check": "node --check theme.js && node --check app.js && node --check performance.js && node --check actual-performance.js && node --check calendar-motion.js && node --check sw.js && node --check netlify-functions/supabase-proxy.mjs && node --check edge-functions/api/supabase-proxy.js && node --check api/supabase-proxy.js && npm test"
   },
   "devDependencies": {
     "@supabase/supabase-js": "2.112.3",
-    "@tesseract.js-data/chi_sim": "1.0.0",
-    "@tesseract.js-data/eng": "1.0.0",
     "chart.js": "4.5.0",
     "esbuild": "0.28.2",
     "gsap": "3.15.0",
-    "lucide": "1.37.0",
-    "tesseract.js": "6.0.1"
+    "lucide": "1.37.0"
   }
 }

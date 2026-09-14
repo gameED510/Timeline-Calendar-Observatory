@@ -18,13 +18,11 @@ Calibration uses the six latest valid prior settlement months, excluding zero
 formula estimates. The aggregate actual/formula ratio shrinks toward 1 by n/(n+3).
 At least three months are required for a trial calibrated estimate.
 
-OCR runs on-device via a self-hosted Tesseract worker and language models. Models
-load only after an explicit recognition action and are not in the shell cache.
-Images and OCR text are not persisted or uploaded. Ambiguous project matches remain
-editable. Chart.js also loads on demand; combined actual platform revenue is never
-arbitrarily split for charts.
+Actual settlements are entered manually. Screenshot recognition and its model
+dependencies are not included. Existing records remain editable. Chart.js loads
+on demand; combined actual platform revenue is never arbitrarily split for charts.
 
 Build all vendor assets with `npm run build:vendor`, apply Supabase migrations, then
-build the hosting target. `npm run check` covers formulas, parsing and bundle rules.
+build the hosting target. `npm run check` covers formulas and bundle rules.
 Sensitive screenshot fixtures and browser verification artifacts belong in ignored
 `output/`, not the public repository.
