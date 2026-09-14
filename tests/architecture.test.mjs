@@ -22,7 +22,7 @@ test("calendar motion is local, included in both builds and offline shell", asyn
   assert.match(motion, /const xOffset=center-rect.left-rect.width\/2\+\(isSingle \? 0 : side\*spread\)/, "single cards use the clamped center without fan offsets");
   assert.match(motion, /edgeRoom=isSingle \? width\*1.03\/2\+10/, "single card bounds include focused scale and edge padding");
   assert.match(motion, /pointerover',event=>\{\s*if\(event\.pointerType==='mouse' && event\.target\.closest\('\.motion-card:not\(\.motion-ghost\)'\)/, "hover lift starts only over a visible card");
-  assert.match(motion, /const owner=layer\.closest\('\.day-cell,\.agenda-day'\);\s*const target=event\.target\.closest\('\.day-cell,\.agenda-day'\);\s*if\(target!==owner\)close\(false\)/, "expanded piles collapse when the pointer leaves their date");
+  assert.doesNotMatch(motion, /const owner=layer\.closest\('\.day-cell,\.agenda-day'\);\s*const target=event\.target\.closest\('\.day-cell,\.agenda-day'\);\s*if\(target!==owner\)close\(false\)/, "clicked piles stay expanded when the pointer leaves their date");
   assert.doesNotMatch(motion, /localStorage|fetch\(/);
   assert.match(motion, /prefers-reduced-motion/);
   assert.match(motion, /pointercancel/);

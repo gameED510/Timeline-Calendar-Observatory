@@ -144,12 +144,6 @@ window.CalendarMotion = (() => {
     group.addEventListener('click',event=>event.stopPropagation());
   }
   document.addEventListener('pointerdown',event=>{if(layer&&!layer.contains(event.target)&&!drag)close(false);},true);
-  document.addEventListener('pointerover',event=>{
-    if(event.pointerType!=='mouse' || !layer || drag || layer.contains(event.target))return;
-    const owner=layer.closest('.day-cell,.agenda-day');
-    const target=event.target.closest('.day-cell,.agenda-day');
-    if(target!==owner)close(false);
-  },true);
   document.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
   function startDrag(event, card, main, item, group) {
     if (event.button !== 0 || drag) return;
