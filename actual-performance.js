@@ -99,14 +99,12 @@
     const onAccountAbort = () => close(); ctx.signal.addEventListener("abort", onAccountAbort, { once: true });
     dialog.addEventListener("close", () => { controller.abort(); ctx.signal.removeEventListener("abort", onAccountAbort); });
     dialog.innerHTML = `<form><header class="dialog-header"><div><p class="eyebrow">TL / SETTLEMENT</p><h2>录入实际</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><i data-lucide="x"></i></button></header><div class="project-form-body">
-      <div class="actual-upload"><label class="secondary-button" for="actualFiles"><i data-lucide="image-plus"></i>选择截图</label><input id="actualFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden><button type="button" class="secondary-button" data-recognize disabled><i data-lucide="scan-text"></i>识别截图</button></div>
-      <p data-files class="performance-footnote">尚未选择截图</p><progress class="actual-progress" max="1" value="0" hidden></progress><p data-ocr-status role="status"></p>
       <div class="actual-fields"><label>结算月份<input name="month" type="month" required value="${ctx.month}"></label><label>个人总提成<input name="total" type="number" min="0" max="1000000000" step="any" required inputmode="decimal"></label></div>
       <p data-notice role="status"></p><div class="actual-heading"><h3>广告明细</h3><button type="button" class="icon-button mini-button" data-add title="添加广告" aria-label="添加广告"><i data-lucide="plus"></i></button></div><div class="actual-ad-rows"></div><p data-balance class="performance-footnote"></p>
       <p data-error role="alert"></p></div><footer class="dialog-actions"><button type="button" class="secondary-button" data-close>取消</button><button type="submit" class="primary-button"><i data-lucide="check"></i>确认保存</button></footer></form>`;
     document.body.append(dialog);
     const form = dialog.querySelector("form"), rows = dialog.querySelector(".actual-ad-rows"), notice = dialog.querySelector("[data-notice]"), error = dialog.querySelector("[data-error]");
-    let targetRecord, dirty = false, recognizing = false;
+    let targetRecord, dirty = false;
     const balance = () => {
       const total = Number(form.elements.total.value), sum = [...rows.children].reduce((s,r)=>s+Number(r.querySelector('[data-revenue]').value || 0)*Number(r.dataset.rate || 0),0);
       dialog.querySelector("[data-balance]").textContent = rows.children.length ? `明细对应提成 ¥${money(sum)}${form.elements.total.value !== "" && Math.abs(total-sum) > .02 ? `，与总提成相差 ¥${money(total-sum)}，保存仍以确认总额为准。` : ""}` : "";
@@ -137,31 +135,8 @@
     dialog.querySelectorAll("[data-close]").forEach(b=>b.onclick=close);
     dialog.addEventListener("cancel", e=>{e.preventDefault();close();});
     dialog.querySelector("[data-add]").onclick=()=>{dirty=true;add();};
-    const files = dialog.querySelector("#actualFiles"), recognizeButton = dialog.querySelector("[data-recognize]");
-    files.onchange = () => { dialog.querySelector("[data-files]").textContent = `已选择 ${files.files.length} 张截图`; recognizeButton.disabled = !files.files.length || recognizing; };
-    recognizeButton.onclick = async () => {
-      recognizing = true; recognizeButton.disabled = true; files.disabled = true;
-      const progress = dialog.querySelector("progress"), status = dialog.querySelector("[data-ocr-status]"); progress.hidden = false; error.textContent = "";
-      try {
-        const texts = await root.TLActualImport.recognize([...files.files], p => { if (!dialog.isConnected) return; progress.value=(p.index+p.progress)/p.count; status.textContent=`本地识别 ${p.index+1}/${p.count}`; }, controller.signal);
-        if (!current(ctx) || controller.signal.aborted) return;
-        const imported = root.TLActualImport.parseBatch(texts, ctx.projects, ctx.profiles);
-        if (imported.month) form.elements.month.value=imported.month; else form.elements.month.value="";
-        targetRecord=state.records.find(r=>r.month===form.elements.month.value);
-        if (imported.total !== null) form.elements.total.value=imported.total; else form.elements.total.value="";
-        const merged = new Map((targetRecord?.ads || []).map(a=>[a.projectId || a.name,a]));
-        for (const ad of imported.ads) {
-          const key=ad.projectId || ad.name, previous=merged.get(key);
-          merged.set(key,previous ? {...ad,commissionRate:previous.commissionRate ?? ad.commissionRate} : ad);
-        }
-        rows.replaceChildren(); [...merged.values()].forEach(add);
-        notice.textContent=imported.notice+(present(targetRecord)?" 此月已有记录，将合并明细并更新。":"");
-        status.textContent=`识别完成 · ${imported.ads.length} 条广告待核对`; progress.value=1; dirty=true; balance();
-      } catch (e) { if (!controller.signal.aborted) { error.textContent=e.message || "识别失败，可以继续手动填写。"; status.textContent="可直接手动录入"; } }
-      finally { recognizing=false; recognizeButton.disabled=false; files.disabled=false; }
-    };
     form.onsubmit = async event => {
-      event.preventDefault(); if (recognizing) { error.textContent="请等待识别完成后确认。"; return; }
+      event.preventDefault();
       const total=Number(form.elements.total.value), month=form.elements.month.value;
       const ads=[...rows.children].map(row=>({name:row.querySelector('[data-name]').value.trim(),projectId:row.querySelector('[data-project]').value,revenue:Number(row.querySelector('[data-revenue]').value),commissionRate:row.dataset.rate==="" ? null : Number(row.dataset.rate)}));
       if (!Number.isFinite(total) || total<0 || total>1e9 || ads.length>500 || ads.some(a=>!Number.isFinite(a.revenue)||a.revenue<0||a.revenue>1e9)) { error.textContent="请检查金额与广告明细。"; return; }

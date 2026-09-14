@@ -11,7 +11,6 @@ const staticEntries = [
   "theme.js",
   "app.js",
   "performance.js",
-  "actual-import.js",
   "actual-performance.js",
   "performance-charts.js",
   "calendar-motion.js",
@@ -25,6 +24,7 @@ function copyEntry(source, destination) {
   const children = readdirSync(source, { withFileTypes: true });
   mkdirSync(destination, { recursive: true });
   for (const child of children) {
+    if (source === resolve(root, "vendor") && child.name === "ocr") continue;
     const childSource = resolve(source, child.name);
     const childDestination = resolve(destination, child.name);
     if (child.isDirectory()) copyEntry(childSource, childDestination);

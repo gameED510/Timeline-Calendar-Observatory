@@ -4880,11 +4880,11 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 /* Actual settlement keeps the same compact dialog geometry as project editing. */
 .actual-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .actual-heading h3 { margin: 4px 0; font-size: 18px; }
-.actual-actions,.actual-upload { display: flex; align-items: center; gap: 8px; }
+.actual-actions { display: flex; align-items: center; gap: 8px; }
 #actualPerformance { padding: 24px 0; border-top: 1px solid var(--line); min-width: 0; }
 .actual-entry,.actual-dialog .secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-soft); color: var(--ink); padding: 8px 12px; font: inherit; cursor: pointer; }
 .actual-entry { white-space: nowrap; font-size: 13px; }
-.actual-entry svg,.actual-upload svg { width: 17px; height: 17px; }
+.actual-entry svg { width: 17px; height: 17px; }
 .actual-comparison { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin: 24px 0; gap: 20px; }
 .actual-comparison > div { display: grid; gap: 8px; min-width: 0; }
 .actual-comparison span,.actual-comparison small { color: var(--muted); font-size: 12px; }
@@ -4923,9 +4923,7 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .actual-dialog input,.actual-dialog select { min-width: 0; width: 100%; box-sizing: border-box; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--field-bg); color: var(--ink); padding: 8px 10px; font: inherit; }
 .actual-dialog input[hidden] { display: none; }
 .actual-dialog label { display: grid; gap: 8px; margin: 0; min-width: 0; font-size: 13px; }
-.actual-dialog .actual-upload label { display: inline-flex; }
 .actual-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0 12px; }
-.actual-progress { width: 100%; height: 4px; border: 0; accent-color: var(--accent); }
 .actual-dialog .dialog-actions { grid-template-columns: 1fr 1fr; }
 .actual-dialog [data-error] { color: var(--danger); }
 html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden; }

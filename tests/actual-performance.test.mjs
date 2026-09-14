@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import '../performance.js';
-import '../actual-import.js';
 import { readFileSync } from 'node:fs';
 const p = globalThis.TLPerformance;
 test('settlement uses natural publication month delayed three months', () => {
@@ -23,36 +22,21 @@ test('only subsequent outcomes with stored predictions evaluate calibration', ()
   const records=[{total:100,snapshot:{kind:'historical',formula:500,calibrated:100}},{total:150,snapshot:{kind:'forecast',formula:100,calibrated:140}}];
   assert.deepEqual(p.evaluate(records),{n:1,formulaMae:50,calibratedMae:10});
 });
-test('OCR months survive clipped days and explicit settlement month wins', () => {
-  const o=globalThis.TLActualImport;
-  assert.equal(o.parseBatch(['品牌 标准-原创 026-05-0 1000\n2000','个人提成\n0.1\n2 _ 200']).month,'2026-08');
-  assert.equal(o.parseBatch(['结算月份 2026年8月\n发布日期 2026-04-30','个人提成\n0.1\n200']).month,'2026-08');
-  assert.equal(o.parseBatch(['2026-04-30\n2026-05-01']).month,'');
-  assert.equal(o.parseBatch(['个人提成\n0.1\n200']).month,'');
-});
-test('personal total is authoritative and revenue fallback uses account rate without splitting twice', () => {
-  const o=globalThis.TLActualImport;
-  const text='视频 笔记 示例广告 标准-原创 2026-04-30 1000\n7 2000';
-  const config=[{id:'x',name:'X',rates:{},revenueShare:.5,commissionRate:.2}];
-  assert.equal(o.parseBatch([text,'0.1\n200'],[],config).total,200);
-  assert.equal(o.parseBatch([text],[],config).total,400);
-  assert.equal(o.parseBatch([text],[],[...config,{id:'y',name:'Y',rates:{},commissionRate:.3}]).total,null);
-});
 test('calibration takes at most six prior valid months',()=>{
   const records=Array.from({length:8},(_,i)=>({month:`2026-${String(i+1).padStart(2,'0')}`,total:100,snapshot:{formula:200}}));
   const result=p.calibration(records,'2026-09');
   assert.equal(result.n,6);assert.ok(Math.abs(result.factor-2/3)<1e-12);
 });
-test('new browser modules ship in all deployment bundles; OCR stays lazy',()=>{
+test('manual settlement modules ship without screenshot recognition',()=>{
   for(const path of ['index.html','sw.js','scripts/build-edgeone.mjs','scripts/build-netlify.mjs','scripts/prepare-static.mjs']) {
     const text=readFileSync(new URL('../'+path,import.meta.url),'utf8');
-    for(const file of ['actual-import.js','actual-performance.js','performance-charts.js'])assert.ok(text.includes(file));
+    for(const file of ['actual-performance.js','performance-charts.js'])assert.ok(text.includes(file));
   }
   const shell=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
   assert.ok(!shell.includes('traineddata'));
-  const ocr=readFileSync(new URL('../actual-import.js',import.meta.url),'utf8');
-  assert.ok(ocr.includes('workerBlobURL: false'));
-  assert.ok(!ocr.includes('https://'));
+  const ui=readFileSync(new URL('../actual-performance.js',import.meta.url),'utf8');
+  assert.doesNotMatch(ui,/actualFiles|recognize|type="file"/);
+  assert.match(ui,/个人总提成/);
 });
 test('settlement writes enforce ownership, immutable snapshot and optimistic versions',()=>{
   const sql=readFileSync(new URL('../supabase/migrations/20260913090000_actual_performance.sql',import.meta.url),'utf8');
