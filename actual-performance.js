@@ -1,0 +1,178 @@
+(function (root) {
+  "use strict";
+  const P = root.TLPerformance;
+  const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const money = value => Number(value).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+  const present = record => record && record.total !== null && Number.isFinite(Number(record.total));
+  const adCommission = ad => Number.isFinite(ad.commissionRate) ? ad.revenue * ad.commissionRate : 0;
+  let state = { userId: null, epoch: -1, records: [], loaded: false, loading: false, error: "" };
+  let context, panel, activeDialog;
+  function reset() {
+    root.TLPerformanceCharts?.destroy();
+    activeDialog?.close();
+    state = { userId: null, epoch: -1, records: [], loaded: false, loading: false, error: "" };
+  }
+  const current = ctx => ctx.isCurrent(ctx.userId, ctx.epoch);
+  function normalize(record) { return { ...record, total: record.total === null ? null : Number(record.total), ads: Array.isArray(record.ads) ? record.ads : [] }; }
+  async function load() {
+    if (!context.userId || state.loading) return;
+    const ctx = context;
+    state.loading = true; state.error = ""; draw();
+    try {
+      const result = await ctx.client.from("timeline_actual_performance").select("month,total,ads,snapshot,version,updated_at").eq("user_id", ctx.userId).order("month").abortSignal(ctx.signal);
+      if (result.error) throw result.error;
+      if (!current(ctx)) return;
+      state.records = (result.data || []).map(normalize); state.loaded = true;
+    } catch (error) {
+      if (!current(ctx)) return;
+      state.error = "结算记录读取失败，请重试。";
+    } finally { if (current(ctx)) { state.loading = false; draw(); } }
+  }
+  function makeSnapshot(ctx, kind) {
+    const result = P.snapshot(ctx.projects, ctx.month, ctx.today, ctx.profiles);
+    const model = P.calibration(state.records, ctx.month);
+    return { ...result, kind, calibrated: model.ready ? result.formula * model.factor : null, calibrationMonths: model.n, factor: model.factor };
+  }
+  async function persist(ctx, record, expectedVersion) {
+    if (!current(ctx)) throw new Error("登录状态已变化，请重新打开录入界面。");
+    const result = await ctx.client.rpc("save_actual_performance", {
+      p_month: record.month, p_total: record.total, p_ads: record.ads,
+      p_snapshot: record.snapshot, p_expected_version: expectedVersion
+    }).abortSignal(ctx.signal);
+    if (result.error) {
+      if (result.error.code === "40001") throw new Error("此月记录已被其他设备修改。请取消并刷新记录后重新录入。");
+      throw new Error("保存失败，请检查网络后重试；录入内容仍保留。");
+    }
+    if (!current(ctx)) throw new Error("登录状态已变化。");
+    const saved = normalize(Array.isArray(result.data) ? result.data[0] : result.data);
+    state.records = state.records.filter(r => r.month !== saved.month).concat(saved);
+    return saved;
+  }
+  async function captureForecast() {
+    const ctx = context;
+    if (!state.loaded || state.error || !ctx.ready || state.capturing || ctx.month !== ctx.today.slice(0, 7) || state.records.some(r => r.month === ctx.month)) return;
+    const snapshot = makeSnapshot(ctx, "forecast");
+    if (!snapshot.formula) return;
+    state.capturing = true;
+    try { await persist(ctx, { month: ctx.month, total: null, ads: [], snapshot }, 0); }
+    catch { /* Actual entry remains available even when background forecast capture fails. */ }
+    finally { if (current(ctx)) { state.capturing = false; draw(); } }
+  }
+  function draw() {
+    if (!panel || !context || !current(context)) return;
+    const record = state.records.find(r => r.month === context.month);
+    const model = P.calibration(state.records, context.month);
+    const snapshot = record?.snapshot || makeSnapshot(context, "historical");
+    const formula = snapshot.formula;
+    const calibrated = record ? snapshot.calibrated : model.ready ? formula * model.factor : null;
+    const evaluation = P.evaluate(state.records);
+    panel.innerHTML = `<div class="actual-heading"><div><p class="eyebrow">TL / SETTLEMENT</p><h3>真实结算与预测</h3></div><div class="actual-actions"><button type="button" class="icon-button mini-button" data-refresh title="刷新结算记录" aria-label="刷新结算记录"><i data-lucide="refresh-cw"></i></button><button type="button" class="secondary-button actual-entry" data-entry ${state.loading || !state.loaded ? "disabled" : ""}><i data-lucide="plus"></i>录入实际</button></div></div>
+      <div class="actual-comparison"><div><span>公式估算</span><strong>¥${money(formula)}</strong><small>${record ? snapshot.kind === "forecast" ? "已保存预测快照" : "历史回算" : "当前报价回算"}</small></div><div><span>历史校准估算</span><strong>${Number.isFinite(calibrated) ? `¥${money(calibrated)}` : "—"}</strong><small>${Number.isFinite(calibrated) ? `${snapshot.calibrationMonths ?? model.n} 个月样本 · 校准试算` : "满 3 个有效月份后试算"}</small></div><div><span>实际总提成</span><strong>${present(record) ? `¥${money(record.total)}` : "—"}</strong><small>${present(record) ? `较公式 ${record.total >= formula ? "+" : ""}¥${money(record.total - formula)}` : "待结算"}</small></div></div>
+      <p class="actual-status" role="status">${state.loading ? "正在读取结算记录…" : esc(state.error)}</p>
+      <div class="actual-analysis"><span>最近 ${model.n} 个有效月份</span>${model.mae === null ? "" : `<span>平均金额误差 ¥${money(model.mae)}</span><span>${model.bias > 0 ? "长期高估" : model.bias < 0 ? "长期低估" : "无整体偏差"} ${model.bias ? `¥${money(Math.abs(model.bias))}` : ""}</span>`}</div>
+      <div class="performance-charts"></div>
+      <p class="performance-footnote">${evaluation.n ? `${evaluation.n} 个后续结算检验：公式平均误差 ¥${money(evaluation.formulaMae)}，校准平均误差 ¥${money(evaluation.calibratedMae)}。` : "校准效果待后续真实结算检验，历史回算不作为预测成功样本。"}</p>
+      ${present(record) ? `<details class="actual-details" open><summary>实际广告明细 · ${record.ads.length} 条</summary><div class="performance-table-wrap"><table class="performance-table"><thead><tr><th>广告 / 平台</th><th>实际收益</th><th>对应提成</th><th>较估算</th></tr></thead><tbody>${record.ads.map(ad => {
+        const matched = (snapshot.rows || []).filter(r => r.projectId === ad.projectId);
+        const estimate = matched.reduce((s,r) => s+r.estimated,0);
+        return `<tr><td><strong>${esc(ad.name || matched[0]?.name || "未命名广告")}</strong><span>${matched.length ? [...new Set(matched.map(r => r.platform === "douyin" ? "抖音" : "小红书"))].join(" + ") : "未匹配估算"}</span></td><td>¥${money(ad.revenue)}</td><td>${Number.isFinite(ad.commissionRate) ? `¥${money(adCommission(ad))} · ${money(ad.commissionRate*100)}%` : "比例待匹配"}</td><td>${matched.length && Number.isFinite(ad.commissionRate) ? `¥${money(adCommission(ad)-estimate)}` : "—"}</td></tr>`;
+      }).join("")}</tbody></table></div><p class="performance-footnote">已匹配比例的明细提成合计 ¥${money(record.ads.reduce((s,a)=>s+adCommission(a),0))} · 与确认总提成差额 ¥${money(record.total-record.ads.reduce((s,a)=>s+adCommission(a),0))}。实际总提成以确认值为准。</p></details>` : ""}`;
+    root.TLPerformanceCharts.render(panel.querySelector('.performance-charts'),state.records,snapshot,month=>context.onChange(month));
+    panel.querySelector("[data-refresh]").onclick = () => load();
+    panel.querySelector("[data-entry]").onclick = () => open();
+    root.lucide?.createIcons();
+  }
+  function mount(element, ctx) {
+    if (state.userId !== ctx.userId || state.epoch !== ctx.epoch) { reset(); state.userId = ctx.userId; state.epoch = ctx.epoch; }
+    context = ctx; panel = element;
+    if (!ctx.userId) { panel.replaceChildren(); return; }
+    draw();
+    if (!state.loaded && !state.loading && !state.error) load().then(captureForecast);
+    else captureForecast();
+  }
+  function open() {
+    if (!state.loaded || !current(context) || state.capturing) return;
+    const ctx = { ...context }, controller = new AbortController();
+    const dialog = document.createElement("dialog"); dialog.className = "project-dialog actual-dialog";
+    const close = () => { controller.abort(); dialog.close(); dialog.remove(); if (activeDialog?.element === dialog) activeDialog = null; };
+    activeDialog = { element: dialog, close };
+    const onAccountAbort = () => close(); ctx.signal.addEventListener("abort", onAccountAbort, { once: true });
+    dialog.addEventListener("close", () => { controller.abort(); ctx.signal.removeEventListener("abort", onAccountAbort); });
+    dialog.innerHTML = `<form><header class="dialog-header"><div><p class="eyebrow">TL / SETTLEMENT</p><h2>录入实际</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><i data-lucide="x"></i></button></header><div class="project-form-body">
+      <div class="actual-upload"><label class="secondary-button" for="actualFiles"><i data-lucide="image-plus"></i>选择截图</label><input id="actualFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden><button type="button" class="secondary-button" data-recognize disabled><i data-lucide="scan-text"></i>识别截图</button></div>
+      <p data-files class="performance-footnote">尚未选择截图</p><progress class="actual-progress" max="1" value="0" hidden></progress><p data-ocr-status role="status"></p>
+      <div class="actual-fields"><label>结算月份<input name="month" type="month" required value="${ctx.month}"></label><label>个人总提成<input name="total" type="number" min="0" max="1000000000" step="any" required inputmode="decimal"></label></div>
+      <p data-notice role="status"></p><div class="actual-heading"><h3>广告明细</h3><button type="button" class="icon-button mini-button" data-add title="添加广告" aria-label="添加广告"><i data-lucide="plus"></i></button></div><div class="actual-ad-rows"></div><p data-balance class="performance-footnote"></p>
+      <p data-error role="alert"></p></div><footer class="dialog-actions"><button type="button" class="secondary-button" data-close>取消</button><button type="submit" class="primary-button"><i data-lucide="check"></i>确认保存</button></footer></form>`;
+    document.body.append(dialog);
+    const form = dialog.querySelector("form"), rows = dialog.querySelector(".actual-ad-rows"), notice = dialog.querySelector("[data-notice]"), error = dialog.querySelector("[data-error]");
+    let targetRecord, dirty = false, recognizing = false;
+    const balance = () => {
+      const total = Number(form.elements.total.value), sum = [...rows.children].reduce((s,r)=>s+Number(r.querySelector('[data-revenue]').value || 0)*Number(r.dataset.rate || 0),0);
+      dialog.querySelector("[data-balance]").textContent = rows.children.length ? `明细对应提成 ¥${money(sum)}${form.elements.total.value !== "" && Math.abs(total-sum) > .02 ? `，与总提成相差 ¥${money(total-sum)}，保存仍以确认总额为准。` : ""}` : "";
+    };
+    const add = (ad = {}) => {
+      const row = document.createElement("div"); row.className = "actual-ad-row";
+      row.innerHTML = `<label>广告名称<input data-name maxlength="200" placeholder="广告名称" value="${esc(ad.name)}"></label><label>对应项目<select data-project><option value="">未匹配 · 保留金额</option>${ctx.projects.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}</select></label><label>实际收益<input data-revenue type="number" min="0" max="1000000000" step="any" inputmode="decimal" required value="${ad.revenue ?? ""}"></label><button type="button" class="icon-button mini-button" title="移除明细" aria-label="移除明细"><i data-lucide="trash-2"></i></button>`;
+      row.querySelector("select").value = ad.projectId || "";
+      const rateForProject = id => {
+        const project=ctx.projects.find(p=>p.id===id);
+        const profiles=targetRecord?.snapshot?.profiles || ctx.profiles;
+        return project ? P.profiles(profiles).find(p=>p.id===P.account(project,profiles))?.commissionRate ?? null : null;
+      };
+      const initialRate = ad.commissionRate ?? rateForProject(ad.projectId);
+      row.dataset.rate = initialRate ?? "";
+      row.querySelector("select").onchange = e => { if (!row.querySelector("[data-name]").value) row.querySelector("[data-name]").value = ctx.projects.find(p=>p.id===e.target.value)?.name || ""; row.dataset.rate=rateForProject(e.target.value) ?? ""; balance(); };
+      row.querySelector("button").onclick = () => { row.remove(); dirty = true; balance(); };
+      rows.append(row); root.lucide?.createIcons(); balance();
+    };
+    const selectMonth = (initial = false) => {
+      targetRecord = state.records.find(r=>r.month===form.elements.month.value);
+      notice.textContent = present(targetRecord) ? "该月已有实际记录，确认后更新；估算快照保持不变。" : targetRecord ? "该月已有预测快照，结算后保留原预测用于对照。" : "该月没有预测快照，将标记为历史回算。";
+      if (initial || !dirty) { rows.replaceChildren(); form.elements.total.value = present(targetRecord) ? targetRecord.total : ""; (targetRecord?.ads || []).forEach(add); }
+      balance();
+    };
+    form.elements.month.onchange = () => selectMonth();
+    form.addEventListener("input", event => { if (event.target !== form.elements.month) dirty = true; balance(); });
+    dialog.querySelectorAll("[data-close]").forEach(b=>b.onclick=close);
+    dialog.addEventListener("cancel", e=>{e.preventDefault();close();});
+    dialog.querySelector("[data-add]").onclick=()=>{dirty=true;add();};
+    const files = dialog.querySelector("#actualFiles"), recognizeButton = dialog.querySelector("[data-recognize]");
+    files.onchange = () => { dialog.querySelector("[data-files]").textContent = `已选择 ${files.files.length} 张截图`; recognizeButton.disabled = !files.files.length || recognizing; };
+    recognizeButton.onclick = async () => {
+      recognizing = true; recognizeButton.disabled = true; files.disabled = true;
+      const progress = dialog.querySelector("progress"), status = dialog.querySelector("[data-ocr-status]"); progress.hidden = false; error.textContent = "";
+      try {
+        const texts = await root.TLActualImport.recognize([...files.files], p => { if (!dialog.isConnected) return; progress.value=(p.index+p.progress)/p.count; status.textContent=`本地识别 ${p.index+1}/${p.count}`; }, controller.signal);
+        if (!current(ctx) || controller.signal.aborted) return;
+        const imported = root.TLActualImport.parseBatch(texts, ctx.projects, ctx.profiles);
+        if (imported.month) form.elements.month.value=imported.month; else form.elements.month.value="";
+        targetRecord=state.records.find(r=>r.month===form.elements.month.value);
+        if (imported.total !== null) form.elements.total.value=imported.total; else form.elements.total.value="";
+        const merged = new Map((targetRecord?.ads || []).map(a=>[a.projectId || a.name,a]));
+        for (const ad of imported.ads) {
+          const key=ad.projectId || ad.name, previous=merged.get(key);
+          merged.set(key,previous ? {...ad,commissionRate:previous.commissionRate ?? ad.commissionRate} : ad);
+        }
+        rows.replaceChildren(); [...merged.values()].forEach(add);
+        notice.textContent=imported.notice+(present(targetRecord)?" 此月已有记录，将合并明细并更新。":"");
+        status.textContent=`识别完成 · ${imported.ads.length} 条广告待核对`; progress.value=1; dirty=true; balance();
+      } catch (e) { if (!controller.signal.aborted) { error.textContent=e.message || "识别失败，可以继续手动填写。"; status.textContent="可直接手动录入"; } }
+      finally { recognizing=false; recognizeButton.disabled=false; files.disabled=false; }
+    };
+    form.onsubmit = async event => {
+      event.preventDefault(); if (recognizing) { error.textContent="请等待识别完成后确认。"; return; }
+      const total=Number(form.elements.total.value), month=form.elements.month.value;
+      const ads=[...rows.children].map(row=>({name:row.querySelector('[data-name]').value.trim(),projectId:row.querySelector('[data-project]').value,revenue:Number(row.querySelector('[data-revenue]').value),commissionRate:row.dataset.rate==="" ? null : Number(row.dataset.rate)}));
+      if (!Number.isFinite(total) || total<0 || total>1e9 || ads.length>500 || ads.some(a=>!Number.isFinite(a.revenue)||a.revenue<0||a.revenue>1e9)) { error.textContent="请检查金额与广告明细。"; return; }
+      const submit=form.querySelector('[type="submit"]'); submit.disabled=true; error.textContent="";
+      try {
+        const snapshot=targetRecord?.snapshot || makeSnapshot({...ctx,month},"historical");
+        await persist(ctx,{month,total,ads,snapshot},targetRecord?.version || 0);
+        close(); context.onChange(month);
+      } catch(e) { if (dialog.isConnected) { error.textContent=e.message; submit.disabled=false; } }
+    };
+    selectMonth(true); dialog.showModal(); root.lucide?.createIcons();
+  }
+  root.TLActualUI = { mount, reset };
+})(globalThis);

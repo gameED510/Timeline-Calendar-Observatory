@@ -4877,3 +4877,62 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .pricing-dialog .dialog-actions { grid-template-columns: 1fr; }
 .pricing-rates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .pricing-add { margin-top: 16px; }
+/* Actual settlement keeps the same compact dialog geometry as project editing. */
+.actual-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.actual-heading h3 { margin: 4px 0; font-size: 18px; }
+.actual-actions,.actual-upload { display: flex; align-items: center; gap: 8px; }
+#actualPerformance { padding: 24px 0; border-top: 1px solid var(--line); min-width: 0; }
+.actual-entry,.actual-dialog .secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-soft); color: var(--ink); padding: 8px 12px; font: inherit; cursor: pointer; }
+.actual-entry { white-space: nowrap; font-size: 13px; }
+.actual-entry svg,.actual-upload svg { width: 17px; height: 17px; }
+.actual-comparison { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin: 24px 0; gap: 20px; }
+.actual-comparison > div { display: grid; gap: 8px; min-width: 0; }
+.actual-comparison span,.actual-comparison small { color: var(--muted); font-size: 12px; }
+.actual-comparison strong { font-size: 28px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.actual-comparison > div:last-child strong { color: var(--accent); }
+.actual-analysis,.actual-legend { display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 12px; color: var(--muted); }
+.actual-status:empty { display: none; }
+.actual-trend { overflow-x: auto; margin: 20px 0 12px; }
+.actual-trend-columns { display: flex; gap: 16px; min-width: max-content; border-bottom: 1px solid var(--line); }
+.actual-trend-month { flex: 1 0 48px; text-align: center; font-size: 12px; color: var(--muted); }
+.actual-trend-bars { height: 120px; display: flex; align-items: flex-end; justify-content: center; gap: 4px; margin-bottom: 8px; }
+.actual-trend-bars span { display: block; width: 12px; border-radius: 3px 3px 0 0; }
+.trend-formula { background: #3785c5; }.trend-calibrated { background: #b58b24; }.trend-actual { background: #299481; }
+.actual-legend span { display: flex; align-items: center; gap: 6px; background: none; }
+.actual-legend span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: #3785c5; }
+.actual-legend .trend-calibrated::before { background: #b58b24; }.actual-legend .trend-actual::before { background: #299481; }
+.actual-details { margin-top: 20px; }.actual-details summary { cursor: pointer; padding: 12px 0; }
+.performance-charts { min-width: 0; padding-top: 20px; }
+.actual-chart-heading { display: grid; grid-template-columns: minmax(0,1fr) 112px; gap: 12px; align-items: center; }
+.actual-chart-heading select { border: 1px solid var(--line); background: var(--field-bg); color: var(--ink); width: 112px; min-width: 0; padding: 8px; border-radius: 6px; font: inherit; font-size: 12px; }
+.actual-chart-tabs { display: flex; width: fit-content; max-width: 100%; padding: 3px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px; }
+.actual-chart-tabs button { font: inherit; font-size: 12px; padding: 8px 10px; white-space: nowrap; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
+.actual-chart-tabs button.active { color: var(--bg-soft); background: var(--ink); }
+.actual-chart-canvas { position: relative; height: 250px; width: 100%; margin-top: 20px; }
+.actual-chart-months { display: flex; gap: 12px; flex-wrap: wrap; }
+.actual-chart-months button { background: none; border: 0; border-bottom: 1px solid var(--line); color: var(--muted); padding: 6px 0; font-size: 11px; cursor: pointer; }
+.chart-status { color: var(--muted); font-size: 12px; }.chart-status:empty { display: none; }
+.actual-platform-mix { margin: 20px 0; border-top: 1px solid var(--line); padding-top: 16px; }
+.actual-platform-mix h4 { font-size: 13px; margin: 0 0 12px; }
+.platform-mix-row { display: grid; grid-template-columns: 50px minmax(0,1fr) 100px; align-items: center; gap: 12px; margin: 10px 0; font-size: 12px; }
+.platform-mix-row strong { text-align: right; font-variant-numeric: tabular-nums; }
+.platform-mix-track { height: 7px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.platform-mix-track span { display: block; height: 100%; }.mix-douyin { background: #299481; }.mix-xiaohongshu { background: #ce597b; }
+.actual-ad-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) 110px 40px; align-items: end; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.actual-dialog { max-width: 760px; font-family: var(--font); }
+.actual-dialog input,.actual-dialog select { min-width: 0; width: 100%; box-sizing: border-box; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--field-bg); color: var(--ink); padding: 8px 10px; font: inherit; }
+.actual-dialog input[hidden] { display: none; }
+.actual-dialog label { display: grid; gap: 8px; margin: 0; min-width: 0; font-size: 13px; }
+.actual-dialog .actual-upload label { display: inline-flex; }
+.actual-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0 12px; }
+.actual-progress { width: 100%; height: 4px; border: 0; accent-color: var(--accent); }
+.actual-dialog .dialog-actions { grid-template-columns: 1fr 1fr; }
+.actual-dialog [data-error] { color: var(--danger); }
+html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden; }
+@media(max-width: 600px) {
+  .actual-ad-row { grid-template-columns: minmax(0,1fr) 40px; }
+  .actual-ad-row label { grid-column: 1; }.actual-ad-row button { grid-column: 2; grid-row: 1 / 4; align-self: center; }
+  .actual-comparison { gap: 12px; }.actual-comparison strong { font-size: 19px; }.actual-comparison small { font-size: 11px; }
+  .actual-heading h3 { font-size: 16px; }.actual-actions { gap: 4px; }
+  .actual-fields { grid-template-columns: minmax(0,1fr); }
+}

@@ -251,7 +251,11 @@ function loadLocalState(accountId = activeAccountId) {
 function changeCloudAccount(user) {
   const nextId = user?.id || null;
   syncState.user = user;
-  if (nextId !== activeAccountId) document.querySelectorAll(".pricing-dialog").forEach((dialog) => dialog.close());
+  if (nextId !== activeAccountId) {
+    TLActualUI.reset();
+    document.querySelectorAll(".pricing-dialog, .actual-dialog").forEach((dialog) => { dialog.close(); dialog.remove(); });
+    document.querySelector("#actualPerformance")?.remove();
+  }
   if (nextId === activeAccountId) return;
   if (activeAccountId && accountHydrated) createLocalRecoveryPoint("切换账号前");
   accountEpoch += 1;
@@ -666,6 +670,13 @@ function openPricingSettings() {
     row.className = "pricing-account";
     row.dataset.id = profile.id;
     row.innerHTML = `<label>账号名称<input name="accountName" required maxlength="100" value="${escapeHtml(profile.name)}"></label><label>识别关键词<input name="keywords" maxlength="500" value="${escapeHtml(profile.keywords)}" placeholder="多个关键词用逗号分隔"></label><div class="pricing-rates">${TLPerformance.platforms.map((key) => `<label>${key === "douyin" ? "抖音" : "小红书"}报价（元）<input name="${key}" type="number" min="0" max="100000000" step="0.01" placeholder="未设置" value="${profile.rates[key] ?? ""}"></label>`).join("")}</div><button type="button" class="secondary-button">删除账号</button>`;
+    const formula = document.createElement("div");
+    formula.className = "pricing-rates";
+    formula.innerHTML = `<label>收益分成比例（%）<input name="revenueShare" type="number" required min="0" max="100" step="0.01" value="${(profile.revenueShare ?? 0.5) * 100}"></label><label>个人提成比例（%）<input name="commissionRate" type="number" required min="0" max="100" step="0.01" value="${(profile.commissionRate ?? 0.1) * 100}"></label>`;
+    row.querySelector("button").before(formula);
+    const preview = document.createElement("p"); preview.className = "performance-footnote";
+    const updatePreview = () => { preview.textContent = `预估提成 = 平台报价 × ${formula.querySelector('[name="revenueShare"]').value}% × ${formula.querySelector('[name="commissionRate"]').value}%；实际收益只乘个人提成比例。`; };
+    formula.addEventListener("input", updatePreview); updatePreview(); formula.after(preview);
     row.querySelector("button").onclick = () => row.remove();
     list.append(row);
   }
@@ -680,6 +691,10 @@ function openPricingSettings() {
     const button = dialog.querySelector('[type="submit"]');
     const status = dialog.querySelector(".pricing-status");
     const values = [...list.children].map((row) => ({ id: row.dataset.id, name: row.querySelector('[name="accountName"]').value.trim(), keywords: row.querySelector('[name="keywords"]').value.trim(), rates: Object.fromEntries(TLPerformance.platforms.map((key) => [key, row.querySelector(`[name="${key}"]`).value])) }));
+    values.forEach((value,index) => {
+      value.revenueShare = Number(list.children[index].querySelector('[name="revenueShare"]').value) / 100;
+      value.commissionRate = Number(list.children[index].querySelector('[name="commissionRate"]').value) / 100;
+    });
     if (values.some((item) => !item.name)) { status.textContent = "请填写账号名称"; return; }
     button.disabled = true;
     status.textContent = "正在保存";
@@ -699,10 +714,11 @@ function openPricingSettings() {
 
 function renderPerformance() {
   const period = TLPerformance.cycle(performanceMonth);
-  const earnedPeriod = TLPerformance.cycle(performanceMonth, -3);
+  const earnedPeriod = TLPerformance.naturalMonth(performanceMonth, -3);
   const today = dateToIso(new Date());
   const current = TLPerformance.summarize(projects, period, today, pricingProfiles());
   const earned = TLPerformance.summarize(projects, earnedPeriod, today, pricingProfiles());
+  renderActualPerformance();
   document.querySelector("#pricingSettings").onclick = openPricingSettings;
   const money = (amount) => amount.toLocaleString("zh-CN", { maximumFractionDigits: 2 });
   const range = (value) => `${value.start.replaceAll("-", ".")} — ${value.last.replaceAll("-", ".")}`;
@@ -714,11 +730,7 @@ function renderPerformance() {
       <div class="performance-metric douyin"><span><b class="platform-dot"></b>抖音</span><strong>${current.counts.douyin}<small> 条</small></strong><em>全部账号的发布记录</em></div>
       <div class="performance-metric xiaohongshu"><span><b class="platform-dot"></b>小红书</span><strong>${current.counts.xiaohongshu}<small> 条</small></strong><em>全部账号的发布记录</em></div>
     </div>
-    <section class="performance-commission" aria-label="当月预估提成">
-      <div><p class="eyebrow">${performanceMonth.replace("-", " 年 ")} 月 · 预估到账</p><strong class="commission-amount"><span>¥</span>${money(earned.commission)}</strong><p>对应发布周期 ${range(earnedPeriod)}</p></div>
-      <div class="commission-breakdown"><p>按账号平台报价估算</p>${TLPerformance.platforms.map((key) => `<div><span>${key === "douyin" ? "抖音" : "小红书"} · ${earned.commissionCounts[key]} 条</span><strong>¥${money(earned.rows.filter((row) => row.platform === key).reduce((sum, row) => sum + row.estimated, 0))}</strong></div>`).join("")}<p>平台报价 × 条数 ÷ 2 × 10%</p></div>
-    </section>
-    <p class="performance-footnote">仅计入已完成发布且发布日期不晚于今天的视频。本月 15 日计入本月，16 日起计入下月；金额为估算，以公司结算为准。${earned.missing.length ? `提成周期有 ${earned.missing.length} 个项目待补平台，尚未计入金额。` : ""}</p>`;
+    <p class="performance-footnote">发布统计截至本月 15 日，16 日起计入下月。${performanceMonth} 提成对应自然发布月 ${range(earnedPeriod)}，仅计已完成发布；公式按各账号的收益分成与个人提成比例计算。${earned.missing.length ? `有 ${earned.missing.length} 个项目待补平台。` : ""}</p>`;
   const data = performanceDetail === "commission" ? earned : current;
   const detailPeriod = performanceDetail === "commission" ? earnedPeriod : period;
   document.querySelectorAll("[data-performance-detail]").forEach((button) => {
@@ -759,6 +771,22 @@ function renderPerformance() {
     });
     details.append(missing);
   }
+}
+
+function renderActualPerformance() {
+  let panel = document.querySelector("#actualPerformance");
+  if (!panel) {
+    panel = document.createElement("section");
+    panel.id = "actualPerformance";
+    document.querySelector("#performanceSummary").after(panel);
+  }
+  TLActualUI.mount(panel, {
+    userId: syncState.user?.id, client: syncState.client, epoch: accountEpoch,
+    ready: accountHydrated && !syncState.loadingRemote,
+    month: performanceMonth, projects, profiles: pricingProfiles(), today: dateToIso(new Date()),
+    signal: accountAbort.signal, isCurrent: (id, epoch) => syncState.user?.id === id && accountEpoch === epoch,
+    onChange: (month) => { if (month) performanceMonth = month; renderPerformance(); }
+  });
 }
 
 function renderProjectList() {

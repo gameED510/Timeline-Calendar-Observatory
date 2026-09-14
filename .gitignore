@@ -8,6 +8,8 @@ node_modules/
 vendor/lucide.min.js
 vendor/supabase-client.js
 vendor/motion.js
+vendor/ocr/
+vendor/charts.js
 .edgeone/
 .edgeone-dist/
 .netlify/

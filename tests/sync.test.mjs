@@ -8,7 +8,7 @@ function app() {
   const storage = new Map();
   const delays = [];
   const context = vm.createContext({
-    console, URL, Date, AbortController, navigator: { onLine: true },
+    console, URL, Date, AbortController, TLActualUI: { reset() {} }, navigator: { onLine: true },
     localStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
     document: { querySelector: () => null, querySelectorAll: () => [], documentElement: { dataset: {} } },
     window: { matchMedia: () => ({ matches: false }), clearInterval() {}, clearTimeout() {}, setTimeout(fn, delay) { delays.push(delay); return delays.length; } }
