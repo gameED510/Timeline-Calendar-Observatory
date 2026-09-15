@@ -10,7 +10,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="site.webmanifest" />
     <script src="theme.js?v=1"></script>
-    <link rel="stylesheet" href="styles.css?v=28" />
+    <link rel="stylesheet" href="styles.css?v=29" />
   </head>
   <body>
     <div class="app-shell mobile-page-plan account-locked account-loading" id="appShell">
@@ -20,9 +20,9 @@
             <p class="eyebrow">Timeline Planner</p>
             <h1 class="tl-wordmark"><span class="tl-monogram">TL<span class="tl-dot">.</span></span><span class="tl-wordmark-name">日历观察台</span></h1>
           </div>
-          <button class="icon-button" id="resetButton" type="button" title="重新读取云端排期" aria-label="重新读取云端排期">
-            <i data-lucide="rotate-ccw"></i>
-          </button>
+          <div class="sidebar-controls">
+            <button class="icon-button sidebar-toggle" id="sidebarToggle" type="button" title="收起项目概览" aria-label="收起项目概览" aria-expanded="true"><i data-lucide="panel-left"></i></button>
+          </div>
         </div>
 
         <div class="metric-grid" aria-label="当前排期数据">
@@ -55,7 +55,6 @@
           </div>
 
           <div class="toolbar" aria-label="工具栏">
-            <button class="icon-button sidebar-toggle" id="sidebarToggle" type="button" title="收起项目概览" aria-label="收起项目概览" aria-expanded="true"><i data-lucide="panel-left"></i></button>
             <div class="segmented" role="tablist" aria-label="视图切换">
               <button class="segmented-button active" type="button" data-view="calendar" role="tab" aria-selected="true">
                 <i data-lucide="calendar-days"></i>
@@ -475,7 +474,7 @@
     <script src="performance.js?v=6"></script>
     <script src="performance-charts.js?v=2"></script>
     <script src="actual-performance.js?v=3"></script>
-    <script src="app.js?v=25"></script>
+    <script src="app.js?v=26"></script>
     <script src="vendor/lucide.min.js?v=9" defer></script>
   </body>
 </html>

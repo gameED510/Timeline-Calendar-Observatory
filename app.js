@@ -157,7 +157,6 @@ const elements = {
   dataMenu: document.querySelector("#dataMenu"),
   dataMenuButton: document.querySelector("#dataMenuButton"),
   dataPopover: document.querySelector("#dataPopover"),
-  resetButton: document.querySelector("#resetButton"),
   syncStatus: document.querySelector("#syncStatus"),
   syncNote: document.querySelector("#syncNote"),
   syncLoginForm: document.querySelector("#syncLoginForm"),
@@ -3575,7 +3574,6 @@ function wireEvents() {
     elements.importFile.click();
   });
   elements.importFile.addEventListener("change", (event) => importProjects(event.target.files[0]));
-  elements.resetButton.addEventListener("click", resetToDefaults);
   elements.avatarButton.addEventListener("click", () => {
     setDataMenuOpen(false);
     toggleAccountPopover();

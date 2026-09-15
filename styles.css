@@ -4967,10 +4967,20 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .project-card h3, .dialog-header h2 { overflow-wrap: anywhere; }
 .view.active { animation: none; }
 @media (min-width: 1100px) {
-  .app-shell.sidebar-collapsed { grid-template-columns: minmax(0,1fr); grid-template-areas: "workspace"; }
-  .sidebar-collapsed > .side-panel { display: none; }
+  .side-panel .app-title { display: grid; grid-template-columns: minmax(0,1fr) 44px; align-items: center; column-gap: 8px; }
+  .side-panel .app-title > div:first-child { display: contents; }
+  .side-panel .app-title .eyebrow { grid-column: 1 / -1; grid-row: 1; }
+  .side-panel .app-title .tl-wordmark { grid-column: 1; grid-row: 2; }
+  .sidebar-controls { display: flex; grid-column: 2; grid-row: 2; }
+  .app-shell.sidebar-collapsed { grid-template-columns: 64px minmax(0,1fr); }
+  .sidebar-collapsed > .side-panel { padding: 16px 10px; min-width: 0; }
+  .sidebar-collapsed > .side-panel > :not(.app-title),
+  .sidebar-collapsed .side-panel .app-title > div:first-child { display: none; }
+  .sidebar-collapsed .app-title { grid-template-columns: 44px; justify-content: center; }
+  .sidebar-collapsed .sidebar-controls { grid-column: 1; grid-row: 1; justify-content: center; }
+  .sidebar-controls .sidebar-toggle { width: 44px; height: 44px; flex: 0 0 44px; }
 }
-@media (max-width: 1099px) { .sidebar-toggle { display: none !important; } }
+@media (max-width: 1099px) { .sidebar-controls { display: none; } }
 @media (max-width: 600px) {
   .project-dialog .dialog-actions { gap: 8px; }
   .project-dialog .dialog-actions > button { min-height: 44px; }
