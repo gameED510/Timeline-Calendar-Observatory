@@ -4926,6 +4926,63 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .actual-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0 12px; }
 .actual-dialog .dialog-actions { grid-template-columns: 1fr 1fr; }
 .actual-dialog [data-error] { color: var(--danger); }
+/* Workflow refinements preserve the existing card material. */
+.legend-item[aria-pressed="true"] { outline: 2px solid var(--project-color); outline-offset: 1px; }
+.legend-clear { color: var(--accent); background: transparent; border: 0; font: inherit; font-size: 12px; padding: 8px; }
+.smart-import-disclosure > summary { padding: 12px 0; color: var(--muted-strong); font-size: 13px; cursor: pointer; }
+.smart-import-disclosure .smart-import-panel { margin: 0 0 12px; }
+.smart-import-disclosure .eyebrow { display: none; }
+#projectDialog .dialog-actions { display: grid; grid-template-columns: 44px minmax(80px,1fr) minmax(100px,1.5fr); }
+.editor-more { position: relative; align-self: center; }
+.editor-more > summary { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; list-style: none; }
+.editor-more > summary::-webkit-details-marker { display: none; }
+.editor-more > summary svg { width: 20px; height: 20px; }
+.editor-more-menu { position: absolute; bottom: 54px; left: 0; width: 190px; display: grid; gap: 4px; padding: 6px; background: var(--surface-strong); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.editor-more-menu { background: var(--bg-soft); }
+.project-display-options { margin-top: 12px; font-size: 13px; }
+.project-display-options summary { cursor: pointer; color: var(--muted); padding: 8px 0; }
+.optional-stages-button { margin-bottom: 12px; }
+.day-date-button { display: flex; align-items: center; min-height: 32px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--ink); font: inherit; }
+.motion-ghost.over-date .motion-card-main, .inline-pile .motion-ghost.over-date .motion-card-main { opacity: 1; filter: none; padding-bottom: 34px; }
+.motion-ghost .motion-drop-date { inset: auto 6px 6px; padding: 4px 6px; border-radius: 4px; background: var(--bg-soft); color: var(--ink); font-size: 12px; }
+.editor-more-menu button { width: 100%; min-height: 44px; justify-content: flex-start; white-space: nowrap; font-size: 13px; }
+.editor-notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; margin: 12px 0; font-size: 13px; }
+.editor-notice[hidden], .editor-unsaved[hidden] { display: none; }
+.editor-unsaved { position: absolute; bottom: 0; left: 0; right: 0; z-index: 15; padding: 20px; border-top: 1px solid var(--line); background: var(--surface-strong); box-shadow: var(--shadow); }
+.editor-unsaved p { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+.editor-unsaved > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.editor-unsaved button { flex: 1; min-height: 44px; font-size: 13px; white-space: nowrap; }
+.performance-explanation { margin: 16px 0; color: var(--muted); font-size: 12px; }
+.performance-explanation summary { cursor: pointer; padding: 8px 0; }
+.actual-sample-progress { display: flex; align-items: center; gap: 12px; margin: 16px 0; color: var(--muted); font-size: 12px; }
+.actual-sample-progress progress { accent-color: var(--accent); width: 120px; height: 5px; }
+.forecast-breakdown { margin: 16px 0; font-size: 12px; }
+.forecast-breakdown summary { padding: 10px 0; cursor: pointer; color: var(--muted-strong); }
+.forecast-breakdown p { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 8px 0; margin: 0; border-bottom: 1px solid var(--line); }
+.chart-data-table { margin-top: 14px; font-size: 12px; }
+.chart-data-table summary { padding: 8px 0; color: var(--muted); cursor: pointer; }
+.motion-drop-date { font-size: 14px; }
+.inline-pile.dragging .motion-card { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.date-number, .metric-value, .actual-comparison strong, .performance-metric strong { font-variant-numeric: tabular-nums; }
+.project-card h3, .dialog-header h2 { overflow-wrap: anywhere; }
+.view.active { animation: none; }
+@media (min-width: 1100px) {
+  .app-shell.sidebar-collapsed { grid-template-columns: minmax(0,1fr); grid-template-areas: "workspace"; }
+  .sidebar-collapsed > .side-panel { display: none; }
+}
+@media (max-width: 1099px) { .sidebar-toggle { display: none !important; } }
+@media (max-width: 600px) {
+  .project-dialog .dialog-actions { gap: 8px; }
+  .project-dialog .dialog-actions > button { min-height: 44px; }
+  .project-dialog .dialog-header .eyebrow { display: none; }
+  .editor-unsaved { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .actual-comparison { gap: 10px; }
+  .actual-chart-heading { grid-template-columns: minmax(0,1fr); }
+  .actual-chart-tabs { width: 100%; }
+  .actual-chart-tabs button { flex: 1; min-height: 44px; padding: 6px; }
+}
+.toast.show:has(.toast-undo) { pointer-events: auto; }
+.toast-undo { margin-left: 12px; padding: 8px; min-height: 44px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden; }
 @media(max-width: 600px) {
   .actual-ad-row { grid-template-columns: minmax(0,1fr) 40px; }

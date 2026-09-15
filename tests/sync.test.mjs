@@ -28,10 +28,12 @@ test("publication metadata survives cloud round trips and marks edits dirty", ()
   const { run } = app();
   run(`projects[0].publication = {douyin:{count:2,date:"2026-09-07"},xiaohongshu:{count:1,date:"2026-09-08"}};
     projects[0].publicationGift = true;
+    projects[0].shortName = "测试简称";
     const sentPublication = cloneProject(projects[0]);
     applySyncedCloudRow({project_id:"p",project:sentPublication,version:2,deleted:false},projectFingerprint(sentPublication),false);`);
   assert.equal(run("projects[0].publication.douyin.count"), 2);
   assert.equal(run("projects[0].publicationGift"), true);
+  assert.equal(run("projects[0].shortName"), "测试简称");
   assert.equal(run("projects[0].publication.xiaohongshu.date"), "2026-09-08");
   run("projects[0].publication.douyin.count = 3; markDirtyProjects();");
   assert.equal(run("dirtyProjectIds.has('p')"), true);

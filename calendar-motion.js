@@ -1,6 +1,8 @@
 /* Calendar cards stay in their original day cell throughout expansion. */
 window.CalendarMotion = (() => {
   let layer = null, callbacks = null, focused = -1, drag = null, leaveTimer;
+  let deferredRender = null, resizeFrame = null;
+  const transitions = new WeakMap();
   const groups = new WeakMap();
   const { gsap, Flip } = window.CalendarAnimator;
   function springEase(t) {
@@ -13,11 +15,12 @@ window.CalendarMotion = (() => {
     // Endpoint correction preserves overshoot while bringing velocity to zero.
     return response(t)-residual*t*t*(3-2*t)-velocity*t*t*(t-1);
   }
-  function layout(group, change, complete = () => {}) {
+  function layout(group, change, complete = () => {}, immediate = false) {
     const cards = [...group.querySelectorAll('.motion-card:not(.motion-ghost)')];
     const state = Flip.getState(cards);
+    transitions.get(group)?.kill();
     change();
-    if (!reduced()) Flip.from(state, { duration: .72, ease: springEase, scale: true, nested: true, onComplete: complete });
+    if (!reduced() && !immediate) transitions.set(group, Flip.from(state, { duration: .48, ease: springEase, scale: true, nested: true, onComplete: complete }));
     else complete();
   }
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -28,7 +31,7 @@ window.CalendarMotion = (() => {
     const i=document.createElement('i'); i.dataset.lucide=name; button.append(i);
     button.addEventListener('click',event=>{event.stopPropagation();action();}); return button;
   }
-  function close(restoreFocus = true) {
+  function close(restoreFocus = true, immediate = false) {
     clearTimeout(leaveTimer);
     if (drag) { const proxy=drag.ghost;drag=null;gsap.killTweensOf(proxy);proxy.remove(); }
     document.querySelectorAll('.motion-near').forEach(node=>node.classList.remove('motion-near'));
@@ -44,15 +47,16 @@ window.CalendarMotion = (() => {
         card.querySelector('.motion-card-main').setAttribute('aria-expanded','false');
         const data=groups.get(old);card.querySelector('strong').textContent=data.handlers.label(data.items[i]);
       });
-      },()=>{old.classList.remove('closing');if(!old.classList.contains('expanded')&&!old.classList.contains('dragging'))old.closest('.day-cell')?.classList.remove('pile-active');});
+      },()=>{old.classList.remove('closing');if(!old.classList.contains('expanded')&&!old.classList.contains('dragging'))old.closest('.day-cell')?.classList.remove('pile-active');},immediate);
       if(restoreFocus) old.querySelector('.motion-card-main')?.focus({preventScroll:true});
     }
     layer=null; callbacks=null; focused=-1;
   }
-  function open(group) {
+  function open(group, immediate = false, reflow = false) {
     clearTimeout(leaveTimer);
-    if(layer===group)return;
-    close(false);layer=group;callbacks=groups.get(group).handlers;focused=-1;
+    if(layer===group&&!reflow)return;
+    if(layer!==group) { close(false, immediate); focused=-1; }
+    layer=group;callbacks=groups.get(group).handlers;
     const cards=[...group.querySelectorAll('.motion-card')];
     const rect=group.getBoundingClientRect(), mobile=innerWidth<550;
     const width=mobile?168:208, spread=mobile?62:88;
@@ -73,6 +77,9 @@ window.CalendarMotion = (() => {
     const top=isSingle
       ? Math.max(96,Math.min(innerHeight-230,rect.top-42))
       : Math.max(100,Math.min(innerHeight-190-step*(cards.length-1),rect.top-35));
+    layout(group, () => {
+    gsap.killTweensOf(group);gsap.set(group,{y:0});
+    group.classList.remove('closing');
     cards.forEach((card,i)=>{
       card.querySelector('strong').textContent=groups.get(group).items[i].project.name;
       const side=i%2 ? 1 : -1;
@@ -82,10 +89,9 @@ window.CalendarMotion = (() => {
       card.style.setProperty('--angle', `${isSingle ? 0 : side*(i===0?18:8)}deg`);
       card.querySelector('.motion-card-main').setAttribute('aria-expanded','true');
     });
-    layout(group, () => {
       group.classList.add('expanded');group.closest('.day-cell')?.classList.add('pile-active');
       if(cards.length===1){ cards[0].classList.add('focused');focused=0; }
-    });
+    }, () => {}, immediate);
   }
   function focus(index) {
     if(!layer||drag||focused===index)return;
@@ -116,7 +122,14 @@ window.CalendarMotion = (() => {
         if(main.dataset.dragged){delete main.dataset.dragged;return;}
         if(layer!==group)open(group);else focus(index);
       });
-      main.addEventListener('keydown',event=>{if(event.key==='Escape'){event.stopPropagation();close();}});
+      main.addEventListener('keydown',event=>{
+        if(event.key==='Escape'){event.stopPropagation();close();}
+        if(layer===group&&['ArrowDown','ArrowRight','ArrowUp','ArrowLeft'].includes(event.key)) {
+          event.preventDefault();
+          const next=(index+(['ArrowDown','ArrowRight'].includes(event.key)?1:-1)+items.length)%items.length;
+          focus(next);group.children[next].querySelector('.motion-card-main').focus({preventScroll:true});
+        }
+      });
       main.addEventListener('pointerdown',event=>startDrag(event,card,main,item,group));
       const actions=document.createElement('div');actions.className='motion-card-actions';
       actions.append(icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>{close(false);handlers.toggle(item);}));
@@ -146,20 +159,40 @@ window.CalendarMotion = (() => {
   document.addEventListener('pointerdown',event=>{if(layer&&!layer.contains(event.target)&&!drag)close(false);},true);
   document.addEventListener('keydown',event=>{if(event.key==='Escape')close();});
   function startDrag(event, card, main, item, group) {
+    if(drag?.settling)gsap.killTweensOf(drag.ghost);
     if (event.button !== 0 || drag) return;
     const owner = group;
     const startX = event.clientX, startY = event.clientY;
-    let moving = false, ghost, target = null, lastTarget = null;
+    const pressedAt=performance.now();
+    let moving = false, ghost, target = null, lastTarget = null, scrolling=false, lastY=startY;
+    let autoScrollFrame=null, lastPointer=null;
+    const scroller=group.closest('.workspace');
+    const scrollBy=(dy)=>{
+      if(scroller&&scroller.scrollHeight>scroller.clientHeight+1)scroller.scrollTop+=dy;
+      else window.scrollBy(0,dy);
+    };
+    const autoScroll=()=>{
+      if(!moving||drag?.settling||layer!==owner)return;
+      const bounds=scroller?.getBoundingClientRect(), top=Math.max(0,bounds?.top||0)+70, bottom=Math.min(innerHeight,bounds?.bottom||innerHeight)-80;
+      const dy=lastPointer.clientY<top ? -Math.min(12,(top-lastPointer.clientY)/5) : lastPointer.clientY>bottom ? Math.min(12,(lastPointer.clientY-bottom)/5) : 0;
+      if(dy){scrollBy(dy);move(lastPointer);}
+      autoScrollFrame=requestAnimationFrame(autoScroll);
+    };
     main.setPointerCapture(event.pointerId);
     const move = e => {
       if(moving && layer !== owner) return;
       const dx=e.clientX-startX, dy=e.clientY-startY;
-      if (!moving && Math.hypot(dx,dy) < 8) return;
+      if (!moving && Math.hypot(dx,dy) < (event.pointerType==='touch'?12:8)) return;
+      if(event.pointerType==='touch'&&!moving&&(scrolling||performance.now()-pressedAt<230)) {
+        scrolling=true;main.dataset.dragged='true';scrollBy(lastY-e.clientY);lastY=e.clientY;return;
+      }
+      lastPointer={clientX:e.clientX,clientY:e.clientY};
       if (!moving) {
         if(layer!==owner){close(false);layer=owner;callbacks=groups.get(owner).handlers;}
         owner.closest('.day-cell')?.classList.add('pile-active');
         moving=true; main.dataset.dragged='true';
         ghost=card.cloneNode(true); ghost.className='motion-card motion-ghost';
+        ghost.setAttribute('aria-hidden','true');ghost.inert=true;
         ghost.querySelector('.motion-card-actions')?.remove();
         ghost.querySelector('.motion-more')?.remove();ghost.querySelector('.motion-card-menu')?.remove();
         ghost.querySelector('strong').textContent=item.project.name;
@@ -172,6 +205,7 @@ window.CalendarMotion = (() => {
           layer.querySelectorAll('.motion-card:not(.motion-ghost)').forEach(neighbor=>neighbor.classList.remove('focused','receded'));
           card.classList.add('drag-origin');
         });
+        autoScrollFrame=requestAnimationFrame(autoScroll);
       }
       const box=layer.getBoundingClientRect();
       ghost.style.left='0px';ghost.style.top='0px';
@@ -181,19 +215,23 @@ window.CalendarMotion = (() => {
       layer.style.pointerEvents='';
       if (target !== lastTarget) {
         lastTarget?.classList.remove('motion-near'); target?.classList.add('motion-near');
-        if(target) target.querySelectorAll('.motion-card,.milestone-chip').forEach((node,i)=>animate(node,[{translate:'0 0',rotate:'0deg'},{translate:'-3px -3px',rotate:'-3deg'},{translate:'3px 1px',rotate:'2deg'},{translate:'0 0',rotate:'0deg'}],{duration:420,delay:i*25}));
         lastTarget=target;
       }
-      ghost.querySelector('.motion-drop-date').textContent = target?.dataset.date?.slice(5).replace('-','.') || '';
+      ghost.querySelector('.motion-drop-date').textContent = target?.dataset.date
+        ? new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',weekday:'short'}).format(new Date(target.dataset.date+'T12:00:00')) : '';
       ghost.classList.toggle('over-date', Boolean(target));
     };
     const finish = async e => {
       main.removeEventListener('pointermove',move);main.removeEventListener('pointerup',finish);main.removeEventListener('pointercancel',cancel);
+      main.removeEventListener('lostpointercapture',cancel);
+      cancelAnimationFrame(autoScrollFrame);
       if(main.hasPointerCapture(event.pointerId))main.releasePointerCapture(event.pointerId);
-      if(!moving || layer !== owner)return;
+      setTimeout(()=>delete main.dataset.dragged,0);
+      if(!moving || layer !== owner){flushRender();return;}
       lastTarget?.classList.remove('motion-near');
       const destination=target?.dataset.date;
-      if(destination && e.type !== 'pointercancel') {
+      const sourceDate=owner.closest('[data-date]')?.dataset.date;
+      if(destination && destination!==sourceDate && e.type !== 'pointercancel') {
         const box=ghost.getBoundingClientRect(), width=ghost.offsetWidth, height=ghost.offsetHeight;
         const rotation=Number(gsap.getProperty(ghost,'rotation'))||0;
         const fn=callbacks.move;
@@ -203,28 +241,68 @@ window.CalendarMotion = (() => {
           width,height,x:0,y:0,xPercent:0,yPercent:0,rotation,zIndex:2000});
         drag=null;layer=null;callbacks=null;focused=-1;
         try { fn(item,destination); } catch(error) { ghost.remove();throw error; }
-        const landing=[...document.querySelectorAll('.day-cell .motion-card')].find(node=>node.dataset.projectId===item.project.id&&node.dataset.stage===item.stage);
+        const landing=[...document.querySelectorAll('.day-cell .motion-card, .agenda-day .milestone-chip')].find(node=>node.dataset.projectId===item.project.id&&node.dataset.stage===item.stage);
         if(!landing){ghost.remove();return;}
         const destinationBox=landing.getBoundingClientRect();
         const previousTransition=landing.style.transition;
         landing.style.transition='none';
         landing.style.opacity='0';
-        const cleanup=()=>{landing.style.opacity='1';landing.style.transition=previousTransition;ghost.remove();if(drag?.ghost===ghost)drag=null;};
-        drag={ghost};
+        const cleanup=()=>{landing.style.opacity='1';landing.style.transition=previousTransition;ghost.remove();if(drag?.ghost===ghost)drag=null;flushRender();};
+        ghost.classList.remove('over-date');
+        ghost.querySelector('.motion-drop-date')?.remove();
+        drag={ghost,settling:true};
         await new Promise(resolve=>{
           gsap.to(ghost,{x:destinationBox.left+destinationBox.width/2-box.left-box.width/2,
             y:destinationBox.top+destinationBox.height/2-box.top-box.height/2,
             rotation:Number(gsap.getProperty(landing,'rotation'))||0,
             scaleX:landing.offsetWidth/width,scaleY:landing.offsetHeight/height,
-            duration:reduced()?0:.65,ease:springEase,overwrite:true,
-            onUpdate:function(){const blend=Math.max(0,(this.progress()-.55)/.45);ghost.style.opacity=String(1-blend);landing.style.opacity=String(blend);},
+            duration:reduced()?0:.46,ease:springEase,overwrite:true,
+            onUpdate:function(){const blend=Math.max(0,(this.progress()-.85)/.15);ghost.style.opacity=String(1-blend);landing.style.opacity=String(blend);},
             onComplete:()=>{cleanup();resolve();},onInterrupt:()=>{cleanup();resolve();}});
         });
-      } else { close(false); }
+      } else {
+        const box=ghost.getBoundingClientRect(), home=card.getBoundingClientRect();
+        drag={ghost,settling:true};
+        gsap.to(ghost,{x:'+='+(home.left+home.width/2-box.left-box.width/2),
+          y:'+='+(home.top+home.height/2-box.top-box.height/2),rotation:0,
+          scaleX:card.offsetWidth/ghost.offsetWidth,scaleY:card.offsetHeight/ghost.offsetHeight,
+          duration:reduced()?0:.38,ease:springEase,
+          onComplete:()=>{close(false,true);flushRender();},
+          onInterrupt:()=>{ghost.remove();card.classList.remove('drag-origin');if(drag?.ghost===ghost)drag=null;flushRender();}});
+      }
     };
     const cancel=e=>finish(e);
-    main.addEventListener('pointermove',move);main.addEventListener('pointerup',finish);main.addEventListener('pointercancel',cancel);
+    main.addEventListener('pointermove',move);main.addEventListener('pointerup',finish);main.addEventListener('pointercancel',cancel);main.addEventListener('lostpointercapture',cancel);
   }
-  window.addEventListener('resize', () => close(false));
-  return {mount,close};
+  function flushRender() {
+    const render=deferredRender;deferredRender=null;
+    if(render) queueMicrotask(render);
+  }
+  function deferRender(render) {
+    if(!drag)return false;
+    deferredRender=render;return true;
+  }
+  function snapshot() {
+    if(!layer||drag)return null;
+    const data=groups.get(layer), item=data.items[Math.max(0,focused)];
+    return {projectId:item.project.id,stage:item.stage,focused:focused>=0};
+  }
+  function restore(state) {
+    if(!state)return;
+    const card=[...document.querySelectorAll('.inline-pile .motion-card')].find(node=>node.dataset.projectId===state.projectId&&node.dataset.stage===state.stage);
+    if(!card)return;
+    const group=card.closest('.inline-pile');open(group,true);
+    if(state.focused) {
+      focused=[...group.children].indexOf(card);
+      group.querySelectorAll('.motion-card').forEach((node,i)=>{
+        node.classList.toggle('focused',i===focused);node.classList.toggle('receded',i!==focused);
+        node.style.zIndex=String(i===focused?100:i+1);
+      });
+    }
+  }
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame=requestAnimationFrame(()=>{if(layer&&!drag)open(layer,false,true);});
+  });
+  return {mount,close,snapshot,restore,deferRender};
 })();

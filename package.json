@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "node scripts/dev-server.mjs",
     "build:icons": "node scripts/build-icons.mjs",
     "build:supabase": "esbuild vendor/supabase-entry.mjs --bundle --format=esm --platform=browser --target=es2020 --minify --outfile=vendor/supabase-client.js",
     "build:motion": "esbuild vendor/motion-entry.mjs --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=vendor/motion.js",

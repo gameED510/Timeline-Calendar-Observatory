@@ -52,6 +52,11 @@ let calendarMonthAnchor = startOfMonthIso(selectedCalendarDate);
 let toastTimer = null;
 let syncRefreshTimer = null;
 let smartParseTimer = null;
+let calendarProjectFilter = null;
+let editorBaseline = "";
+let editorReturnFocus = null;
+const viewScrollPositions = new Map();
+const projectDrafts = new Map();
 
 const SMART_PASTE_DEFAULT_NOTE = "粘贴项目名和阶段日期，会自动填入下面的表单。";
 
@@ -264,6 +269,7 @@ function changeCloudAccount(user) {
   window.clearTimeout(syncState.pendingSaveTimer);
   stopCloudRefresh();
   activeAccountId = nextId;
+  calendarProjectFilter=null;viewScrollPositions.clear();projectDrafts.clear();
   accountHydrated = false;
   projects = [];
   syncedProjects = {};
@@ -346,6 +352,7 @@ function normalizeProjects(value) {
   return value.map((project, index) => ({
     id: project.id || makeId(project.name),
     name: project.name,
+    shortName: normalizeText(project.shortName).slice(0,40),
     color: project.color || PROJECT_COLORS[index % PROJECT_COLORS.length],
     owner: normalizeText(project.owner) || "未分配",
     priority: PRIORITY_OPTIONS[project.priority] ? project.priority : inferPriority(project, index),
@@ -490,6 +497,7 @@ function cloneProject(project) {
   return {
     id: project.id || makeId(project.name),
     name: project.name,
+    shortName: normalizeText(project.shortName).slice(0,40),
     color: project.color || PROJECT_COLORS[projects.length % PROJECT_COLORS.length],
     owner: normalizeText(project.owner) || "未分配",
     priority: PRIORITY_OPTIONS[project.priority] ? project.priority : "medium",
@@ -613,7 +621,9 @@ function groupMilestonesByDate(items = getAllMilestones()) {
 }
 
 function render() {
-  window.CalendarMotion?.close(false);
+  if(window.CalendarMotion?.deferRender?.(render))return;
+  const motionState=currentView==="calendar" ? window.CalendarMotion?.snapshot?.() : null;
+  window.CalendarMotion?.close(false,true);
   ensureValidSelection();
   const allMilestones = getAllMilestones();
   const visibleMilestones = allMilestones.filter((item) => !isProjectComplete(item.project));
@@ -635,13 +645,16 @@ function render() {
   renderSideInsights(grouped, allMilestones, conflictDays);
   renderFocusRow(grouped, visibleMilestones);
   renderLegend();
-  if (currentView === "calendar") renderCalendar(grouped);
+  if(calendarProjectFilter&&!projects.some(project=>project.id===calendarProjectFilter))calendarProjectFilter=null;
+  if (currentView === "calendar") renderCalendar(calendarProjectFilter
+    ? groupMilestonesByDate(visibleMilestones.filter(item=>item.project.id===calendarProjectFilter)) : grouped);
   if (currentView === "timeline") renderTimeline();
   if (currentView === "conflicts") renderConflicts(grouped);
   if (currentView === "performance") renderPerformance();
   renderInspector();
   renderSyncPanel();
   activateIcons();
+  if(currentView==="calendar")window.CalendarMotion?.restore?.(motionState);
 }
 
 function openPerformanceRecord(projectId) {
@@ -665,6 +678,8 @@ function openPricingSettings() {
   dialog.className = "project-dialog pricing-dialog";
   dialog.innerHTML = `<form><div class="dialog-header"><h2>账号报价</h2><button type="button" class="icon-button" aria-label="关闭">×</button></div><div class="project-form-body"><div class="pricing-list"></div><button type="button" class="secondary-button pricing-add">添加账号</button><p class="pricing-status" role="status"></p></div><div class="dialog-actions"><button type="submit" class="primary-button">保存报价</button></div></form>`;
   const list = dialog.querySelector(".pricing-list");
+  let pricingDirty=false;
+  dialog.querySelector("form").addEventListener("input",()=>pricingDirty=true);
   function add(profile) {
     const row = document.createElement("section");
     row.className = "pricing-account";
@@ -675,14 +690,28 @@ function openPricingSettings() {
     formula.innerHTML = `<label>收益分成比例（%）<input name="revenueShare" type="number" required min="0" max="100" step="0.01" value="${(profile.revenueShare ?? 0.5) * 100}"></label><label>个人提成比例（%）<input name="commissionRate" type="number" required min="0" max="100" step="0.01" value="${(profile.commissionRate ?? 0.1) * 100}"></label>`;
     row.querySelector("button").before(formula);
     const preview = document.createElement("p"); preview.className = "performance-footnote";
-    const updatePreview = () => { preview.textContent = `预估提成 = 平台报价 × ${formula.querySelector('[name="revenueShare"]').value}% × ${formula.querySelector('[name="commissionRate"]').value}%；实际收益只乘个人提成比例。`; };
-    formula.addEventListener("input", updatePreview); updatePreview(); formula.after(preview);
-    row.querySelector("button").onclick = () => row.remove();
+    const updatePreview = () => {
+      const share=Number(formula.querySelector('[name="revenueShare"]').value), rate=Number(formula.querySelector('[name="commissionRate"]').value);
+      const examples=TLPerformance.platforms.map(platform=>{
+        const value=row.querySelector(`[name="${platform}"]`).value;
+        return value!==""?`${platform==="douyin"?"抖音":"小红书"} ¥${Number(value).toLocaleString("zh-CN")} → 提成 ¥${(Number(value)*share*rate/10000).toLocaleString("zh-CN",{maximumFractionDigits:2})}`:"";
+      }).filter(Boolean).join("；");
+      preview.textContent = `报价 × ${share}% × ${rate}%。${examples}。实际收益只乘个人提成比例。`;
+    };
+    row.addEventListener("input", updatePreview); updatePreview(); formula.after(preview);
+    row.querySelector("button").onclick = () => {row.remove();pricingDirty=true;};
     list.append(row);
   }
   pricingProfiles().forEach(add);
-  dialog.querySelector(".pricing-add").onclick = () => { if (list.children.length < 50) add({ id: crypto.randomUUID(), name: "", keywords: "", rates: {} }); };
-  dialog.querySelector(".dialog-header button").onclick = () => dialog.close();
+  dialog.querySelector(".pricing-add").onclick = () => { if (list.children.length < 50) {add({ id: crypto.randomUUID(), name: "", keywords: "", rates: {} });pricingDirty=true;} };
+  const closePricing=()=>{
+    if(!pricingDirty){dialog.close();return;}
+    let notice=dialog.querySelector('.editor-unsaved');
+    if(!notice){notice=document.createElement('section');notice.className='editor-unsaved';notice.innerHTML='<p>账号报价尚未保存</p><div><button type="button" class="ghost-button" data-stay>继续编辑</button><button type="button" class="ghost-button" data-discard>放弃修改</button></div>';dialog.querySelector('form').append(notice);notice.querySelector('[data-stay]').onclick=()=>notice.remove();notice.querySelector('[data-discard]').onclick=()=>dialog.close();}
+    notice.querySelector('[data-stay]').focus();
+  };
+  dialog.querySelector(".dialog-header button").onclick = closePricing;
+  dialog.addEventListener('cancel',event=>{event.preventDefault();closePricing();});
   dialog.onclose = () => dialog.remove();
   const userId = syncState.user.id;
   dialog.querySelector("form").onsubmit = async (event) => {
@@ -730,7 +759,8 @@ function renderPerformance() {
       <div class="performance-metric douyin"><span><b class="platform-dot"></b>抖音</span><strong>${current.counts.douyin}<small> 条</small></strong><em>全部账号的发布记录</em></div>
       <div class="performance-metric xiaohongshu"><span><b class="platform-dot"></b>小红书</span><strong>${current.counts.xiaohongshu}<small> 条</small></strong><em>全部账号的发布记录</em></div>
     </div>
-    <p class="performance-footnote">发布统计截至本月 15 日，16 日起计入下月。${performanceMonth} 提成对应自然发布月 ${range(earnedPeriod)}，仅计已完成发布；公式按各账号的收益分成与个人提成比例计算。${earned.missing.length ? `有 ${earned.missing.length} 个项目待补平台。` : ""}</p>`;
+    <p class="performance-range">${performanceMonth} 提成对应发布月 · ${earnedPeriod.start.slice(0,7)}</p>
+    <details class="performance-explanation"><summary>统计口径</summary><p>发布统计截至本月 15 日，16 日起计入下月。${performanceMonth} 提成对应自然发布月 ${range(earnedPeriod)}，仅计已完成发布；公式按各账号的收益分成与个人提成比例计算。${earned.missing.length ? `有 ${earned.missing.length} 个项目待补平台。` : ""}</p></details>`;
   const data = performanceDetail === "commission" ? earned : current;
   const detailPeriod = performanceDetail === "commission" ? earnedPeriod : period;
   document.querySelectorAll("[data-performance-detail]").forEach((button) => {
@@ -1328,19 +1358,27 @@ function describeMilestone(item) {
 function renderLegend() {
   elements.projectLegend.innerHTML = "";
   projects.filter((project) => !isProjectComplete(project)).forEach((project) => {
-    const item = document.createElement("div");
+    const item = document.createElement("button");
     item.className = "legend-item";
+    item.type="button";
+    item.setAttribute("aria-pressed",String(calendarProjectFilter===project.id));
+    item.title=calendarProjectFilter===project.id?"显示全部项目":`只看${getClientName(project.name)}`;
+    item.onclick=()=>{calendarProjectFilter=calendarProjectFilter===project.id?null:project.id;render();};
     item.style.setProperty("--project-color", project.color);
 
     const dot = document.createElement("span");
     dot.className = "color-dot";
 
     const label = document.createElement("span");
-    label.textContent = getClientName(project.name);
+    label.textContent = project.shortName || getClientName(project.name);
 
     item.append(dot, label);
     elements.projectLegend.append(item);
   });
+  if(calendarProjectFilter) {
+    const clear=document.createElement("button");clear.type="button";clear.className="legend-clear";clear.textContent="显示全部";
+    clear.onclick=()=>{calendarProjectFilter=null;render();};elements.projectLegend.append(clear);
+  }
 }
 
 function renderCalendar(grouped) {
@@ -1374,6 +1412,8 @@ function renderCalendar(grouped) {
     const empty = document.createElement("div");
     empty.className = "calendar-month-empty-card";
     empty.innerHTML = '<i data-lucide="calendar-off"></i><strong>本月没有进行中的项目</strong>';
+    const add=document.createElement("button");add.type="button";add.className="text-button";add.textContent=calendarProjectFilter?"显示全部项目":"新增项目";
+    add.onclick=()=>{if(calendarProjectFilter){calendarProjectFilter=null;render();}else openProjectDialog();};empty.append(add);
     elements.calendarGrid.append(empty);
     return;
   }
@@ -1408,7 +1448,15 @@ function renderCalendar(grouped) {
     const head = document.createElement("div");
     head.className = "day-head";
 
-    const dateLabel = document.createElement("div");
+    const dateLabel = document.createElement("button");
+    dateLabel.type="button";dateLabel.className="day-date-button";
+    dateLabel.setAttribute("aria-label",`${formatDateWithWeekday(iso)}，${activeCount} 个待完成节点`);
+    if(iso===TODAY_ISO)dateLabel.setAttribute("aria-current","date");
+    dateLabel.onclick=()=>{
+      selectedCalendarDate=iso;
+      elements.calendarGrid.querySelectorAll('.selected-day').forEach(node=>node.classList.remove('selected-day'));
+      cell.classList.add('selected-day');renderCalendarDayDetails(iso,grouped.get(iso)||[]);
+    };
     const number = document.createElement("span");
     number.className = "date-number";
     number.textContent = String(isoToDate(iso).getDate());
@@ -1422,6 +1470,8 @@ function renderCalendar(grouped) {
     if (activeCount > 1) load.classList.add("busy");
     if (!activeCount && items.length) load.classList.add("done");
     load.textContent = activeCount ? String(activeCount) : items.length ? "✓" : "0";
+    load.title=activeCount?`${activeCount} 个待完成节点`:`${items.length} 个节点全部完成`;
+    load.setAttribute("aria-label",load.title);
 
     head.append(dateLabel);
     if (activeCount || items.length) head.append(load);
@@ -1442,7 +1492,7 @@ function renderCalendar(grouped) {
     if (items.length >= 1) {
       const pile = document.createElement("div");
       window.CalendarMotion.mount(items, pile, {
-        label: item => getClientName(item.project.name),
+        label: item => item.project.shortName || getClientName(item.project.name),
         edit: item => openProjectDialog(item.project.id),
         toggle: item => toggleMilestoneCompleted(item.project.id, item.stage),
         move: (item, date) => moveMilestone(item.project.id, item.stage, date),
@@ -1919,6 +1969,8 @@ function moveMilestone(projectId, stage, iso) {
   if (!canEditProjects()) return;
   const project = projects.find((item) => item.id === projectId);
   if (!project || !project.milestones[stage] || !iso) return;
+  const previousDate=project.milestones[stage], ownerId=activeAccountId;
+  if(previousDate===iso)return;
   project.milestones[stage] = iso;
   selected = { projectId, stage };
   selectedCalendarDate = iso;
@@ -1933,7 +1985,14 @@ function moveMilestone(projectId, stage, iso) {
       ], { duration: 340, easing: "cubic-bezier(.2,.8,.25,1)" });
     });
   }
-  showToast(`${getClientName(project.name)} · ${stage} 已调整到 ${formatDateWithWeekday(iso)}`);
+  showToast(`${getClientName(project.name)} · ${stage} 已调整到 ${formatDateWithWeekday(iso)}`, () => {
+    const current=projects.find(item=>item.id===projectId);
+    if(activeAccountId!==ownerId||!current||current.milestones[stage]!==iso) {
+      showToast("节点已发生其他修改，请在项目中调整日期");return;
+    }
+    moveMilestone(projectId,stage,previousDate);
+    showToast("已撤销日期调整");
+  });
 }
 
 function shiftSelected(days) {
@@ -2037,11 +2096,16 @@ function formatDateWithWeekday(iso) {
   return `${date.getMonth() + 1}.${date.getDate()} ${weekdays[date.getDay()]}`;
 }
 
-function showToast(message) {
+function showToast(message, undo = null) {
   window.clearTimeout(toastTimer);
   elements.toast.textContent = message;
+  if(undo) {
+    const button=document.createElement("button");
+    button.type="button";button.textContent="撤销";button.className="toast-undo";
+    button.addEventListener("click",undo,{once:true});elements.toast.append(button);
+  }
   elements.toast.classList.add("show");
-  toastTimer = window.setTimeout(() => elements.toast.classList.remove("show"), 2600);
+  toastTimer = window.setTimeout(() => elements.toast.classList.remove("show"), undo ? 6500 : 2600);
 }
 
 function setDataMenuOpen(open) {
@@ -2994,7 +3058,7 @@ function applySmartSchedule({ showConfirmation = false } = {}) {
   STAGES.forEach((stage) => {
     const stageName = stage.name;
     const input = elements.projectForm.elements[stageName];
-    if (input) input.value = result.milestones[stageName] || "";
+    if (input) {input.value = result.milestones[stageName] || "";if(input.value)input.parentElement.hidden=false;}
   });
   renderDialogSequenceWarning();
 
@@ -3017,8 +3081,18 @@ function queueSmartScheduleParse() {
   smartParseTimer = window.setTimeout(() => applySmartSchedule(), 140);
 }
 
+function projectEditorState() {
+  return {fields:[...elements.projectForm.elements].filter(node=>node.name).map(node=>({name:node.name,value:node.value,checked:node.checked})),color:selectedProjectColor};
+}
+function projectDraftKey() {return `${activeAccountId}:${editingProjectId||"new"}`;}
+function requestCloseProjectDialog() {
+  if(JSON.stringify(projectEditorState())===editorBaseline){elements.projectDialog.close();return;}
+  const notice=document.querySelector("#projectUnsaved");notice.hidden=false;
+  document.querySelector("#keepEditingProject").focus();
+}
 function openProjectDialog(projectId = null) {
   if (!canEditProjects()) return;
+  editorReturnFocus=document.activeElement;
   editingProjectId = projectId;
   const editingProject = projects.find((project) => project.id === projectId) || null;
   elements.projectForm.reset();
@@ -3059,6 +3133,7 @@ function openProjectDialog(projectId = null) {
     input.name = stage.name;
     input.type = "date";
     input.value = editingProject ? editingProject.milestones[stage.name] || "" : "";
+    wrapper.hidden=Boolean(editingProject&&!input.value);
     input.addEventListener("change", renderDialogSequenceWarning);
 
     wrapper.append(label, input);
@@ -3067,10 +3142,18 @@ function openProjectDialog(projectId = null) {
 
   renderColorSwatches();
   elements.projectNameInput.value = editingProject ? editingProject.name : "";
+  elements.projectForm.elements.shortName.value=editingProject?.shortName||"";
+  document.querySelector("#showOptionalStages").hidden=!elements.projectDateFields.querySelector('[hidden]');
   if (elements.smartPasteInput) elements.smartPasteInput.value = "";
   renderSmartPastePreview();
   setSmartPasteStatus();
   renderDialogSequenceWarning();
+  document.querySelector("#smartImportDisclosure").open=!editingProject;
+  document.querySelector("#projectUnsaved").hidden=true;
+  document.querySelector("#projectDraftNotice").hidden=!projectDrafts.has(projectDraftKey());
+  document.querySelector(".editor-more").open=false;
+  document.querySelector("#duplicateProjectTemplate").hidden=!editingProject;
+  editorBaseline=JSON.stringify(projectEditorState());
   elements.projectDialog.showModal();
   if (isMobileLayout()) {
     requestAnimationFrame(() => {
@@ -3138,11 +3221,13 @@ function saveProjectFromForm() {
   }])));
   const publicationAccount = String(formData.get("publicationAccount") || "").slice(0, 80);
   const publicationGift = formData.has("publicationGift");
+  const shortName=String(formData.get("shortName")||"").trim().slice(0,40);
   if (editingProject) {
     editingProject.publication = publication;
     editingProject.publicationAccount = publicationAccount;
     editingProject.publicationGift = publicationGift;
     editingProject.name = name;
+    editingProject.shortName=shortName;
     editingProject.color = selectedProjectColor;
     editingProject.milestones = milestones;
     editingProject.completedMilestones = normalizeCompletedMilestones(editingProject.completedMilestones, milestones);
@@ -3153,6 +3238,7 @@ function saveProjectFromForm() {
     const project = cloneProject({
       id: makeId(name),
       name,
+      shortName,
       color: selectedProjectColor,
       publication,
       publicationAccount,
@@ -3327,6 +3413,8 @@ function resetToDefaults() {
 
 function switchView(view) {
   if (!elements.views[view]) view = "calendar";
+  const workspace=document.querySelector(".workspace"), changed=currentView!==view;
+  if(changed)viewScrollPositions.set(currentView,{page:window.scrollY,workspace:workspace.scrollTop});
   currentView = view;
   elements.viewButtons.forEach((button) => {
     const active = button.dataset.view === view;
@@ -3339,6 +3427,10 @@ function switchView(view) {
   if (isMobileLayout()) setMobilePage(view === "calendar" ? "plan" : view);
   elements.appShell.classList.toggle("showing-performance", view === "performance");
   render();
+  if(changed)requestAnimationFrame(()=>{
+    const position=viewScrollPositions.get(view)||{page:0,workspace:0};
+    workspace.scrollTop=position.workspace;window.scrollTo({top:position.page,behavior:"auto"});
+  });
 }
 
 function jumpToToday() {
@@ -3423,15 +3515,43 @@ function wireEvents() {
   elements.quickAddButton.addEventListener("click", () => openProjectDialog());
   elements.smartPasteInput?.addEventListener("input", queueSmartScheduleParse);
   elements.parseScheduleButton?.addEventListener("click", () => applySmartSchedule({ showConfirmation: true }));
-  elements.closeDialogButton.addEventListener("click", () => elements.projectDialog.close());
-  elements.cancelDialogButton.addEventListener("click", () => elements.projectDialog.close());
+  document.querySelector("#showOptionalStages").onclick=()=>{elements.projectDateFields.querySelectorAll('[hidden]').forEach(node=>node.hidden=false);document.querySelector("#showOptionalStages").hidden=true;};
+  elements.closeDialogButton.addEventListener("click", requestCloseProjectDialog);
+  elements.cancelDialogButton.addEventListener("click", requestCloseProjectDialog);
+  elements.projectDialog.addEventListener("cancel",event=>{event.preventDefault();requestCloseProjectDialog();});
+  document.querySelector("#keepEditingProject").onclick=()=>{document.querySelector("#projectUnsaved").hidden=true;elements.projectNameInput.focus();};
+  document.querySelector("#discardProjectChanges").onclick=()=>{projectDrafts.delete(projectDraftKey());elements.projectDialog.close();};
+  document.querySelector("#saveProjectDraft").onclick=()=>{projectDrafts.set(projectDraftKey(),projectEditorState());elements.projectDialog.close();showToast("草稿已保留在当前页面");};
+  document.querySelector("#restoreProjectDraft").onclick=()=>{
+    const draft=projectDrafts.get(projectDraftKey());if(!draft)return;
+    draft.fields.forEach(field=>{const input=elements.projectForm.elements[field.name];if(input){input.value=field.value;if(input.type==="checkbox")input.checked=field.checked;if(input.type==="date"&&input.value)input.parentElement.hidden=false;}});
+    selectedProjectColor=draft.color;renderColorSwatches();renderDialogSequenceWarning();
+    elements.projectNameInput.dispatchEvent(new Event("input",{bubbles:true}));
+    document.querySelector("#projectDraftNotice").hidden=true;
+  };
+  document.querySelector("#duplicateProjectTemplate").onclick=()=>{
+    const source=projectEditorState();elements.projectDialog.close();openProjectDialog();
+    source.fields.filter(field=>!STAGES.some(stage=>stage.name===field.name)).forEach(field=>{const input=elements.projectForm.elements[field.name];if(input){input.value=field.value;if(input.type==="checkbox")input.checked=field.checked;}});
+    elements.projectNameInput.value+=" · 副本";selectedProjectColor=source.color;renderColorSwatches();
+    document.querySelector("#smartImportDisclosure").open=false;
+    elements.projectNameInput.focus();
+  };
+  document.querySelector("#sidebarToggle").onclick=event=>{
+    const collapsed=elements.appShell.classList.toggle("sidebar-collapsed");
+    const button=event.currentTarget;button.setAttribute("aria-expanded",String(!collapsed));
+    button.setAttribute("aria-label",collapsed?"展开项目概览":"收起项目概览");button.title=button.getAttribute("aria-label");
+    window.dispatchEvent(new Event("resize"));
+  };
   elements.projectDialog.addEventListener("close", () => {
+    if(elements.projectDialog.open)return;
     window.clearTimeout(smartParseTimer);
     editingProjectId = null;
+    if(editorReturnFocus?.isConnected)editorReturnFocus.focus({preventScroll:true});
   });
   elements.projectForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    if (saveProjectFromForm()) elements.projectDialog.close();
+    const key=projectDraftKey();
+    if (saveProjectFromForm()) {projectDrafts.delete(key);elements.projectDialog.close();}
   });
   elements.copyProjectTlButton.addEventListener("click", copyProjectTlFromDialog);
   elements.deleteProjectFromDialogButton.addEventListener("click", deleteEditingProject);
@@ -3478,6 +3598,9 @@ function wireEvents() {
       setSyncAuthMode(button.dataset.syncMode);
       activateIcons();
     });
+  });
+  window.addEventListener("beforeunload",event=>{
+    if(elements.projectDialog.open&&JSON.stringify(projectEditorState())!==editorBaseline){event.preventDefault();event.returnValue="";}
   });
 
   document.querySelector("#performanceMonth").addEventListener("change", (event) => {

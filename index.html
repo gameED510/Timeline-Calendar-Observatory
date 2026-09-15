@@ -10,7 +10,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="site.webmanifest" />
     <script src="theme.js?v=1"></script>
-    <link rel="stylesheet" href="styles.css?v=26" />
+    <link rel="stylesheet" href="styles.css?v=28" />
   </head>
   <body>
     <div class="app-shell mobile-page-plan account-locked account-loading" id="appShell">
@@ -55,6 +55,7 @@
           </div>
 
           <div class="toolbar" aria-label="工具栏">
+            <button class="icon-button sidebar-toggle" id="sidebarToggle" type="button" title="收起项目概览" aria-label="收起项目概览" aria-expanded="true"><i data-lucide="panel-left"></i></button>
             <div class="segmented" role="tablist" aria-label="视图切换">
               <button class="segmented-button active" type="button" data-view="calendar" role="tab" aria-selected="true">
                 <i data-lucide="calendar-days"></i>
@@ -381,6 +382,7 @@
         </div>
 
         <div class="project-form-body">
+        <details class="smart-import-disclosure" id="smartImportDisclosure" open><summary>粘贴排期</summary>
         <section class="smart-import-panel" aria-label="智能识别排期">
           <div class="smart-import-head">
             <div>
@@ -395,8 +397,8 @@
           <textarea id="smartPasteInput" rows="5" placeholder="Ta的故事&amp;阿道夫&#10;大纲8.24&#10;脚本8.25&#10;拍摄8.25&#10;初稿8.27&#10;发布8.29"></textarea>
           <p class="smart-import-status" id="smartPasteStatus" aria-live="polite">粘贴项目名和阶段日期，会自动填入下面的表单。</p>
           <div class="smart-import-preview hidden" id="smartPastePreview" aria-label="识别结果预览"></div>
-        </section>
-
+        </section></details>
+        <div id="projectDraftNotice" class="editor-notice" hidden><span>此项目有未保存草稿</span><button type="button" class="ghost-button" id="restoreProjectDraft">恢复草稿</button></div>
         <label class="field-label" for="projectNameInput">项目名称</label>
         <input id="projectNameInput" name="name" type="text" placeholder="拜托了闻学长 & 新客户" required />
 
@@ -418,8 +420,10 @@
 
         <label class="field-label">项目颜色</label>
         <div class="color-swatch-row" id="projectColorFields" aria-label="项目颜色"></div>
+        <details class="project-display-options"><summary>显示设置</summary><label class="field-label" for="projectShortName">日历简称</label><input id="projectShortName" name="shortName" maxlength="40" placeholder="留空时自动使用广告名称" /></details>
 
         <p class="optional-stage-note">只填写项目需要的阶段，留空的阶段不会进入日历、完成率和 TL 内容。</p>
+        <button id="showOptionalStages" class="ghost-button optional-stages-button" type="button" hidden>添加阶段</button>
         <div class="dialog-grid" id="projectDateFields"></div>
 
         <div class="sequence-alert hidden" id="dialogSequenceAlert">
@@ -429,20 +433,24 @@
         </div>
 
         <div class="dialog-actions">
+          <details class="editor-more"><summary title="更多项目操作" aria-label="更多项目操作"><i data-lucide="ellipsis"></i></summary><div class="editor-more-menu">
           <button class="ghost-button hidden" id="copyProjectTlButton" type="button">
             <i data-lucide="copy"></i>
             复制 TL
           </button>
+          <button class="ghost-button" id="duplicateProjectTemplate" type="button"><i data-lucide="copy-plus"></i>复制为新项目</button>
           <button class="danger-button compact-danger hidden" id="deleteProjectFromDialogButton" type="button">
             <i data-lucide="trash-2"></i>
             删除
           </button>
+          </div></details>
           <button class="ghost-button" id="cancelDialogButton" type="button">取消</button>
           <button class="primary-button" type="submit">
             <i data-lucide="check"></i>
             保存
           </button>
         </div>
+        <section class="editor-unsaved" id="projectUnsaved" hidden aria-label="未保存的修改"><p>保留这次修改吗？</p><div><button class="ghost-button" type="button" id="keepEditingProject">继续编辑</button><button class="ghost-button" type="button" id="discardProjectChanges">放弃修改</button><button class="primary-button" type="button" id="saveProjectDraft">保留草稿</button></div></section>
       </form>
     </dialog>
 
@@ -463,11 +471,11 @@
     </dialog>
 
     <script src="vendor/motion.js?v=1"></script>
-    <script src="calendar-motion.js?v=16"></script>
+    <script src="calendar-motion.js?v=17"></script>
     <script src="performance.js?v=6"></script>
-    <script src="performance-charts.js?v=1"></script>
-    <script src="actual-performance.js?v=2"></script>
-    <script src="app.js?v=24"></script>
-    <script src="vendor/lucide.min.js?v=8" defer></script>
+    <script src="performance-charts.js?v=2"></script>
+    <script src="actual-performance.js?v=3"></script>
+    <script src="app.js?v=25"></script>
+    <script src="vendor/lucide.min.js?v=9" defer></script>
   </body>
 </html>

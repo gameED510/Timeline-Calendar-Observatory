@@ -66,8 +66,12 @@
     const formula = snapshot.formula;
     const calibrated = record ? snapshot.calibrated : model.ready ? formula * model.factor : null;
     const evaluation = P.evaluate(state.records);
+    const difference=present(record)?record.total-formula:null;
+    const differenceLabel=difference===null ? "待结算" : `较公式 ${difference>=0?"+":"−"}¥${money(Math.abs(difference))}${formula>0 ? `（${difference>=0?"+":""}${money(difference/formula*100)}%）` : ""}`;
     panel.innerHTML = `<div class="actual-heading"><div><p class="eyebrow">TL / SETTLEMENT</p><h3>真实结算与预测</h3></div><div class="actual-actions"><button type="button" class="icon-button mini-button" data-refresh title="刷新结算记录" aria-label="刷新结算记录"><i data-lucide="refresh-cw"></i></button><button type="button" class="secondary-button actual-entry" data-entry ${state.loading || !state.loaded ? "disabled" : ""}><i data-lucide="plus"></i>录入实际</button></div></div>
-      <div class="actual-comparison"><div><span>公式估算</span><strong>¥${money(formula)}</strong><small>${record ? snapshot.kind === "forecast" ? "已保存预测快照" : "历史回算" : "当前报价回算"}</small></div><div><span>历史校准估算</span><strong>${Number.isFinite(calibrated) ? `¥${money(calibrated)}` : "—"}</strong><small>${Number.isFinite(calibrated) ? `${snapshot.calibrationMonths ?? model.n} 个月样本 · 校准试算` : "满 3 个有效月份后试算"}</small></div><div><span>实际总提成</span><strong>${present(record) ? `¥${money(record.total)}` : "—"}</strong><small>${present(record) ? `较公式 ${record.total >= formula ? "+" : ""}¥${money(record.total - formula)}` : "待结算"}</small></div></div>
+      <div class="actual-comparison"><div><span>公式估算</span><strong>¥${money(formula)}</strong><small>${record ? snapshot.kind === "forecast" ? "已保存预测快照" : "历史回算" : "当前报价回算"}</small></div><div><span>历史校准估算</span><strong>${Number.isFinite(calibrated) ? `¥${money(calibrated)}` : "—"}</strong><small>${Number.isFinite(calibrated) ? `${snapshot.calibrationMonths ?? model.n} 个月样本 · 校准试算` : "满 3 个有效月份后试算"}</small></div><div><span>实际总提成</span><strong>${present(record) ? `¥${money(record.total)}` : "—"}</strong><small>${differenceLabel}</small></div></div>
+      <details class="forecast-breakdown"><summary>查看公式估算来源 · ${(snapshot.rows||[]).length} 条发布记录</summary>${(snapshot.rows||[]).map(row=>`<p><span>${esc(row.name)} · ${row.platform==="douyin"?"抖音":"小红书"}</span><strong>¥${money(row.estimated)}</strong></p>`).join("")||"此月暂无参与估算的发布记录"}</details>
+      ${model.n<3?`<div class="actual-sample-progress"><progress value="${model.n}" max="3" aria-label="校准样本积累"></progress><span>${model.n}/3 个有效结算月，继续积累后显示校准试算</span></div>`:""}
       <p class="actual-status" role="status">${state.loading ? "正在读取结算记录…" : esc(state.error)}</p>
       <div class="actual-analysis"><span>最近 ${model.n} 个有效月份</span>${model.mae === null ? "" : `<span>平均金额误差 ¥${money(model.mae)}</span><span>${model.bias > 0 ? "长期高估" : model.bias < 0 ? "长期低估" : "无整体偏差"} ${model.bias ? `¥${money(Math.abs(model.bias))}` : ""}</span>`}</div>
       <div class="performance-charts"></div>
@@ -132,8 +136,14 @@
     };
     form.elements.month.onchange = () => selectMonth();
     form.addEventListener("input", event => { if (event.target !== form.elements.month) dirty = true; balance(); });
-    dialog.querySelectorAll("[data-close]").forEach(b=>b.onclick=close);
-    dialog.addEventListener("cancel", e=>{e.preventDefault();close();});
+    const requestClose=()=>{
+      if(!dirty){close();return;}
+      let warning=dialog.querySelector('.editor-unsaved');
+      if(!warning){warning=document.createElement('section');warning.className='editor-unsaved';warning.innerHTML='<p>实际结算尚未保存</p><div><button type="button" class="ghost-button" data-continue>继续编辑</button><button type="button" class="ghost-button" data-discard>放弃修改</button></div>';dialog.querySelector('form').append(warning);warning.querySelector('[data-continue]').onclick=()=>warning.remove();warning.querySelector('[data-discard]').onclick=close;}
+      warning.querySelector('[data-continue]').focus();
+    };
+    dialog.querySelectorAll("[data-close]").forEach(b=>b.onclick=requestClose);
+    dialog.addEventListener("cancel", e=>{e.preventDefault();requestClose();});
     dialog.querySelector("[data-add]").onclick=()=>{dirty=true;add();};
     form.onsubmit = async event => {
       event.preventDefault();
