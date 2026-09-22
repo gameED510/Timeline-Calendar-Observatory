@@ -98,5 +98,26 @@
       return byMonth.get(key) || {month:key,total:null,snapshot:null};
     });
   }
-  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints };
+  function settlementCsv(records) {
+    const amount = value => Number.isFinite(value) ? Math.round(value * 100) / 100 : "";
+    const rows = [["类型","结算月份","对应发布月","广告名称","平台","公式估算","校准估算","实际收益","个人提成","实际减估算","估算性质"]];
+    for (const record of [...records].sort((a,b)=>a.month.localeCompare(b.month))) {
+      const s=record.snapshot || {}, month=naturalMonth(record.month,-3).start.slice(0,7);
+      const kind=s.kind === "forecast" ? "已保存预测" : "历史回算";
+      rows.push(["月度合计",record.month,month,"","",amount(s.formula),amount(s.calibrated),"",amount(record.total),Number.isFinite(record.total)&&Number.isFinite(s.formula)?amount(record.total-s.formula):"",kind]);
+      for(const ad of record.ads || []) {
+        const matched=(s.rows || []).filter(row=>row.projectId===ad.projectId);
+        const estimate=matched.reduce((sum,row)=>sum+row.estimated,0);
+        const commission=Number.isFinite(ad.revenue)&&Number.isFinite(ad.commissionRate)?ad.revenue*ad.commissionRate:null;
+        rows.push(["广告明细",record.month,month,ad.name || matched[0]?.name || "",[...new Set(matched.map(row=>row.platform==="douyin"?"抖音":"小红书"))].join(" + "),matched.length?amount(estimate):"","",amount(ad.revenue),amount(commission),matched.length&&commission!==null?amount(commission-estimate):"",kind]);
+      }
+    }
+    const cell=value=>{
+      let text=String(value ?? "");
+      if(typeof value === "string" && /^[\s]*[=+@-]/.test(text))text="'"+text;
+      return '"'+text.replace(/"/g,'""')+'"';
+    };
+    return "\uFEFF"+rows.map(row=>row.map(cell).join(',')).join('\r\n');
+  }
+  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv };
 })(globalThis);

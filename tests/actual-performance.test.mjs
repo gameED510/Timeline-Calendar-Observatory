@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import '../performance.js';
 import { readFileSync } from 'node:fs';
 const p = globalThis.TLPerformance;
+test('settlement export keeps totals separate from ads and protects text cells',()=>{
+  const csv=p.settlementCsv([{month:'2026-09',total:0,snapshot:{formula:100,calibrated:null,kind:'historical',rows:[]},ads:[{name:'=SUM(1,2)',revenue:200,commissionRate:null}]}]);
+  assert.ok(csv.startsWith('\uFEFF'));
+  assert.match(csv,/"月度合计","2026-09","2026-06","","","100","","","0","-100","历史回算"/);
+  assert.ok(csv.includes('"\'=SUM(1,2)"'));
+  assert.ok(csv.includes('"200","","","历史回算"'));
+  assert.equal(csv.split('\r\n').length,3);
+});
 test('chart windows retain missing months and distinguish zero from absent totals',()=>{
   const points=p.chartPoints([
     {month:'2025-12',total:0,snapshot:{formula:100}},

@@ -4999,6 +4999,12 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .reschedule-dialog .project-form-body { padding: 20px; }
 .reschedule-dialog input { width: 100%; min-width: 0; box-sizing: border-box; }
 .reschedule-dialog [data-name] { overflow-wrap: anywhere; }
+@media (max-width: 860px) {
+  .keyboard-visible .project-dialog[open] { position: fixed; top: calc(var(--keyboard-top) + 8px); bottom: auto; margin: 0 auto; height: calc(var(--keyboard-height) - 16px); max-height: calc(var(--keyboard-height) - 16px); }
+  .keyboard-visible .project-dialog .dialog-header { padding-block: 8px; }
+  .keyboard-visible .project-dialog .dialog-actions { padding-block: 8px; }
+  .project-form-body input, .project-form-body textarea { scroll-margin-block: 16px; }
+}
 .import-preview li { padding: 10px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
 .import-preview .project-form-body { min-height: 0; overflow-y: auto; }
 .toast.show:has(.toast-undo) { pointer-events: auto; }
@@ -5008,6 +5014,7 @@ html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden
   .actual-ad-row { grid-template-columns: minmax(0,1fr) 40px; }
   .actual-ad-row label { grid-column: 1; }.actual-ad-row button { grid-column: 2; grid-row: 1 / 4; align-self: center; }
   .actual-comparison { gap: 12px; }.actual-comparison strong { font-size: 19px; }.actual-comparison small { font-size: 11px; }
-  .actual-heading h3 { font-size: 16px; }.actual-actions { gap: 4px; }
+  .actual-heading { flex-wrap: wrap; }
+  .actual-heading h3 { font-size: 16px; }.actual-actions { gap: 4px; margin-left: auto; }
   .actual-fields { grid-template-columns: minmax(0,1fr); }
 }

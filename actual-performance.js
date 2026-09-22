@@ -86,6 +86,18 @@
     root.TLPerformanceCharts.render(panel.querySelector('.performance-charts'),state.records,snapshot,month=>context.onChange(month),context.month);
     panel.querySelector("[data-refresh]").onclick = () => load();
     panel.querySelector("[data-entry]").onclick = () => open();
+    const exportButton=document.createElement("button");
+    exportButton.type="button";exportButton.className="icon-button mini-button";
+    exportButton.title="导出全部结算记录";exportButton.setAttribute("aria-label",exportButton.title);
+    exportButton.innerHTML='<i data-lucide="download"></i>';
+    exportButton.disabled=!state.loaded || state.loading || !state.records.length;
+    exportButton.onclick=()=>{
+      if(!current(context) || !state.loaded)return;
+      const url=URL.createObjectURL(new Blob([P.settlementCsv(state.records)],{type:"text/csv;charset=utf-8"}));
+      const link=document.createElement("a");link.href=url;link.download=`TL-结算对账-${context.today}.csv`;
+      document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
+    panel.querySelector(".actual-actions").prepend(exportButton);
     root.lucide?.createIcons();
   }
   function mount(element, ctx) {

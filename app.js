@@ -269,6 +269,7 @@ function changeCloudAccount(user) {
   stopCloudRefresh();
   activeAccountId = nextId;
   calendarProjectFilter=null;viewScrollPositions.clear();projectDrafts.clear();
+  projectSearchTerm="";projectFilter="active";projectSort="next";
   accountHydrated = false;
   projects = [];
   syncedProjects = {};
@@ -832,6 +833,15 @@ function renderProjectList() {
       conflict: "当前没有撞期项目"
     };
     empty.textContent = projectSearchTerm.trim() ? "没有匹配的项目" : emptyMessages[projectFilter] || "暂无项目";
+    const action=document.createElement("button");
+    action.type="button";action.className="secondary-button";
+    if(projects.length) {
+      action.textContent="显示全部项目";
+      action.onclick=()=>{projectSearchTerm="";projectFilter="all";renderProjectList();activateIcons();elements.projectSearch?.focus();};
+    } else {
+      action.textContent="新增项目";action.onclick=()=>openProjectDialog();
+    }
+    empty.append(action);
     elements.projectList.append(empty);
     return;
   }
@@ -1013,13 +1023,17 @@ function renderProjectControls() {
 }
 
 function getVisibleProjects() {
-  const query = projectSearchTerm.trim().toLowerCase();
+  const queries = projectSearchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const profiles=pricingProfiles();
   return projects.filter((project) => {
     const milestoneText = STAGES
       .map((stage) => `${stage.name} ${project.milestones[stage.name]}`)
       .join(" ");
-    const haystack = `${project.name} ${getClientName(project.name)} ${project.owner} ${project.notes} ${getPriorityMeta(project.priority).label} ${milestoneText}`.toLowerCase();
-    if (query && !haystack.includes(query)) return false;
+    const account=profiles.find(profile=>profile.id===TLPerformance.account(project,profiles));
+    const publication=TLPerformance.normalize(project.publication);
+    const platformText=[publication.douyin.count?"抖音 douyin":"",publication.xiaohongshu.count?"小红书 xiaohongshu":""].join(" ");
+    const haystack = `${project.name} ${project.shortName || ""} ${getClientName(project.name)} ${project.owner || ""} ${project.notes || ""} ${account?.name || ""} ${platformText} ${project.publicationGift?"赠送":""} ${getPriorityMeta(project.priority).label} ${milestoneText}`.toLowerCase();
+    if (queries.some(query=>!haystack.includes(query))) return false;
     if (projectFilter === "active") return !isProjectComplete(project);
     if (projectFilter === "done") return isProjectComplete(project);
     if (projectFilter === "conflict") return getProjectConflictCount(project) > 0;
@@ -3186,7 +3200,7 @@ function openProjectDialog(projectId = null) {
       elements.closeDialogButton.focus({ preventScroll: true });
     });
   } else {
-    (editingProject ? elements.projectNameInput : elements.smartPasteInput)?.focus();
+    elements.projectNameInput.focus();
   }
 }
 
@@ -3520,6 +3534,22 @@ function switchView(view) {
   });
 }
 
+function keyboardViewport(viewport, layoutHeight, editing) {
+  if (!viewport || !editing || viewport.scale > 1.05 || layoutHeight - viewport.height < 120) return null;
+  return { top: Math.max(0,viewport.offsetTop), height: Math.max(180,viewport.height) };
+}
+
+function updateKeyboardViewport() {
+  const active=document.activeElement;
+  const editing=Boolean(active?.closest?.('dialog[open]') && active.matches('input,textarea,select'));
+  const bounds=keyboardViewport(window.visualViewport,window.innerHeight,editing);
+  document.documentElement.classList.toggle('keyboard-visible',Boolean(bounds));
+  if(bounds) {
+    document.documentElement.style.setProperty('--keyboard-top',`${bounds.top}px`);
+    document.documentElement.style.setProperty('--keyboard-height',`${bounds.height}px`);
+  }
+}
+
 function refreshCurrentDate(now = new Date()) {
   const next = dateToIso(now);
   if (next === TODAY_ISO) return false;
@@ -3746,6 +3776,15 @@ function wireEvents() {
     loadCloudProjects({ preferNewer: true });
   });
   window.addEventListener("offline", () => renderSyncPanel());
+  let keyboardFrame;
+  const scheduleKeyboardLayout=()=>{
+    cancelAnimationFrame(keyboardFrame);
+    keyboardFrame=requestAnimationFrame(updateKeyboardViewport);
+  };
+  window.visualViewport?.addEventListener("resize",scheduleKeyboardLayout);
+  window.visualViewport?.addEventListener("scroll",scheduleKeyboardLayout);
+  document.addEventListener("focusin",scheduleKeyboardLayout);
+  document.addEventListener("focusout",scheduleKeyboardLayout);
   window.addEventListener("resize", () => {
     if (!elements.accountPopover.classList.contains("hidden")) positionAccountPopover();
   });

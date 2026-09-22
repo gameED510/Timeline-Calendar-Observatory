@@ -24,6 +24,26 @@ function app() {
   return { run, context, storage, delays };
 }
 
+test("project search matches short names, account and platform together", () => {
+  const {run}=app();
+  run(`projects[0].shortName='耳机';projects[0].publicationAccount='wen';projects[0].publication={douyin:{count:1}};
+    projectFilter='all';projectSearchTerm='耳机 抖音';`);
+  assert.equal(run('getVisibleProjects().length'),1);
+  run(`projectSearchTerm='闻学长 耳机'`);
+  assert.equal(run('getVisibleProjects().length'),1);
+  run(`projectSearchTerm='耳机 小红书'`);
+  assert.equal(run('getVisibleProjects().length'),0);
+});
+
+test("keyboard viewport only adjusts for an editor and ignores pinch zoom", () => {
+  const {run}=app();
+  assert.equal(run(`keyboardViewport({height:500,offsetTop:20,scale:1},844,false)`),null);
+  assert.equal(run(`keyboardViewport({height:500,offsetTop:20,scale:2},844,true)`),null);
+  assert.equal(run(`keyboardViewport({height:800,offsetTop:0,scale:1},844,true)`),null);
+  assert.equal(run(`keyboardViewport({height:500,offsetTop:20,scale:1},844,true).height`),500);
+  assert.equal(run(`keyboardViewport({height:500,offsetTop:20,scale:1},844,true).top`),20);
+});
+
 test("day rollover updates today without changing the viewed month or selection", () => {
   const {run}=app();
   run(`TODAY_ISO='2026-09-21';calendarMonthAnchor='2026-08-01';selectedCalendarDate='2026-08-15';`);
