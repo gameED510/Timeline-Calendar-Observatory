@@ -7,7 +7,7 @@ const SUPABASE_LEGACY_TABLE = "timeline_data";
 const SUPABASE_PROJECTS_TABLE = "timeline_projects";
 const SUPABASE_SNAPSHOTS_TABLE = "timeline_snapshots";
 const SUPABASE_CLIENT_MODULE = "./vendor/supabase-client.js?v=2";
-const TODAY_ISO = dateToIso(new Date());
+let TODAY_ISO = dateToIso(new Date());
 
 const STAGES = [
   { name: "大纲", icon: "file-text" },
@@ -257,7 +257,7 @@ function changeCloudAccount(user) {
   syncState.user = user;
   if (nextId !== activeAccountId) {
     TLActualUI.reset();
-    document.querySelectorAll(".pricing-dialog, .actual-dialog").forEach((dialog) => { dialog.close(); dialog.remove(); });
+    document.querySelectorAll(".pricing-dialog, .actual-dialog, .import-preview, .reschedule-dialog").forEach((dialog) => { dialog.close(); dialog.remove(); });
     document.querySelector("#actualPerformance")?.remove();
   }
   if (nextId === activeAccountId) return;
@@ -1293,15 +1293,15 @@ function renderFocusRow(grouped, activeMilestones) {
     createFocusCard({
       icon: "sun-medium",
       label: "当前焦点",
-      title: dueItems.length ? `${dueItems.length} 个逾期/今日节点` : "今天没有卡住的节点",
-      meta: dueItems.length ? `${describeMilestone(dueItems[0])} · ${describeRelativeDate(dueItems[0].date)}` : "可以从下一节点继续推进",
+      title: !projects.length ? "暂无项目" : dueItems.length ? `${dueItems.length} 个逾期/今日节点` : "今天没有卡住的节点",
+      meta: !projects.length ? "添加第一个项目" : dueItems.length ? `${describeMilestone(dueItems[0])} · ${describeRelativeDate(dueItems[0].date)}` : "可以从下一节点继续推进",
       tone: dueItems.length ? "warning" : "calm",
       onClick: dueItems.length ? () => openMilestoneInCalendar(dueItems[0].project.id, dueItems[0].stage) : () => switchView("timeline")
     }),
     createFocusCard({
       icon: "arrow-right-circle",
       label: "下一步",
-      title: nextItem ? `${nextItem.stage} · ${getClientName(nextItem.project.name)}` : "全部完成",
+      title: nextItem ? `${nextItem.stage} · ${getClientName(nextItem.project.name)}` : projects.length ? "暂无待办" : "暂无项目",
       meta: nextItem ? formatDateWithWeekday(nextItem.date) : "没有待办节点",
       tone: "accent",
       onClick: nextItem ? () => openMilestoneInCalendar(nextItem.project.id, nextItem.stage) : () => switchView("calendar")
@@ -1317,7 +1317,7 @@ function renderFocusRow(grouped, activeMilestones) {
     createFocusCard({
       icon: "gauge",
       label: "当前完成率",
-      title: activeMilestones.length ? `${progress}%` : "全部完成",
+      title: activeMilestones.length ? `${progress}%` : "—",
       meta: activeMilestones.length ? `${doneCount}/${activeMilestones.length} 个进行中项目节点已完成` : "暂无进行中的项目",
       tone: "progress",
       onClick: () => switchView("timeline")
@@ -2131,6 +2131,7 @@ function renderAccountAvatar() {
   const email = syncState.user?.email || "";
   elements.avatarInitial.textContent = email ? email.trim().charAt(0).toUpperCase() : "云";
   elements.avatarButton.classList.toggle("signed-in", Boolean(syncState.user));
+  delete elements.avatarButton.dataset.sync;
   elements.avatarButton.title = syncState.user ? "账户与退出登录" : "登录云同步";
   elements.avatarButton.setAttribute("aria-label", elements.avatarButton.title);
 }
@@ -2210,6 +2211,15 @@ function createSupabaseProxyFetch(proxyUrl) {
   };
 }
 
+function projectSyncSummary() {
+  const pending = dirtyProjectIds.size;
+  if (!navigator.onLine) return {label:"离线",tone:"muted",note:pending ? `${pending} 个项目待同步，请保持此页面，联网后自动重试` : "当前离线，云端数据暂时无法更新"};
+  if (syncState.saving) return {label:"同步中",tone:"saving",note:"正在上传改动，请稍候"};
+  if (pending) return {label:"待同步",tone:"saving",note:`${pending} 个项目尚未确认写入云端`};
+  if (syncState.loadingRemote || !accountHydrated) return {label:"读取中",tone:"saving",note:"正在安全合并云端数据"};
+  return {label:"已同步",tone:"synced",note:syncState.conflicts ? `已保护 ${syncState.conflicts} 次跨设备冲突，可在恢复记录中查看本机版本` : "当前项目改动已与云端同步"};
+}
+
 function renderSyncPanel() {
   renderAccountGate();
   if (!elements.syncStatus) return;
@@ -2266,13 +2276,13 @@ function renderSyncPanel() {
   }
 
   elements.syncUserEmail.textContent = syncState.user.email || "已登录";
-  elements.syncStatus.textContent = syncState.saving ? "保存中" : "已登录";
-  elements.syncStatus.className = syncState.saving ? "sync-status saving" : "sync-status synced";
-  elements.syncNote.textContent = syncState.loadingRemote
-    ? "安全合并云端数据中"
-    : syncState.conflicts
-      ? `已保护 ${syncState.conflicts} 次跨设备冲突`
-      : "项目级自动同步与版本保护已开启";
+  const summary = projectSyncSummary();
+  elements.syncStatus.textContent = summary.label;
+  elements.syncStatus.className = `sync-status ${summary.tone}`;
+  elements.syncNote.textContent = summary.note;
+  elements.avatarButton.title = `账户与云同步 · ${summary.label}`;
+  elements.avatarButton.setAttribute("aria-label",elements.avatarButton.title);
+  elements.avatarButton.dataset.sync = summary.tone;
   elements.syncLastSaved.textContent = syncState.lastSavedAt ? `上次同步 ${formatClock(syncState.lastSavedAt)}` : "等待同步";
   activateIcons();
 }
@@ -3109,8 +3119,21 @@ function openProjectDialog(projectId = null) {
     const id = TLPerformance.account({ name: accountNameInput.value }, pricingProfiles());
     const match = pricingProfiles().find((profile) => profile.id === id);
     elements.projectForm.elements.publicationAccount.options[0].textContent = match ? `自动识别：${match.name}` : "自动识别：未匹配账号";
+    const chosen = elements.projectForm.elements.publicationAccount.value || id;
+    const profile = pricingProfiles().find(item => item.id === chosen);
+    const hint = document.querySelector("#publicationPricingHint");
+    if (elements.projectForm.elements.publicationGift.checked) {
+      hint.textContent = "赠送项目：发布条数正常统计，预计提成为 ¥0。";
+    } else if (!profile) {
+      hint.textContent = "未关联计提账号：发布条数正常统计，暂不计算提成。";
+    } else {
+      const labels = {douyin:"抖音",xiaohongshu:"小红书"};
+      const selectedPlatforms = TLPerformance.platforms.filter(key => elements.projectForm.elements[`${key}Published`].checked);
+      hint.textContent = selectedPlatforms.length ? selectedPlatforms.map(key => profile.rates[key] == null ? `${labels[key]}：报价未配置` : `${labels[key]} ¥${profile.rates[key].toLocaleString("zh-CN")} × ${Math.round(profile.revenueShare*10000)/100}% × ${Math.round(profile.commissionRate*10000)/100}% = ¥${(profile.rates[key]*profile.revenueShare*profile.commissionRate).toLocaleString("zh-CN",{maximumFractionDigits:2})}/条`).join("；") : `${profile.name} · 尚未选择发布平台`;
+    }
   };
   accountNameInput.oninput = updateAccountHint;
+  ["publicationAccount","publicationGift","douyinPublished","xiaohongshuPublished"].forEach(name => { elements.projectForm.elements[name].onchange = updateAccountHint; });
   window.requestAnimationFrame(updateAccountHint);
   elements.projectForm.elements.publicationGift.checked = editingProject?.publicationGift === true;
   elements.projectDateFields.innerHTML = "";
@@ -3147,7 +3170,10 @@ function openProjectDialog(projectId = null) {
   renderSmartPastePreview();
   setSmartPasteStatus();
   renderDialogSequenceWarning();
-  document.querySelector("#smartImportDisclosure").open=!editingProject;
+  const smartDisclosure=document.querySelector("#smartImportDisclosure");
+  elements.projectForm.querySelector(".optional-stage-note").before(smartDisclosure);
+  smartDisclosure.open=false;
+  elements.projectForm.querySelector(".project-display-options").open=false;
   document.querySelector("#projectUnsaved").hidden=true;
   document.querySelector("#projectDraftNotice").hidden=!projectDrafts.has(projectDraftKey());
   document.querySelector(".editor-more").open=false;
@@ -3354,16 +3380,61 @@ function escapeCsvCell(value) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+function importChanges(incoming, existing) {
+  const ids = new Set();
+  for (const item of incoming) {
+    if (typeof item.id !== "string" || !item.id.trim()) throw new Error("备份中有项目缺少编号。");
+    if (ids.has(item.id)) throw new Error("备份含重复项目编号，请检查文件。");
+    ids.add(item.id);
+  }
+  const old = new Map(existing.map(item => [item.id, item]));
+  return incoming.map(item => ({ name: item.name, kind: !old.has(item.id) ? "新增" : projectFingerprint(item) === projectFingerprint(old.get(item.id)) ? "不变" : "更新" }))
+    .concat(existing.filter(item => !ids.has(item.id)).map(item => ({ name: item.name, kind: "移除" })));
+}
+
+function previewProjectImport(incoming) {
+  const changes = importChanges(incoming, projects);
+  return new Promise(resolve => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "project-dialog import-preview";
+    dialog.setAttribute("aria-labelledby", "importPreviewTitle");
+    dialog.innerHTML = `<form method="dialog"><header class="dialog-header"><h2 id="importPreviewTitle">导入备份预览</h2></header><div class="project-form-body"><p>确认后将以备份替换当前项目，并同步到云端。</p><p data-summary></p><ul data-changes></ul></div><footer class="dialog-actions"><button class="secondary-button" value="cancel">取消</button><button class="primary-button" value="apply">确认替换</button></footer></form>`;
+    dialog.querySelector("[data-summary]").textContent = ["新增", "更新", "移除", "不变"].map(kind => `${kind} ${changes.filter(item => item.kind === kind).length}`).join(" · ");
+    for (const item of changes) {
+      const row = document.createElement("li");
+      row.textContent = `${item.kind} · ${item.name}`;
+      dialog.querySelector("[data-changes]").append(row);
+    }
+    dialog.addEventListener("close", () => { const accepted = dialog.returnValue === "apply"; dialog.remove(); resolve(accepted); }, { once: true });
+    document.body.append(dialog);
+    dialog.showModal();
+    dialog.querySelector('[value="cancel"]').focus();
+  });
+}
+
 async function importProjects(file) {
   if (!canEditProjects()) return;
   const epoch = accountEpoch;
   if (!file) return;
   try {
+    if (file.size > 5 * 1024 * 1024) { showToast("备份超过 5MB，请拆分后导入。"); return; }
     const payload = JSON.parse(await file.text());
     if (epoch !== accountEpoch) return;
     const imported = payload.projects || payload;
     if (!validateProjects(imported)) throw new Error("Invalid project shape");
-    if (!window.confirm(`导入 ${imported.length} 个项目？当前数据会被覆盖。`)) return;
+    for (const project of imported) {
+      for (const stage of STAGES) {
+        const date = project.milestones[stage.name];
+        if (date && (!Number.isFinite(Date.parse(`${date}T12:00:00Z`)) || new Date(`${date}T12:00:00Z`).toISOString().slice(0,10) !== date)) {
+          showToast(`导入失败：「${project.name}」的${stage.name}日期无效`); return;
+        }
+      }
+    }
+    const before = JSON.stringify(projects);
+    if (!await previewProjectImport(imported)) return;
+    if (epoch !== accountEpoch || !canEditProjects()) return;
+    if (before !== JSON.stringify(projects)) { showToast("预览期间项目已变化，请重新导入核对。"); return; }
+    if (!createLocalRecoveryPoint("导入备份前")) { showToast("无法保存导入前备份，请检查浏览器存储空间后重试。"); return; }
     projects = imported.map(cloneProject);
     selected = null;
     saveProjects();
@@ -3376,17 +3447,38 @@ async function importProjects(file) {
   }
 }
 
+function removeProjectWithUndo(project) {
+  const epoch = accountEpoch;
+  const account = activeAccountId;
+  const saved = cloneProject(project);
+  const index = projects.findIndex(item => item.id === project.id);
+  projects = projects.filter(item => item.id !== project.id);
+  if (selected?.projectId === project.id) selected = null;
+  projectDrafts.delete(`${account}:${project.id}`);
+  saveProjects();
+  render();
+  let restored = false;
+  showToast(`已删除「${project.name}」`, () => {
+    if (restored || epoch !== accountEpoch || account !== activeAccountId || !canEditProjects()) return;
+    if (projects.some(item => item.id === saved.id)) {
+      showToast("项目已存在，未覆盖当前内容");
+      return;
+    }
+    restored = true;
+    projects.splice(Math.min(Math.max(index, 0), projects.length), 0, cloneProject(saved));
+    saveProjects();
+    render();
+    showToast(`已恢复「${saved.name}」`);
+  });
+}
+
 function deleteSelectedProject() {
   if (!canEditProjects()) return;
   if (!selected) return;
   const project = projects.find((item) => item.id === selected.projectId);
   if (!project) return;
   if (!window.confirm(`删除「${project.name}」？`)) return;
-  projects = projects.filter((item) => item.id !== project.id);
-  selected = null;
-  saveProjects();
-  render();
-  showToast("已删除项目");
+  removeProjectWithUndo(project);
 }
 
 function deleteEditingProject() {
@@ -3395,13 +3487,9 @@ function deleteEditingProject() {
   const project = projects.find((item) => item.id === editingProjectId);
   if (!project) return;
   if (!window.confirm(`删除「${project.name}」？这个操作会同步到云端。`)) return;
-  projects = projects.filter((item) => item.id !== project.id);
-  if (selected?.projectId === project.id) selected = null;
   editingProjectId = null;
   elements.projectDialog.close();
-  saveProjects();
-  render();
-  showToast("已删除项目");
+  removeProjectWithUndo(project);
 }
 
 function resetToDefaults() {
@@ -3432,7 +3520,16 @@ function switchView(view) {
   });
 }
 
+function refreshCurrentDate(now = new Date()) {
+  const next = dateToIso(now);
+  if (next === TODAY_ISO) return false;
+  TODAY_ISO = next;
+  render();
+  return true;
+}
+
 function jumpToToday() {
+  refreshCurrentDate();
   selectedCalendarDate = TODAY_ISO;
   calendarMonthAnchor = startOfMonthIso(TODAY_ISO);
   if (isMobileLayout() && calendarMode === "agenda") calendarMode = "month";
@@ -3535,10 +3632,16 @@ function wireEvents() {
     document.querySelector("#smartImportDisclosure").open=false;
     elements.projectNameInput.focus();
   };
-  document.querySelector("#sidebarToggle").onclick=event=>{
-    const collapsed=elements.appShell.classList.toggle("sidebar-collapsed");
-    const button=event.currentTarget;button.setAttribute("aria-expanded",String(!collapsed));
+  const applySidebarState = collapsed => {
+    elements.appShell.classList.toggle("sidebar-collapsed",collapsed);
+    const button=document.querySelector("#sidebarToggle");button.setAttribute("aria-expanded",String(!collapsed));
     button.setAttribute("aria-label",collapsed?"展开项目概览":"收起项目概览");button.title=button.getAttribute("aria-label");
+  };
+  try { applySidebarState(localStorage.getItem("tl-overview-collapsed") === "true"); } catch { applySidebarState(false); }
+  document.querySelector("#sidebarToggle").onclick=()=>{
+    const collapsed=!elements.appShell.classList.contains("sidebar-collapsed");
+    applySidebarState(collapsed);
+    try { localStorage.setItem("tl-overview-collapsed",String(collapsed)); } catch { /* Storage may be disabled. */ }
     window.dispatchEvent(new Event("resize"));
   };
   elements.projectDialog.addEventListener("close", () => {
@@ -3598,7 +3701,9 @@ function wireEvents() {
     });
   });
   window.addEventListener("beforeunload",event=>{
-    if(elements.projectDialog.open&&JSON.stringify(projectEditorState())!==editorBaseline){event.preventDefault();event.returnValue="";}
+    const edited=elements.projectDialog.open&&JSON.stringify(projectEditorState())!==editorBaseline;
+    const pending=Boolean(activeAccountId && (dirtyProjectIds.size || syncState.saving));
+    if(edited || pending){event.preventDefault();event.returnValue="";}
   });
 
   document.querySelector("#performanceMonth").addEventListener("change", (event) => {
@@ -3632,11 +3737,15 @@ function wireEvents() {
   elements.historyDialog?.addEventListener("click", (event) => {
     if (event.target === elements.historyDialog) elements.historyDialog.close();
   });
-  window.addEventListener("focus", () => loadCloudProjects({ preferNewer: true }));
+  window.addEventListener("focus", () => { refreshCurrentDate(); loadCloudProjects({ preferNewer: true }); });
+  document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible")refreshCurrentDate(); });
+  window.setInterval(() => { if(document.visibilityState === "visible")refreshCurrentDate(); },60000);
   window.addEventListener("online", () => {
     syncRetryCount = 0;
+    renderSyncPanel();
     loadCloudProjects({ preferNewer: true });
   });
+  window.addEventListener("offline", () => renderSyncPanel());
   window.addEventListener("resize", () => {
     if (!elements.accountPopover.classList.contains("hidden")) positionAccountPopover();
   });

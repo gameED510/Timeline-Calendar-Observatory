@@ -4991,6 +4991,16 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
   .actual-chart-tabs { width: 100%; }
   .actual-chart-tabs button { flex: 1; min-height: 44px; padding: 6px; }
 }
+.import-preview ul { list-style: none; padding: 0; margin: 16px 0; }
+.avatar-button[data-sync="saving"], .avatar-button[data-sync="muted"] { position: relative; }
+.avatar-button[data-sync="saving"]::after, .avatar-button[data-sync="muted"]::after { content: ""; position: absolute; right: 0; bottom: 0; width: 9px; height: 9px; border: 2px solid var(--bg-soft); border-radius: 50%; background: #d99316; }
+.avatar-button[data-sync="muted"]::after { background: #777; }
+.reschedule-dialog { width: min(420px, calc(100vw - 24px)); height: auto; max-height: calc(100dvh - 24px); }
+.reschedule-dialog .project-form-body { padding: 20px; }
+.reschedule-dialog input { width: 100%; min-width: 0; box-sizing: border-box; }
+.reschedule-dialog [data-name] { overflow-wrap: anywhere; }
+.import-preview li { padding: 10px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.import-preview .project-form-body { min-height: 0; overflow-y: auto; }
 .toast.show:has(.toast-undo) { pointer-events: auto; }
 .toast-undo { margin-left: 12px; padding: 8px; min-height: 44px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden; }

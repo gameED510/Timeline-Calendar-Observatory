@@ -76,7 +76,7 @@
     const formula = valid.reduce((s, r) => s + r.snapshot.formula, 0);
     const actual = valid.reduce((s, r) => s + r.total, 0);
     const bias = n ? valid.reduce((s, r) => s + r.snapshot.formula - r.total, 0) / n : null;
-    return { n, factor: n ? 1 + (actual / formula - 1) * n / (n + 3) : 1,
+    return { n, months: valid.map(record => record.month), factor: n ? 1 + (actual / formula - 1) * n / (n + 3) : 1,
       ready: n >= 3, bias, mae: n ? valid.reduce((s, r) => s + Math.abs(r.snapshot.formula - r.total), 0) / n : null };
   }
   function snapshot(projects, month, today, config) {
@@ -91,5 +91,12 @@
       formulaMae: valid.length ? valid.reduce((s,r) => s + Math.abs(r.total - r.snapshot.formula), 0) / valid.length : null,
       calibratedMae: valid.length ? valid.reduce((s,r) => s + Math.abs(r.total - r.snapshot.calibrated), 0) / valid.length : null };
   }
-  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, summarize, naturalMonth, calibration, snapshot, evaluate };
+  function chartPoints(records, month, count = 6) {
+    const byMonth = new Map(records.filter(r => r.snapshot && Number.isFinite(r.total)).map(r => [r.month,r]));
+    return Array.from({length:count},(_,index)=>{
+      const key=naturalMonth(month,index-count+1).start.slice(0,7);
+      return byMonth.get(key) || {month:key,total:null,snapshot:null};
+    });
+  }
+  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints };
 })(globalThis);

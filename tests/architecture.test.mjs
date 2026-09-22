@@ -28,7 +28,8 @@ test("calendar motion is local, included in both builds and offline shell", asyn
   assert.match(motion, /pointercancel/);
   assert.match(motion, /layer !== owner/);
   assert.match(motion, /function mount/);
-  assert.doesNotMatch(motion, /showPopover|document\.body\.append|role.*dialog/);
+  const expansion = motion.slice(motion.indexOf('  function open('), motion.indexOf('  function mount('));
+  assert.doesNotMatch(expansion, /showPopover|document\.body\.append|role.*dialog/);
   assert.match(await read("app.js"), /items\.length >= 1/);
   assert.match(motion, /Flip\.from/);
   assert.doesNotMatch(motion, /pointerType==='mouse'\)open/);

@@ -67,10 +67,12 @@
     const calibrated = record ? snapshot.calibrated : model.ready ? formula * model.factor : null;
     const evaluation = P.evaluate(state.records);
     const difference=present(record)?record.total-formula:null;
-    const differenceLabel=difference===null ? "待结算" : `较公式 ${difference>=0?"+":"−"}¥${money(Math.abs(difference))}${formula>0 ? `（${difference>=0?"+":""}${money(difference/formula*100)}%）` : ""}`;
+    const differenceLabel=difference===null ? "尚未录入实际提成" : difference===0 ? "与公式估算一致" : `比预计${difference>0?"多":"少"} ¥${money(Math.abs(difference))}${formula>0 ? `（${money(Math.abs(difference)/formula*100)}%）` : " · 估算为零，不计算误差率"}`;
     panel.innerHTML = `<div class="actual-heading"><div><p class="eyebrow">TL / SETTLEMENT</p><h3>真实结算与预测</h3></div><div class="actual-actions"><button type="button" class="icon-button mini-button" data-refresh title="刷新结算记录" aria-label="刷新结算记录"><i data-lucide="refresh-cw"></i></button><button type="button" class="secondary-button actual-entry" data-entry ${state.loading || !state.loaded ? "disabled" : ""}><i data-lucide="plus"></i>录入实际</button></div></div>
       <div class="actual-comparison"><div><span>公式估算</span><strong>¥${money(formula)}</strong><small>${record ? snapshot.kind === "forecast" ? "已保存预测快照" : "历史回算" : "当前报价回算"}</small></div><div><span>历史校准估算</span><strong>${Number.isFinite(calibrated) ? `¥${money(calibrated)}` : "—"}</strong><small>${Number.isFinite(calibrated) ? `${snapshot.calibrationMonths ?? model.n} 个月样本 · 校准试算` : "满 3 个有效月份后试算"}</small></div><div><span>实际总提成</span><strong>${present(record) ? `¥${money(record.total)}` : "—"}</strong><small>${differenceLabel}</small></div></div>
+      <p class="performance-range">${esc(context.month)} 结算 · 对应 ${esc(P.naturalMonth(context.month,-3).start.slice(0,7))} 自然月发布</p>
       <details class="forecast-breakdown"><summary>查看公式估算来源 · ${(snapshot.rows||[]).length} 条发布记录</summary>${(snapshot.rows||[]).map(row=>`<p><span>${esc(row.name)} · ${row.platform==="douyin"?"抖音":"小红书"}</span><strong>¥${money(row.estimated)}</strong></p>`).join("")||"此月暂无参与估算的发布记录"}</details>
+      <details class="forecast-breakdown"><summary>当前校准样本 · ${model.n} 个月</summary><p>${model.months.map(esc).join("、") || "暂无有效历史结算"}</p><p>只采用当前结算月之前、已有实际总额且公式估算大于零的最近六个月；未录入和零估算月份不参与。</p><p>当前系数 ${model.factor.toFixed(3)}${record ? "；已保存估算仍沿用原快照，不随当前样本变化。" : ""}</p></details>
       ${model.n<3?`<div class="actual-sample-progress"><progress value="${model.n}" max="3" aria-label="校准样本积累"></progress><span>${model.n}/3 个有效结算月，继续积累后显示校准试算</span></div>`:""}
       <p class="actual-status" role="status">${state.loading ? "正在读取结算记录…" : esc(state.error)}</p>
       <div class="actual-analysis"><span>最近 ${model.n} 个有效月份</span>${model.mae === null ? "" : `<span>平均金额误差 ¥${money(model.mae)}</span><span>${model.bias > 0 ? "长期高估" : model.bias < 0 ? "长期低估" : "无整体偏差"} ${model.bias ? `¥${money(Math.abs(model.bias))}` : ""}</span>`}</div>
@@ -81,7 +83,7 @@
         const estimate = matched.reduce((s,r) => s+r.estimated,0);
         return `<tr><td><strong>${esc(ad.name || matched[0]?.name || "未命名广告")}</strong><span>${matched.length ? [...new Set(matched.map(r => r.platform === "douyin" ? "抖音" : "小红书"))].join(" + ") : "未匹配估算"}</span></td><td>¥${money(ad.revenue)}</td><td>${Number.isFinite(ad.commissionRate) ? `¥${money(adCommission(ad))} · ${money(ad.commissionRate*100)}%` : "比例待匹配"}</td><td>${matched.length && Number.isFinite(ad.commissionRate) ? `¥${money(adCommission(ad)-estimate)}` : "—"}</td></tr>`;
       }).join("")}</tbody></table></div><p class="performance-footnote">已匹配比例的明细提成合计 ¥${money(record.ads.reduce((s,a)=>s+adCommission(a),0))} · 与确认总提成差额 ¥${money(record.total-record.ads.reduce((s,a)=>s+adCommission(a),0))}。实际总提成以确认值为准。</p></details>` : ""}`;
-    root.TLPerformanceCharts.render(panel.querySelector('.performance-charts'),state.records,snapshot,month=>context.onChange(month));
+    root.TLPerformanceCharts.render(panel.querySelector('.performance-charts'),state.records,snapshot,month=>context.onChange(month),context.month);
     panel.querySelector("[data-refresh]").onclick = () => load();
     panel.querySelector("[data-entry]").onclick = () => open();
     root.lucide?.createIcons();
@@ -111,7 +113,9 @@
     let targetRecord, dirty = false;
     const balance = () => {
       const total = Number(form.elements.total.value), sum = [...rows.children].reduce((s,r)=>s+Number(r.querySelector('[data-revenue]').value || 0)*Number(r.dataset.rate || 0),0);
-      dialog.querySelector("[data-balance]").textContent = rows.children.length ? `明细对应提成 ¥${money(sum)}${form.elements.total.value !== "" && Math.abs(total-sum) > .02 ? `，与总提成相差 ¥${money(total-sum)}，保存仍以确认总额为准。` : ""}` : "";
+      const unknown = [...rows.children].filter(r => r.dataset.rate === "").length;
+      const delta = Math.round((total-sum)*100)/100;
+      dialog.querySelector("[data-balance]").textContent = `已对应提成 ¥${money(sum)}${unknown ? ` · ${unknown} 条明细比例待匹配` : ""}${form.elements.total.value === "" ? "" : delta > 0 ? ` · 尚未对应 ¥${money(delta)}` : delta < 0 ? ` · 明细超出总额 ¥${money(-delta)}，请核对` : " · 总额已对齐"}。保存以个人总提成为准。`;
     };
     const add = (ad = {}) => {
       const row = document.createElement("div"); row.className = "actual-ad-row";

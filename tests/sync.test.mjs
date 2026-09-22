@@ -24,6 +24,71 @@ function app() {
   return { run, context, storage, delays };
 }
 
+test("day rollover updates today without changing the viewed month or selection", () => {
+  const {run}=app();
+  run(`TODAY_ISO='2026-09-21';calendarMonthAnchor='2026-08-01';selectedCalendarDate='2026-08-15';`);
+  assert.equal(run(`refreshCurrentDate(new Date(2026,8,22,1))`),true);
+  assert.equal(run('TODAY_ISO'),'2026-09-22');
+  assert.equal(run('calendarMonthAnchor'),'2026-08-01');
+  assert.equal(run('selectedCalendarDate'),'2026-08-15');
+  assert.equal(run(`refreshCurrentDate(new Date(2026,8,22,2))`),false);
+});
+
+test("sync summary distinguishes pending, uploading, offline and acknowledged data", () => {
+  const { run }=app();
+  assert.equal(run('projectSyncSummary().label'),'已同步');
+  run("dirtyProjectIds.add('p')");
+  assert.equal(run('projectSyncSummary().label'),'待同步');
+  run('syncState.saving=true');
+  assert.equal(run('projectSyncSummary().label'),'同步中');
+  run('navigator.onLine=false');
+  assert.equal(run('projectSyncSummary().label'),'离线');
+});
+
+test("project deletion undo restores once and never overwrites an existing project", () => {
+  const { run } = app();
+  run(`saveProjects=()=>markDirtyProjects();let undoDelete;showToast=(message,undo)=>{if(undo)undoDelete=undo;};
+    removeProjectWithUndo(projects[0]);`);
+  assert.equal(run('projects.length'),0);
+  run('undoDelete();undoDelete();');
+  assert.equal(run('projects.length'),1);
+  run(`removeProjectWithUndo(projects[0]);projects.push({id:'p',name:'新内容'});undoDelete();`);
+  assert.equal(run('projects[0].name'),'新内容');
+});
+
+test("project deletion undo is invalid after account transition", () => {
+  const { run } = app();
+  run(`saveProjects=()=>{};let undoDelete;showToast=(message,undo)=>{if(undo)undoDelete=undo;};
+    removeProjectWithUndo(projects[0]);accountEpoch+=1;undoDelete();`);
+  assert.equal(run('projects.length'),0);
+});
+
+test("import preview classifies all changes and rejects duplicate identifiers", () => {
+  const { run } = app();
+  assert.equal(run(`importChanges([{id:'new',name:'新项目',milestones:{}}],projects).map(r=>r.kind).join(',')`), '新增,移除');
+  assert.equal(run(`importChanges(projects,projects)[0].kind`), '不变');
+  assert.equal(run(`importChanges([{...projects[0],name:'修改'}],projects)[0].kind`), '更新');
+  assert.throws(() => run(`importChanges([projects[0],projects[0]],projects)`), /重复/);
+  assert.throws(() => run(`importChanges([{name:'缺少编号'}],projects)`), /编号/);
+});
+
+test("import cannot replace projects when recovery storage fails", async () => {
+  const { run } = app();
+  run(`elements.importFile={value:'backup'};previewProjectImport=async()=>true;createLocalRecoveryPoint=()=>null;
+    let importMessage='';showToast=message=>{importMessage=message;};`);
+  await run(`importProjects({size:100,text:async()=>JSON.stringify([{id:'new',name:'新项目',milestones:{'发布':'2026-09-22'}}])})`);
+  assert.equal(run('projects[0].id'),'p');
+  assert.match(run('importMessage'),/无法保存导入前备份/);
+});
+
+test("import rejects impossible dates before preview", async () => {
+  const { run } = app();
+  run(`elements.importFile={value:'backup'};let previewed=false;previewProjectImport=async()=>{previewed=true;return true;};`);
+  await run(`importProjects({size:100,text:async()=>JSON.stringify([{id:'new',name:'新项目',milestones:{'发布':'2026-02-30'}}])})`);
+  assert.equal(run('previewed'),false);
+  assert.equal(run('projects[0].id'),'p');
+});
+
 test("publication metadata survives cloud round trips and marks edits dirty", () => {
   const { run } = app();
   run(`projects[0].publication = {douyin:{count:2,date:"2026-09-07"},xiaohongshu:{count:1,date:"2026-09-08"}};

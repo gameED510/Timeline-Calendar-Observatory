@@ -31,6 +31,24 @@ window.CalendarMotion = (() => {
     const i=document.createElement('i'); i.dataset.lucide=name; button.append(i);
     button.addEventListener('click',event=>{event.stopPropagation();action();}); return button;
   }
+  function chooseDate(item, handlers) {
+    close(false);
+    const dialog=document.createElement('dialog');
+    dialog.className='project-dialog reschedule-dialog';
+    dialog.setAttribute('aria-label','调整节点日期');
+    dialog.innerHTML='<form><header class="dialog-header"><h2>调整日期</h2></header><div class="project-form-body"><p data-name></p><label class="field-label" for="rescheduleDate">目标日期</label><input id="rescheduleDate" type="date" required></div><footer class="dialog-actions"><button type="button" class="secondary-button">取消</button><button type="submit" class="primary-button">确认改期</button></footer></form>';
+    dialog.querySelector('[data-name]').textContent=`${item.project.name} · ${item.stage}`;
+    const input=dialog.querySelector('input');input.value=item.date;
+    dialog.querySelector('button').onclick=()=>dialog.close();
+    dialog.querySelector('form').onsubmit=event=>{
+      event.preventDefault();
+      if(!input.reportValidity())return;
+      const date=input.value;dialog.close();
+      if(date!==item.date)handlers.move(item,date);
+    };
+    dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+    document.body.append(dialog);dialog.showModal();input.focus();
+  }
   function close(restoreFocus = true, immediate = false) {
     clearTimeout(leaveTimer);
     if (drag) { const proxy=drag.ghost;drag=null;gsap.killTweensOf(proxy);proxy.remove(); }
@@ -120,7 +138,7 @@ window.CalendarMotion = (() => {
       main.addEventListener('click',event=>{
         event.stopPropagation();
         if(main.dataset.dragged){delete main.dataset.dragged;return;}
-        if(layer!==group)open(group);else focus(index);
+        if(layer!==group)open(group);else if(focused===index)close();else focus(index);
       });
       main.addEventListener('keydown',event=>{
         if(event.key==='Escape'){event.stopPropagation();close();}
@@ -136,6 +154,8 @@ window.CalendarMotion = (() => {
       const menu=document.createElement('div');menu.className='motion-card-menu';menu.hidden=true;
       const edit=icon('pencil','编辑项目',()=>{close(false);handlers.edit(item);});
       edit.append(document.createTextNode('编辑项目'));menu.append(edit);
+      const reschedule=icon('calendar-days','调整日期',()=>chooseDate(item,handlers));
+      reschedule.append(document.createTextNode('调整日期'));menu.append(reschedule);
       const more=icon('ellipsis','更多操作',()=>{
         const next=menu.hidden;
         group.querySelectorAll('.motion-card-menu').forEach(node=>node.hidden=true);

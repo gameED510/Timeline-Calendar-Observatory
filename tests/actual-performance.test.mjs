@@ -3,6 +3,18 @@ import assert from 'node:assert/strict';
 import '../performance.js';
 import { readFileSync } from 'node:fs';
 const p = globalThis.TLPerformance;
+test('chart windows retain missing months and distinguish zero from absent totals',()=>{
+  const points=p.chartPoints([
+    {month:'2025-12',total:0,snapshot:{formula:100}},
+    {month:'2026-01',total:null,snapshot:{formula:200}},
+    {month:'2026-03',total:300,snapshot:{formula:300}}
+  ],'2026-02',3);
+  assert.deepEqual(points.map(r=>r.month),['2025-12','2026-01','2026-02']);
+  assert.equal(points[0].total,0);
+  assert.equal(points[1].total,null);
+  assert.equal(points[1].snapshot,null);
+  assert.equal(points[2].total,null);
+});
 test('settlement uses natural publication month delayed three months', () => {
   assert.deepEqual(p.naturalMonth('2026-07', -3), {start:'2026-04-01',end:'2026-05-01',last:'2026-04-30'});
   assert.equal(p.naturalMonth('2026-01', -3).start, '2025-10-01');
@@ -26,6 +38,7 @@ test('calibration takes at most six prior valid months',()=>{
   const records=Array.from({length:8},(_,i)=>({month:`2026-${String(i+1).padStart(2,'0')}`,total:100,snapshot:{formula:200}}));
   const result=p.calibration(records,'2026-09');
   assert.equal(result.n,6);assert.ok(Math.abs(result.factor-2/3)<1e-12);
+  assert.deepEqual(result.months,['2026-08','2026-07','2026-06','2026-05','2026-04','2026-03']);
 });
 test('manual settlement modules ship without screenshot recognition',()=>{
   for(const path of ['index.html','sw.js','scripts/build-edgeone.mjs','scripts/build-netlify.mjs','scripts/prepare-static.mjs']) {
