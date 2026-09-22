@@ -4999,6 +4999,15 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .reschedule-dialog .project-form-body { padding: 20px; }
 .reschedule-dialog input { width: 100%; min-width: 0; box-sizing: border-box; }
 .reschedule-dialog [data-name] { overflow-wrap: anywhere; }
+.app-update-notice { position: fixed; z-index: 1000; inset: auto 16px 90px auto; width: min(420px, calc(100vw - 32px)); box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 12px; background: var(--panel, #fff); color: var(--text, #222); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px #0002; }
+.app-update-notice { background: var(--bg-soft); color: var(--ink); }
+.recovery-comparison { width: min(720px, calc(100vw - 24px)); margin-inline: auto; }
+.recovery-comparison h3 { font-size: 15px; margin: 20px 0 8px; overflow-wrap: anywhere; }
+.recovery-diff-row { display: grid; grid-template-columns: 80px minmax(0,1fr) minmax(0,1fr); gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.recovery-diff-row span { overflow-wrap: anywhere; min-width: 0; }
+@media(max-width:420px) { .recovery-diff-row { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }.recovery-diff-row span:first-child { grid-column: 1 / -1; font-weight: 600; }.history-row { flex-wrap: wrap; } }
+.app-update-notice p { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.5; }
+.app-update-notice button { flex-shrink: 0; min-height: 44px; }
 .dense-day-dialog { width: min(560px, calc(100vw - 24px)); margin-inline: auto; }
 .dense-day-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding: 16px 0; }
 .dense-day-row > div:first-child { min-width: 0; border-left: 3px solid var(--project-color); padding-left: 10px; }

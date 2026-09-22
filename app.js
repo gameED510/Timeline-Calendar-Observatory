@@ -258,7 +258,7 @@ function changeCloudAccount(user) {
   syncState.user = user;
   if (nextId !== activeAccountId) {
     TLActualUI.reset();
-    document.querySelectorAll(".pricing-dialog, .actual-dialog, .import-preview, .reschedule-dialog, .dense-day-dialog").forEach((dialog) => { dialog.close(); dialog.remove(); });
+    document.querySelectorAll(".pricing-dialog, .actual-dialog, .import-preview, .reschedule-dialog, .dense-day-dialog, .recovery-comparison").forEach((dialog) => { dialog.close(); dialog.remove(); });
     document.querySelector("#actualPerformance")?.remove();
   }
   if (nextId === activeAccountId) return;
@@ -2769,7 +2769,9 @@ function applySyncedCloudRow(row, sentFingerprint = null, sentAsDeleted = false)
 }
 
 function resolveCloudConflict(projectId, localProject, remoteRow) {
-  createLocalRecoveryPoint("同步冲突保护", projects);
+  if (!createLocalRecoveryPoint("同步冲突保护", projects)) {
+    throw new Error("本机冲突备份失败，已暂停覆盖，请检查浏览器存储空间");
+  }
   const remoteDeleted = Boolean(remoteRow.deleted);
   const remoteProject = remoteRow.project && typeof remoteRow.project === "object"
     ? cloneProject(remoteRow.project)
@@ -2829,6 +2831,7 @@ async function renderRecoveryHistory() {
         cloudSection.append(createHistoryRow({
           title: formatRecoveryTime(snapshot.created_at),
           meta: `${snapshot.projects?.length || 0} 个项目 · ${formatSnapshotReason(snapshot.reason)}`,
+          onCompare: () => openRecoveryComparison(snapshot.projects),
           onRestore: () => restoreCloudSnapshot(snapshot.id)
         }));
       });
@@ -2847,6 +2850,7 @@ async function renderRecoveryHistory() {
       localSection.append(createHistoryRow({
         title: formatRecoveryTime(point.createdAt),
         meta: `${point.projects.length} 个项目 · ${point.reason || "自动保存"}`,
+        onCompare: () => openRecoveryComparison(point.projects),
         onRestore: () => restoreLocalRecoveryPoint(point.id)
       }));
     });
@@ -2871,7 +2875,7 @@ function createHistorySection(title, meta) {
   return section;
 }
 
-function createHistoryRow({ title, meta, onRestore }) {
+function createHistoryRow({ title, meta, onRestore, onCompare }) {
   const row = document.createElement("div");
   row.className = "history-row";
   const copy = document.createElement("div");
@@ -2886,7 +2890,57 @@ function createHistoryRow({ title, meta, onRestore }) {
   button.textContent = "恢复";
   button.addEventListener("click", onRestore);
   row.append(copy, button);
+  if (onCompare) {
+    const compare = document.createElement("button");
+    compare.type = "button";
+    compare.className = "ghost-button";
+    compare.textContent = "对照";
+    compare.onclick = onCompare;
+    row.insertBefore(compare, button);
+  }
   return row;
+}
+
+function recoveryDifferences(saved, current) {
+  const fields = {name:"名称",shortName:"简称",owner:"负责人",priority:"优先级",notes:"备注",link:"链接",color:"颜色",publicationAccount:"账号",publicationGift:"赠送",publication:"发布平台",milestones:"阶段日期",completedMilestones:"完成状态"};
+  const before = new Map(saved.map(project => [project.id, cloneProject(project)]));
+  const after = new Map(current.map(project => [project.id, cloneProject(project)]));
+  return [...new Set([...before.keys(), ...after.keys()])].flatMap(id => {
+    const old = before.get(id), now = after.get(id);
+    if (!old || !now) return [{id,name:(now || old).name,kind:old ? "仅恢复点存在" : "仅当前存在",fields:[]}];
+    const changes = Object.entries(fields).filter(([key])=>JSON.stringify(old[key])!==JSON.stringify(now[key])).map(([key,label])=>({label,before:old[key],after:now[key]}));
+    return changes.length ? [{id,name:now.name,kind:"内容不同",fields:changes}] : [];
+  });
+}
+
+function openRecoveryComparison(saved) {
+  if (!canEditProjects() || !validateProjects(saved)) return;
+  const differences = recoveryDifferences(saved, projects);
+  const dialog = document.createElement("dialog");
+  dialog.className = "project-dialog recovery-comparison";
+  dialog.setAttribute("aria-label", "恢复点对照");
+  dialog.innerHTML = '<form method="dialog"><header class="dialog-header"><h2>恢复点对照</h2><button class="icon-button" aria-label="关闭">×</button></header><div class="project-form-body"></div></form>';
+  const body = dialog.querySelector(".project-form-body");
+  const heading = document.createElement("p");
+  heading.textContent = differences.length ? `${differences.length} 个项目不同 · 左侧恢复点，右侧当前数据` : "与当前项目一致";
+  body.append(heading);
+  const display = value => typeof value === "boolean" ? (value ? "是" : "否") : value && typeof value === "object" ? Object.entries(value).filter(([,item])=>item !== "" && item != null).map(([key,item])=>`${key === 'douyin' ? '抖音' : key === 'xiaohongshu' ? '小红书' : key}: ${typeof item === 'object' ? item.count : item === true ? '已完成' : item === false ? '未完成' : item}`).join("；") || "—" : String(value || "—");
+  for (const item of differences) {
+    const section = document.createElement("section");
+    const title = document.createElement("h3");
+    title.textContent = `${item.name} · ${item.kind}`;
+    section.append(title);
+    for (const field of item.fields) {
+      const row = document.createElement("div");row.className="recovery-diff-row";
+      for (const value of [field.label,display(field.before),display(field.after)]) {
+        const cell=document.createElement("span");cell.textContent=value;row.append(cell);
+      }
+      section.append(row);
+    }
+    body.append(section);
+  }
+  dialog.onclose=()=>dialog.remove();
+  document.body.append(dialog);dialog.showModal();
 }
 
 function createHistoryEmpty(message) {
@@ -2921,7 +2975,7 @@ async function restoreCloudSnapshot(snapshotId) {
   if (!canEditProjects()) return;
   const epoch = accountEpoch;
   if (!window.confirm("恢复这个云端版本？当前数据会先自动保存一份。")) return;
-  createLocalRecoveryPoint("云端版本恢复前");
+  if (!createLocalRecoveryPoint("云端版本恢复前")) { showToast("当前数据备份失败，已停止恢复，请检查本机存储空间"); return; }
   try {
     const { data, error } = await accountRequest(syncState.client.rpc("restore_timeline_snapshot", {
       p_snapshot_id: snapshotId
@@ -2949,7 +3003,7 @@ function restoreLocalRecoveryPoint(pointId) {
   if (!canEditProjects()) return;
   const point = getLocalRecoveryPoints().find((item) => item.id === pointId);
   if (!point || !window.confirm("恢复这个本机版本？当前数据会先自动保存一份。")) return;
-  createLocalRecoveryPoint("本机版本恢复前");
+  if (!createLocalRecoveryPoint("本机版本恢复前")) { showToast("当前数据备份失败，已停止恢复，请检查本机存储空间"); return; }
   projects = point.projects.map(cloneProject);
   selected = null;
   saveProjects({ reason: "恢复本机版本" });
@@ -3845,6 +3899,29 @@ function wireEvents() {
   setMobilePage(mobilePage);
 }
 
+function updateRefreshBlocker() {
+  if (document.querySelector("dialog[open]")) return "请先保存或关闭当前窗口，再更新";
+  if (activeAccountId && (dirtyProjectIds.size || syncState.saving)) return "排期尚未同步完成，请稍后再更新";
+  if (!navigator.onLine) return "当前离线，请联网后再更新";
+  return "";
+}
+
+function showAppUpdate() {
+  if (document.querySelector("#appUpdateNotice")) return;
+  const notice = document.createElement("section");
+  notice.id = "appUpdateNotice";
+  notice.className = "app-update-notice";
+  notice.setAttribute("aria-label", "网站更新");
+  notice.innerHTML = '<p role="status">新版本已准备好</p><button type="button" class="ghost-button" data-later>稍后</button><button type="button" class="primary-button" data-refresh>更新</button>';
+  notice.querySelector("[data-later]").onclick = () => notice.remove();
+  notice.querySelector("[data-refresh]").onclick = () => {
+    const blocker = updateRefreshBlocker();
+    if (blocker) { notice.querySelector("p").textContent = blocker; return; }
+    window.location.reload();
+  };
+  document.body.append(notice);
+}
+
 updateThemeControls();
 systemThemeQuery.addEventListener?.("change", () => {
   if (!document.documentElement.dataset.theme) {
@@ -3857,6 +3934,10 @@ render();
 initCloudSync();
 
 if ("serviceWorker" in navigator && window.location.protocol === "https:") {
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (hadController) showAppUpdate();
+  });
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch((error) => {
       console.warn("Offline support unavailable", error);

@@ -35,6 +35,50 @@ test("persistent project drafts survive memory reset and remain account scoped",
   assert.equal(run(`readProjectDraft('test:p')`),null);
 });
 
+test("version refresh blocks open dialogs, pending uploads and offline state", () => {
+  const {run}=app();
+  assert.equal(run('updateRefreshBlocker()'), '');
+  run('dirtyProjectIds.add("p")');
+  assert.match(run('updateRefreshBlocker()'), /同步/);
+  run('dirtyProjectIds.clear();syncState.saving=true');
+  assert.match(run('updateRefreshBlocker()'), /同步/);
+  run('syncState.saving=false;navigator.onLine=false');
+  assert.match(run('updateRefreshBlocker()'), /离线/);
+  run('navigator.onLine=true;document.querySelector=()=>({open:true})');
+  assert.match(run('updateRefreshBlocker()'), /窗口/);
+});
+
+test("recovery comparison identifies additions, removals and changed fields without mutation", () => {
+  const {run}=app();
+  run(`saved=[cloneProject(projects[0]),cloneProject({...projects[0],id:'removed'})];
+    projects[0].name='changed';projects.push(cloneProject({...projects[0],id:'added'}));
+    compared=recoveryDifferences(saved,projects);`);
+  assert.equal(run('compared.length'),3);
+  assert.equal(run(`compared.find(row=>row.id==='p').fields[0].label`),'名称');
+  assert.equal(run(`compared.find(row=>row.id==='removed').kind`),'仅恢复点存在');
+  assert.equal(run(`compared.find(row=>row.id==='added').kind`),'仅当前存在');
+  assert.equal(run('saved[0].name'),'测试项目');
+});
+
+test("restoring either source stops when protective local backup fails", async () => {
+  const {run}=app();
+  run(`canEditProjects=()=>true;window.confirm=()=>true;createLocalRecoveryPoint=()=>null;
+    getLocalRecoveryPoints=()=>[{id:'point',projects:[]}];
+    originalProjects=JSON.stringify(projects);rpcCalled=false;
+    syncState.client={rpc:()=>{rpcCalled=true;throw Error('must not restore')}};`);
+  run(`restoreLocalRecoveryPoint('point')`);
+  await run(`restoreCloudSnapshot('snapshot')`);
+  assert.equal(run('JSON.stringify(projects)===originalProjects'),true);
+  assert.equal(run('rpcCalled'),false);
+});
+
+test("sync conflict never overwrites local edits if the recovery backup fails", () => {
+  const {run}=app();
+  run(`createLocalRecoveryPoint=()=>null;originalProjects=JSON.stringify(projects)`);
+  assert.throws(()=>run(`resolveCloudConflict('p',projects[0],{project_id:'p',project:{...projects[0],name:'remote'},version:2})`),/备份失败/);
+  assert.equal(run('JSON.stringify(projects)===originalProjects'),true);
+});
+
 test("project search matches short names, account and platform together", () => {
   const {run}=app();
   run(`projects[0].shortName='耳机';projects[0].publicationAccount='wen';projects[0].publication={douyin:{count:1}};
