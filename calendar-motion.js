@@ -31,6 +31,27 @@ window.CalendarMotion = (() => {
     const i=document.createElement('i'); i.dataset.lucide=name; button.append(i);
     button.addEventListener('click',event=>{event.stopPropagation();action();}); return button;
   }
+  function openDenseDay(group) {
+    close(false);
+    const {items,handlers}=groups.get(group);
+    const dialog=document.createElement('dialog');dialog.className='project-dialog dense-day-dialog';
+    dialog.setAttribute('aria-label',`${items[0].date} 的项目节点`);
+    dialog.innerHTML='<form method="dialog"><header class="dialog-header"><h2></h2><button type="submit" class="icon-button" aria-label="关闭"><i data-lucide="x"></i></button></header><div class="project-form-body dense-day-list"></div></form>';
+    dialog.querySelector('h2').textContent=`${items[0].date} · ${items.length} 个节点`;
+    const list=dialog.querySelector('.dense-day-list');
+    items.forEach(item=>{
+      const row=document.createElement('article');row.className='dense-day-row';
+      row.style.setProperty('--project-color',item.project.color);
+      const name=document.createElement('strong');name.textContent=item.project.name;
+      const stage=document.createElement('span');stage.textContent=`${item.stage}${item.completed?' · 已完成':''}`;
+      const text=document.createElement('div');text.append(name,stage);
+      const actions=document.createElement('div');actions.className='dense-day-actions';
+      actions.append(icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>{dialog.close();handlers.toggle(item);}),icon('calendar-days','调整日期',()=>{dialog.close();chooseDate(item,handlers);}),icon('pencil','编辑项目',()=>{dialog.close();handlers.edit(item);}));
+      row.append(text,actions);list.append(row);
+    });
+    dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+    document.body.append(dialog);window.lucide?.createIcons();dialog.showModal();
+  }
   function chooseDate(item, handlers) {
     close(false);
     const dialog=document.createElement('dialog');
@@ -71,6 +92,7 @@ window.CalendarMotion = (() => {
     layer=null; callbacks=null; focused=-1;
   }
   function open(group, immediate = false, reflow = false) {
+    if(groups.get(group).items.length>6){openDenseDay(group);return;}
     clearTimeout(leaveTimer);
     if(layer===group&&!reflow)return;
     if(layer!==group) { close(false, immediate); focused=-1; }

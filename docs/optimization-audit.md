@@ -15,14 +15,18 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Project search includes short names, accounts, platforms and combined terms; empty searches can reset filters.
 - A focused card can close on a second click. Date picker rescheduling supports undo.
 - Keyboard viewport adaptation is simulated in Chromium, not verified on physical iOS.
+- More than six same-day nodes open a scrollable action list; 12 nodes at 320px were tested, including rescheduling the last node.
+- Explicitly saved drafts persist locally per account for 30 days; recovery compares project fingerprints and never saves without user confirmation. Unit tests cover memory reset and account isolation.
 
 ## Still open: do not claim all 100 complete
+
+Smart paste now previews before applying and preserves unrecognized stages. Pricing changes require an impact preview and confirmation for the selected settlement month; historical snapshots remain unchanged. Browser checks cover preview invalidation after further edits.
 
 - Physical iPhone Safari drag/keyboard/orientation testing (#2, #83-87).
 - Live two-account RLS checks and full password reset delivery/login loop (#3, #12).
 - Conflict comparison UI, persistent recycle bin, update protection and expanded financial boundary cases (#5, #9-10, #13-15).
-- Dense day layouts, motion stress/performance traces, edge scroll and cross-month drag, dependent stage rescheduling (#17-27, #29).
-- Import parsing preview, persistent drafts, formula-change impact, configurable template copying and bulk project handling (#41-49).
+- Motion stress/performance traces, edge scroll and cross-month drag, dependent stage rescheduling (#17-27, #29).
+- Configurable template copying and bulk project handling (#41-49); broader pricing-impact scenarios still need coverage.
 - Actual-record audit trail, matching confirmation, anomaly annotations and source-of-error decomposition (#52-60, #65-69).
 - Overview deduplication, risk severity/action refinement, timeline labels and persistent per-account view preferences (#71-79).
 - Full accessibility/large-text/contrast audit and consolidation of overlapping CSS/motion parameters (#85-100).

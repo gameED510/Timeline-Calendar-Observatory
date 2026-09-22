@@ -25,7 +25,7 @@ This revision preserves the existing visual identity and consolidates the three 
 - Collapse schedule paste and unused stages when editing.
 - Group copy, template duplication and delete under More.
 - Template duplication preserves account/platform/color but clears dates and completion.
-- Protect unsaved edits, with in-tab drafts isolated by account and project.
+- Protect unsaved edits, with explicitly saved local drafts isolated by account and project for 30 days.
 - Retain actual-settlement form contents when dismissal is cancelled.
 
 ## Performance and visual hierarchy
@@ -46,7 +46,7 @@ This revision preserves the existing visual identity and consolidates the three 
 - Preserve current authentication isolation and cloud reconciliation. Do not display another account's cached data or weaken first-login protections for speed.
 - Preserve the existing forecasting formula and immutable historical snapshots. No automatic outlier exclusion or new statistical model is introduced in a UI refresh.
 - Do not add decorative photography, subscription tiers, a new landing page, or compulsory onboarding to this operational calendar.
-- Drafts currently live in the open tab only. They are cleared on account change and explicitly described as in-tab drafts.
+- Saved drafts survive refresh on the same device. Restoration checks for changed project data and fills the form without automatically saving.
 
 ## Validation
 

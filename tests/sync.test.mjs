@@ -9,7 +9,7 @@ function app() {
   const delays = [];
   const context = vm.createContext({
     console, URL, Date, AbortController, TLActualUI: { reset() {} }, navigator: { onLine: true },
-    localStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
+    localStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     document: { querySelector: () => null, querySelectorAll: () => [], documentElement: { dataset: {} } },
     window: { matchMedia: () => ({ matches: false }), clearInterval() {}, clearTimeout() {}, setTimeout(fn, delay) { delays.push(delay); return delays.length; } }
   });
@@ -23,6 +23,17 @@ function app() {
     activeAccountId = "test"; accountHydrated = true;`);
   return { run, context, storage, delays };
 }
+
+test("persistent project drafts survive memory reset and remain account scoped", () => {
+  const {run}=app();
+  assert.equal(run(`storeProjectDraft('test:p',{fields:[{name:'name',value:'草稿'}],color:'#123456'})`),true);
+  run('projectDrafts.clear()');
+  assert.equal(run(`readProjectDraft('test:p').fields[0].value`),'草稿');
+  run(`activeAccountId='other'`);
+  assert.equal(run(`readProjectDraft('test:p')`),null);
+  run(`activeAccountId='test';discardProjectDraft('test:p')`);
+  assert.equal(run(`readProjectDraft('test:p')`),null);
+});
 
 test("project search matches short names, account and platform together", () => {
   const {run}=app();

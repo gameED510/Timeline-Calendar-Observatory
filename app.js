@@ -54,11 +54,12 @@ let syncRefreshTimer = null;
 let smartParseTimer = null;
 let calendarProjectFilter = null;
 let editorBaseline = "";
+let editorProjectFingerprint = null;
 let editorReturnFocus = null;
 const viewScrollPositions = new Map();
 const projectDrafts = new Map();
 
-const SMART_PASTE_DEFAULT_NOTE = "粘贴项目名和阶段日期，会自动填入下面的表单。";
+const SMART_PASTE_DEFAULT_NOTE = "等待排期内容";
 
 const syncState = {
   client: null,
@@ -257,7 +258,7 @@ function changeCloudAccount(user) {
   syncState.user = user;
   if (nextId !== activeAccountId) {
     TLActualUI.reset();
-    document.querySelectorAll(".pricing-dialog, .actual-dialog, .import-preview, .reschedule-dialog").forEach((dialog) => { dialog.close(); dialog.remove(); });
+    document.querySelectorAll(".pricing-dialog, .actual-dialog, .import-preview, .reschedule-dialog, .dense-day-dialog").forEach((dialog) => { dialog.close(); dialog.remove(); });
     document.querySelector("#actualPerformance")?.remove();
   }
   if (nextId === activeAccountId) return;
@@ -714,6 +715,12 @@ function openPricingSettings() {
   dialog.addEventListener('cancel',event=>{event.preventDefault();closePricing();});
   dialog.onclose = () => dialog.remove();
   const userId = syncState.user.id;
+  let confirmedPricing = null;
+  dialog.querySelector("form").addEventListener("input", () => {
+    confirmedPricing = null;
+    dialog.querySelector('[type="submit"]').textContent = "保存报价";
+    dialog.querySelector(".pricing-status").textContent = "";
+  });
   dialog.querySelector("form").onsubmit = async (event) => {
     event.preventDefault();
     if (syncState.user?.id !== userId) { dialog.close(); return; }
@@ -725,10 +732,22 @@ function openPricingSettings() {
       value.commissionRate = Number(list.children[index].querySelector('[name="commissionRate"]').value) / 100;
     });
     if (values.some((item) => !item.name)) { status.textContent = "请填写账号名称"; return; }
+    const normalized = TLPerformance.profiles(values);
+    const signature = JSON.stringify({ profiles: normalized, month: performanceMonth, projects });
+    if (confirmedPricing !== signature) {
+      const today = dateToIso(new Date());
+      const previous = TLPerformance.snapshot(projects, performanceMonth, today, pricingProfiles()).formula;
+      const next = TLPerformance.snapshot(projects, performanceMonth, today, normalized).formula;
+      const money = value => value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      status.textContent = `${performanceMonth} 结算月，按当前已完成发布记录回算：¥${money(previous)} → ¥${money(next)}，差额 ${next >= previous ? "+" : "−"}¥${money(Math.abs(next - previous))}。已保存的历史结算快照不变。`;
+      confirmedPricing = signature;
+      button.textContent = "确认并保存报价";
+      return;
+    }
     button.disabled = true;
     status.textContent = "正在保存";
     try {
-      const { data, error } = await syncState.client.auth.updateUser({ data: { tl_pricing_profiles: TLPerformance.profiles(values) } });
+      const { data, error } = await syncState.client.auth.updateUser({ data: { tl_pricing_profiles: normalized } });
       if (error) throw error;
       if (syncState.user?.id !== userId) { dialog.close(); return; }
       syncState.user = data.user;
@@ -3059,7 +3078,7 @@ function renderSmartPastePreview(result = null) {
     const item = document.createElement("span");
     const date = result.milestones[stage.name];
     item.className = date ? "recognized" : "missing";
-    item.textContent = `${stage.name} ${date ? formatTinyDate(date) : "未安排"}`;
+    item.textContent = `${stage.name} ${date ? formatTinyDate(date) : "未识别，保留原值"}`;
     stages.append(item);
   });
 
@@ -3067,7 +3086,7 @@ function renderSmartPastePreview(result = null) {
   elements.smartPastePreview.classList.remove("hidden");
 }
 
-function applySmartSchedule({ showConfirmation = false } = {}) {
+function applySmartSchedule({ showConfirmation = false, previewOnly = false } = {}) {
   const rawValue = elements.smartPasteInput?.value || "";
   if (!rawValue.trim()) {
     setSmartPasteStatus();
@@ -3077,11 +3096,18 @@ function applySmartSchedule({ showConfirmation = false } = {}) {
 
   const result = parseSmartSchedule(rawValue);
   renderSmartPastePreview(result);
+  if(previewOnly) {
+    setSmartPasteStatus(`识别预览 · ${result.matchedStages.length} 个阶段，尚未修改表单`);
+    return result;
+  }
+  if(!result.projectName && !result.matchedStages.length) {
+    setSmartPasteStatus("未识别到有效排期，原表单保持不变", "warning");return result;
+  }
   if (result.projectName) elements.projectNameInput.value = result.projectName;
   STAGES.forEach((stage) => {
     const stageName = stage.name;
     const input = elements.projectForm.elements[stageName];
-    if (input) {input.value = result.milestones[stageName] || "";if(input.value)input.parentElement.hidden=false;}
+    if (input && result.milestones[stageName]) {input.value = result.milestones[stageName];input.parentElement.hidden=false;}
   });
   renderDialogSequenceWarning();
 
@@ -3092,22 +3118,43 @@ function applySmartSchedule({ showConfirmation = false } = {}) {
   }
 
   const recognized = [result.projectName ? "项目名" : "", `${result.matchedStages.length}/${STAGES.length} 个节点`].filter(Boolean).join("、");
-  const detail = missingStages.length ? `；未安排：${missingStages.join("、")}` : "";
+  const detail = missingStages.length ? `；保留原值：${missingStages.join("、")}` : "";
   const tone = result.projectName && result.matchedStages.length ? "success" : "warning";
   setSmartPasteStatus(`已识别${recognized}${detail}`, tone);
-  if (showConfirmation) showToast("已按输入内容填入排期");
+  elements.projectNameInput.dispatchEvent(new Event("input",{bubbles:true}));
+  if (showConfirmation) showToast("已填入识别结果，未识别的阶段保持原值");
   return result;
 }
 
 function queueSmartScheduleParse() {
   window.clearTimeout(smartParseTimer);
-  smartParseTimer = window.setTimeout(() => applySmartSchedule(), 140);
+  smartParseTimer = window.setTimeout(() => applySmartSchedule({previewOnly:true}), 140);
 }
 
 function projectEditorState() {
   return {fields:[...elements.projectForm.elements].filter(node=>node.name).map(node=>({name:node.name,value:node.value,checked:node.checked})),color:selectedProjectColor};
 }
 function projectDraftKey() {return `${activeAccountId}:${editingProjectId||"new"}`;}
+function readProjectDraft(key) {
+  if(!activeAccountId || !key.startsWith(`${activeAccountId}:`))return null;
+  const valid = draft => draft && Array.isArray(draft.fields) && draft.fields.every(field=>field && typeof field.name==="string" && typeof field.value==="string") && Number.isFinite(draft.savedAt) && Date.now()-draft.savedAt>=0 && Date.now()-draft.savedAt<30*86400000;
+  try {
+    const draft=JSON.parse(localStorage.getItem(`tl-project-draft:${key}`) || "null");
+    if(valid(draft))return draft;
+  } catch { /* An unavailable or malformed draft must not block editing. */ }
+  const cached = projectDrafts.get(key);
+  return valid(cached) ? cached : null;
+}
+function storeProjectDraft(key, value) {
+  if(!activeAccountId || !key.startsWith(`${activeAccountId}:`))return false;
+  const draft={...value,savedAt:Date.now(),base:editorProjectFingerprint};
+  try { localStorage.setItem(`tl-project-draft:${key}`,JSON.stringify(draft));projectDrafts.set(key,draft);return true; }
+  catch { return false; }
+}
+function discardProjectDraft(key) {
+  projectDrafts.delete(key);
+  try { localStorage.removeItem(`tl-project-draft:${key}`); } catch { /* Local storage may be disabled. */ }
+}
 function requestCloseProjectDialog() {
   if(JSON.stringify(projectEditorState())===editorBaseline){elements.projectDialog.close();return;}
   const notice=document.querySelector("#projectUnsaved");notice.hidden=false;
@@ -3118,6 +3165,7 @@ function openProjectDialog(projectId = null) {
   editorReturnFocus=document.activeElement;
   editingProjectId = projectId;
   const editingProject = projects.find((project) => project.id === projectId) || null;
+  editorProjectFingerprint=editingProject?projectFingerprint(editingProject):null;
   elements.projectForm.reset();
   const publication = TLPerformance.normalize(editingProject?.publication);
   TLPerformance.platforms.forEach((platform) => {
@@ -3189,7 +3237,7 @@ function openProjectDialog(projectId = null) {
   smartDisclosure.open=false;
   elements.projectForm.querySelector(".project-display-options").open=false;
   document.querySelector("#projectUnsaved").hidden=true;
-  document.querySelector("#projectDraftNotice").hidden=!projectDrafts.has(projectDraftKey());
+  document.querySelector("#projectDraftNotice").hidden=!readProjectDraft(projectDraftKey());
   document.querySelector(".editor-more").open=false;
   document.querySelector("#duplicateProjectTemplate").hidden=!editingProject;
   editorBaseline=JSON.stringify(projectEditorState());
@@ -3468,7 +3516,7 @@ function removeProjectWithUndo(project) {
   const index = projects.findIndex(item => item.id === project.id);
   projects = projects.filter(item => item.id !== project.id);
   if (selected?.projectId === project.id) selected = null;
-  projectDrafts.delete(`${account}:${project.id}`);
+  discardProjectDraft(`${account}:${project.id}`);
   saveProjects();
   render();
   let restored = false;
@@ -3646,10 +3694,16 @@ function wireEvents() {
   elements.cancelDialogButton.addEventListener("click", requestCloseProjectDialog);
   elements.projectDialog.addEventListener("cancel",event=>{event.preventDefault();requestCloseProjectDialog();});
   document.querySelector("#keepEditingProject").onclick=()=>{document.querySelector("#projectUnsaved").hidden=true;elements.projectNameInput.focus();};
-  document.querySelector("#discardProjectChanges").onclick=()=>{projectDrafts.delete(projectDraftKey());elements.projectDialog.close();};
-  document.querySelector("#saveProjectDraft").onclick=()=>{projectDrafts.set(projectDraftKey(),projectEditorState());elements.projectDialog.close();showToast("草稿已保留在当前页面");};
+  document.querySelector("#discardProjectChanges").onclick=()=>{discardProjectDraft(projectDraftKey());elements.projectDialog.close();};
+  document.querySelector("#saveProjectDraft").onclick=()=>{
+    if(!storeProjectDraft(projectDraftKey(),projectEditorState())) {showToast("草稿保存失败，请保持窗口并检查浏览器存储空间");return;}
+    elements.projectDialog.close();showToast("草稿已保存在本机，30 天内可恢复");
+  };
   document.querySelector("#restoreProjectDraft").onclick=()=>{
-    const draft=projectDrafts.get(projectDraftKey());if(!draft)return;
+    const draft=readProjectDraft(projectDraftKey());if(!draft)return;
+    const currentProject=projects.find(project=>project.id===editingProjectId);
+    const currentFingerprint=currentProject?projectFingerprint(currentProject):null;
+    if(draft.base!==currentFingerprint && !window.confirm("项目已在草稿保存后发生变化。恢复草稿只会填入表单，请核对后再保存。继续恢复？"))return;
     draft.fields.forEach(field=>{const input=elements.projectForm.elements[field.name];if(input){input.value=field.value;if(input.type==="checkbox")input.checked=field.checked;if(input.type==="date"&&input.value)input.parentElement.hidden=false;}});
     selectedProjectColor=draft.color;renderColorSwatches();renderDialogSequenceWarning();
     elements.projectNameInput.dispatchEvent(new Event("input",{bubbles:true}));
@@ -3683,7 +3737,7 @@ function wireEvents() {
   elements.projectForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const key=projectDraftKey();
-    if (saveProjectFromForm()) {projectDrafts.delete(key);elements.projectDialog.close();}
+    if (saveProjectFromForm()) {discardProjectDraft(key);elements.projectDialog.close();}
   });
   elements.copyProjectTlButton.addEventListener("click", copyProjectTlFromDialog);
   elements.deleteProjectFromDialogButton.addEventListener("click", deleteEditingProject);
