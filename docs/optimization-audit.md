@@ -6,6 +6,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 
 - Import preview classifies additions, changes, removals and unchanged rows; account/data changes prevent stale application. Recovery storage failure and impossible dates are tested.
 - Deletion undo is guarded against account transitions and existing IDs.
+- Deleted projects are retained in an account-scoped local recycle bin for 30 days (up to 100 entries). Individual restoration never overwrites an existing ID; storage failure blocks deletion. Unit tests and a mobile browser flow cover these guarantees.
 - Sync status distinguishes offline, pending, uploading and acknowledged project data. Pending uploads trigger unload protection.
 - Empty accounts no longer report completion. Dates refresh across midnight without navigating away.
 - Project editor prioritizes account/platform/dates and shows live formula hints; visual settings are folded.
@@ -27,7 +28,7 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 
 - Physical iPhone Safari drag/keyboard/orientation testing (#2, #83-87).
 - Live two-account RLS checks and full password reset delivery/login loop (#3, #12).
-- Conflict comparison UI, persistent recycle bin, update protection and expanded financial boundary cases (#5, #9-10, #13-15).
+- Broader conflict-comparison scenarios, live update timing and expanded financial boundary cases (#5, #9-10, #13-15). Local recycle-bin support is implemented; cross-device recycle history is not provided.
 - Motion stress/performance traces, edge scroll and cross-month drag, dependent stage rescheduling (#17-27, #29).
 - Configurable template copying and bulk project handling (#41-49); broader pricing-impact scenarios still need coverage.
 - Actual-record audit trail, matching confirmation, anomaly annotations and source-of-error decomposition (#52-60, #65-69).

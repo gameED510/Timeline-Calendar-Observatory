@@ -661,6 +661,34 @@ function render() {
   if(currentView==="calendar")window.CalendarMotion?.restore?.(motionState);
 }
 
+function recycledProjects() {
+  if (!activeAccountId) return [];
+  try {
+    const items = JSON.parse(localStorage.getItem(`tl-recycle:${activeAccountId}`) || "[]");
+    return Array.isArray(items) ? items.filter(item => item && Number.isFinite(item.deletedAt) && Date.now()-item.deletedAt>=0 && Date.now()-item.deletedAt<30*86400000 && validateProjects([item.project])) : [];
+  } catch { return []; }
+}
+
+function recycleProject(project) {
+  if (!activeAccountId) return false;
+  try {
+    const entries = recycledProjects().filter(item=>item.project.id!==project.id);
+    localStorage.setItem(`tl-recycle:${activeAccountId}`,JSON.stringify([{project:cloneProject(project),deletedAt:Date.now()},...entries].slice(0,100)));
+    return true;
+  } catch { return false; }
+}
+
+function restoreRecycledProject(projectId) {
+  if (!canEditProjects()) return;
+  const entry = recycledProjects().find(item=>item.project.id===projectId);
+  if (!entry) { showToast("回收记录已过期或不存在"); return; }
+  if (projects.some(item=>item.id===projectId)) { showToast("项目已存在，未覆盖当前内容"); return; }
+  projects.push(cloneProject(entry.project));
+  saveProjects();render();
+  renderRecoveryHistory();
+  showToast(`已恢复「${entry.project.name}」`);
+}
+
 function openPerformanceRecord(projectId) {
   openProjectDialog(projectId);
   requestAnimationFrame(() => {
@@ -2865,7 +2893,15 @@ async function renderRecoveryHistory() {
     localSection.append(createHistoryEmpty("还没有本机恢复点"));
   }
 
-  elements.historyList.append(cloudSection, localSection);
+  const recycleSection = createHistorySection("本机回收站", "当前账号 · 保留30天，最多100个项目");
+  const deleted = recycledProjects().filter(entry=>!projects.some(project=>project.id===entry.project.id));
+  if (!deleted.length) recycleSection.append(createHistoryEmpty("没有可恢复的删除项目"));
+  for (const entry of deleted) {
+    recycleSection.append(createHistoryRow({title:entry.project.name,meta:`删除于 ${formatRecoveryTime(new Date(entry.deletedAt).toISOString())}`,onRestore:()=>{
+      if (epoch===accountEpoch) restoreRecycledProject(entry.project.id);
+    }}));
+  }
+  elements.historyList.append(recycleSection, cloudSection, localSection);
 }
 
 function createHistorySection(title, meta) {
@@ -3582,6 +3618,7 @@ async function importProjects(file) {
 }
 
 function removeProjectWithUndo(project) {
+  if (!recycleProject(project)) { showToast("回收站保存失败，项目未删除，请检查本机存储空间"); return; }
   const epoch = accountEpoch;
   const account = activeAccountId;
   const saved = cloneProject(project);

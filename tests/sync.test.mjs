@@ -161,6 +161,28 @@ test("project deletion undo is invalid after account transition", () => {
   assert.equal(run('projects.length'),0);
 });
 
+test("recycle bin is persistent, account isolated, bounded and restores without overwriting", () => {
+  const {run,storage}=app();
+  run(`saveProjects=()=>{};renderRecoveryHistory=()=>{};recycleProject(projects[0]);projects=[]`);
+  assert.ok(storage.has('tl-recycle:test'));
+  run(`restoreRecycledProject('p')`);
+  assert.equal(run('projects.length'),1);
+  run(`projects[0].name='newer';restoreRecycledProject('p')`);
+  assert.equal(run('projects[0].name'),'newer');
+  run(`activeAccountId='other'`);
+  assert.equal(run('recycledProjects().length'),0);
+  run(`activeAccountId='test';for(let i=0;i<105;i++)recycleProject({...projects[0],id:'item-'+i})`);
+  assert.equal(run('recycledProjects().length'),100);
+  run(`localStorage.setItem('tl-recycle:test',JSON.stringify([{project:projects[0],deletedAt:Date.now()-31*86400000}]))`);
+  assert.equal(run('recycledProjects().length'),0);
+});
+
+test("deletion stops when the recycle bin cannot persist the project", () => {
+  const {run}=app();
+  run(`localStorage.setItem=()=>{throw Error('full')};removeProjectWithUndo(projects[0])`);
+  assert.equal(run('projects.length'),1);
+});
+
 test("import preview classifies all changes and rejects duplicate identifiers", () => {
   const { run } = app();
   assert.equal(run(`importChanges([{id:'new',name:'新项目',milestones:{}}],projects).map(r=>r.kind).join(',')`), '新增,移除');
