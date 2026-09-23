@@ -272,6 +272,7 @@ function changeCloudAccount(user) {
   activeAccountId = nextId;
   calendarProjectFilter=null;viewScrollPositions.clear();projectDrafts.clear();
   projectSearchTerm="";projectFilter="active";projectSort="next";
+  restoreViewPreferences();
   accountHydrated = false;
   projects = [];
   syncedProjects = {};
@@ -659,6 +660,24 @@ function render() {
   renderSyncPanel();
   activateIcons();
   if(currentView==="calendar")window.CalendarMotion?.restore?.(motionState);
+}
+
+function restoreViewPreferences() {
+  calendarMode = window.matchMedia("(max-width: 860px)").matches ? "agenda" : "month";
+  if (!activeAccountId) return;
+  try {
+    const saved = JSON.parse(localStorage.getItem(`tl-view:${activeAccountId}`) || "null");
+    if (!saved) return;
+    if (["month","week","agenda"].includes(saved.calendarMode)) calendarMode=saved.calendarMode;
+    if (["all","active","done","conflict"].includes(saved.projectFilter)) projectFilter=saved.projectFilter;
+    if (["next","priority","progress","conflict","name"].includes(saved.projectSort)) projectSort=saved.projectSort;
+  } catch { /* Preferences must not prevent opening an account. */ }
+}
+
+function saveViewPreferences() {
+  if (!activeAccountId) return;
+  try { localStorage.setItem(`tl-view:${activeAccountId}`,JSON.stringify({calendarMode,projectFilter,projectSort})); }
+  catch { /* Continue with session preferences when storage is unavailable. */ }
 }
 
 function recycledProjects() {
@@ -2852,32 +2871,6 @@ async function renderRecoveryHistory() {
   elements.historyList.innerHTML = "";
 
   const cloudSection = createHistorySection("云端版本", "每次成功同步自动保存");
-  try {
-    const { data, error } = await accountRequest(syncState.client
-      .from(SUPABASE_SNAPSHOTS_TABLE)
-      .select("id, created_at, reason, projects")
-      .eq("user_id", syncState.user.id)
-      .order("created_at", { ascending: false })
-      .limit(30));
-    if (epoch !== accountEpoch) return;
-    if (error) throw error;
-    if (data?.length) {
-      data.forEach((snapshot) => {
-        cloudSection.append(createHistoryRow({
-          title: formatRecoveryTime(snapshot.created_at),
-          meta: `${snapshot.projects?.length || 0} 个项目 · ${formatSnapshotReason(snapshot.reason)}`,
-          onCompare: () => openRecoveryComparison(snapshot.projects),
-          onRestore: () => restoreCloudSnapshot(snapshot.id)
-        }));
-      });
-    } else {
-      cloudSection.append(createHistoryEmpty("还没有云端版本"));
-    }
-  } catch (error) {
-    cloudSection.append(createHistoryEmpty(getCloudErrorMessage(error, "云端版本读取失败")));
-  }
-
-  if (epoch !== accountEpoch) return;
   const localSection = createHistorySection("本机恢复点", "当前账号的本机备份");
   const localPoints = getLocalRecoveryPoints();
   if (localPoints.length) {
@@ -2902,6 +2895,36 @@ async function renderRecoveryHistory() {
     }}));
   }
   elements.historyList.append(recycleSection, cloudSection, localSection);
+  await loadRecoveryCloudSection(cloudSection, epoch);
+}
+
+async function loadRecoveryCloudSection(section, epoch) {
+  const loading = createHistoryEmpty("正在读取云端版本…");
+  section.append(loading);
+  const current = () => epoch === accountEpoch && section.isConnected;
+  try {
+    if (!navigator.onLine || !syncState.client || !syncState.user) throw new Error("cloud unavailable");
+    const {data,error} = await accountRequest(syncState.client.from(SUPABASE_SNAPSHOTS_TABLE)
+      .select("id, created_at, reason, projects").eq("user_id",syncState.user.id)
+      .order("created_at",{ascending:false}).limit(50));
+    if (!current()) return;
+    if (error) throw error;
+    loading.remove();
+    if (!data?.length) section.append(createHistoryEmpty("还没有云端版本"));
+    for (const snapshot of data || []) {
+      section.append(createHistoryRow({title:formatRecoveryTime(snapshot.created_at),
+        meta:`${snapshot.projects?.length || 0} 个项目 · ${formatSnapshotReason(snapshot.reason)}`,
+        onCompare:()=>{if(current())openRecoveryComparison(snapshot.projects);},
+        onRestore:()=>{if(current())restoreCloudSnapshot(snapshot.id);}}));
+    }
+  } catch {
+    if (!current()) return;
+    loading.textContent = navigator.onLine ? "云端版本暂时无法读取，本机记录仍可使用" : "当前离线，本机记录仍可使用";
+    const retry = document.createElement("button");
+    retry.type="button";retry.className="ghost-button";retry.textContent="重试";
+    retry.onclick=()=>{if(!current())return;loading.remove();retry.remove();loadRecoveryCloudSection(section,epoch);};
+    section.append(retry);
+  }
 }
 
 function createHistorySection(title, meta) {
@@ -3756,11 +3779,7 @@ function wireEvents() {
     button.addEventListener("click", () => {
       calendarMode = ["week", "agenda"].includes(button.dataset.calendarMode) ? button.dataset.calendarMode : "month";
       if (calendarMode === "month") calendarMonthAnchor = startOfMonthIso(selectedCalendarDate);
-      try {
-        localStorage.setItem(CALENDAR_MODE_KEY, calendarMode);
-      } catch {
-        // The selected mode still applies for the current session.
-      }
+      saveViewPreferences();
       render();
     });
   });
@@ -3770,6 +3789,7 @@ function wireEvents() {
   elements.projectFilterButtons.forEach((button) => {
     button.addEventListener("click", () => {
       projectFilter = button.dataset.projectFilter || "all";
+      saveViewPreferences();
       render();
     });
   });
@@ -3781,6 +3801,7 @@ function wireEvents() {
   });
   elements.projectSort.addEventListener("change", (event) => {
     projectSort = event.target.value;
+    saveViewPreferences();
     render();
   });
 

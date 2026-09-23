@@ -14,6 +14,8 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Chart windows use continuous months; missing and zero totals remain distinct.
 - Settlement CSV exports monthly totals and ad rows, preserves missing values and neutralizes formula-like text cells.
 - Project search includes short names, accounts, platforms and combined terms; empty searches can reset filters.
+- Calendar mode, project filters and sorting persist per account. Temporary search text is not persisted. Invalid stored choices are ignored.
+- Local recovery history renders before remote requests finish. Cloud failures offer independent retry; stale account responses cannot populate the current history.
 - A focused card can close on a second click. Date picker rescheduling supports undo.
 - Keyboard viewport adaptation is simulated in Chromium, not verified on physical iOS.
 - More than six same-day nodes open a scrollable action list; 12 nodes at 320px were tested, including rescheduling the last node.

@@ -35,6 +35,17 @@ test("persistent project drafts survive memory reset and remain account scoped",
   assert.equal(run(`readProjectDraft('test:p')`),null);
 });
 
+test("view preferences restore valid choices without sharing them across accounts", () => {
+  const {run}=app();
+  run(`calendarMode='week';projectFilter='done';projectSort='name';saveViewPreferences();
+    calendarMode='month';projectFilter='active';projectSort='next';restoreViewPreferences()`);
+  assert.equal(run('calendarMode'),'week');assert.equal(run('projectFilter'),'done');assert.equal(run('projectSort'),'name');
+  run(`activeAccountId='other';projectFilter='active';projectSort='next';restoreViewPreferences()`);
+  assert.equal(run('calendarMode'),'month');assert.equal(run('projectFilter'),'active');
+  run(`localStorage.setItem('tl-view:other','{"calendarMode":"bad","projectSort":"bad"}');restoreViewPreferences()`);
+  assert.equal(run('projectSort'),'next');
+});
+
 test("version refresh blocks open dialogs, pending uploads and offline state", () => {
   const {run}=app();
   assert.equal(run('updateRefreshBlocker()'), '');
