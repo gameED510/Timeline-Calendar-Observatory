@@ -69,6 +69,7 @@ const syncState = {
   initializing: true,
   error: null,
   saving: false,
+  restoring: false,
   loadingRemote: false,
   pendingSaveTimer: null,
   lastSavedAt: null,
@@ -280,6 +281,7 @@ function changeCloudAccount(user) {
   snapshotPending = false;
   syncRetryCount = 0;
   syncState.saving = false;
+  syncState.restoring = false;
   syncState.loadingRemote = false;
   syncState.pendingSaveTimer = null;
   syncState.lastSavedAt = null;
@@ -303,6 +305,7 @@ function changeCloudAccount(user) {
 }
 
 function canEditProjects() {
+  if (syncState.restoring) { showToast("正在恢复版本，请稍候再编辑"); return false; }
   if (activeAccountId && accountHydrated) return true;
   showToast(activeAccountId ? "请等待云端排期加载完成" : "请先登录账号");
   if (!activeAccountId) setAccountPopoverOpen(true);
@@ -2246,6 +2249,7 @@ function createSupabaseProxyFetch(proxyUrl) {
 
 function projectSyncSummary() {
   const pending = dirtyProjectIds.size;
+  if (syncState.restoring) return {label:"恢复中",tone:"saving",note:"正在恢复云端版本，编辑和自动同步暂时暂停"};
   if (!navigator.onLine) return {label:"离线",tone:"muted",note:pending ? `${pending} 个项目待同步，请保持此页面，联网后自动重试` : "当前离线，云端数据暂时无法更新"};
   if (syncState.saving) return {label:"同步中",tone:"saving",note:"正在上传改动，请稍候"};
   if (pending) return {label:"待同步",tone:"saving",note:`${pending} 个项目尚未确认写入云端`};
@@ -2522,6 +2526,7 @@ async function signOutCloud() {
 }
 
 function queueCloudSave() {
+  if (syncState.restoring) return;
   if (!syncState.client || !activeAccountId || !accountHydrated || syncState.loadingRemote || !navigator.onLine) return;
   window.clearTimeout(syncState.pendingSaveTimer);
   syncState.pendingSaveTimer = window.setTimeout(() => {
@@ -2530,6 +2535,7 @@ function queueCloudSave() {
 }
 
 async function saveCloudProjects(options = {}) {
+  if (syncState.restoring) return;
   if (!syncState.client || !activeAccountId || !accountHydrated || syncState.saving || syncState.loadingRemote || !navigator.onLine) return;
   const epoch = accountEpoch;
   window.clearTimeout(syncState.pendingSaveTimer);
@@ -2607,6 +2613,7 @@ async function saveCloudProjects(options = {}) {
 }
 
 async function loadCloudProjects(options = {}) {
+  if (syncState.restoring) return;
   if (!syncState.client || !syncState.user || syncState.saving || syncState.loadingRemote || !navigator.onLine) return;
   const epoch = accountEpoch;
   const userId = activeAccountId;
@@ -2973,9 +2980,17 @@ function formatSnapshotReason(reason) {
 
 async function restoreCloudSnapshot(snapshotId) {
   if (!canEditProjects()) return;
+  if (syncState.saving || syncState.loadingRemote || dirtyProjectIds.size || snapshotPending) {
+    showToast("请等待当前改动同步完成，再恢复云端版本"); return;
+  }
+  if (!navigator.onLine) { showToast("请联网后恢复云端版本"); return; }
   const epoch = accountEpoch;
   if (!window.confirm("恢复这个云端版本？当前数据会先自动保存一份。")) return;
   if (!createLocalRecoveryPoint("云端版本恢复前")) { showToast("当前数据备份失败，已停止恢复，请检查本机存储空间"); return; }
+  syncState.restoring = true;
+  renderSyncPanel();
+  window.clearTimeout(syncState.pendingSaveTimer);
+  syncState.pendingSaveTimer = null;
   try {
     const { data, error } = await accountRequest(syncState.client.rpc("restore_timeline_snapshot", {
       p_snapshot_id: snapshotId
@@ -2995,7 +3010,10 @@ async function restoreCloudSnapshot(snapshotId) {
     await renderRecoveryHistory();
     showToast("已恢复云端版本，并生成新的保护快照");
   } catch (error) {
+    if (epoch !== accountEpoch) return;
     showToast(getCloudErrorMessage(error, "恢复失败"));
+  } finally {
+    if (epoch === accountEpoch) { syncState.restoring = false; renderSyncPanel(); }
   }
 }
 
@@ -3840,7 +3858,7 @@ function wireEvents() {
   });
   window.addEventListener("beforeunload",event=>{
     const edited=elements.projectDialog.open&&JSON.stringify(projectEditorState())!==editorBaseline;
-    const pending=Boolean(activeAccountId && (dirtyProjectIds.size || syncState.saving));
+    const pending=Boolean(activeAccountId && (dirtyProjectIds.size || syncState.saving || syncState.restoring));
     if(edited || pending){event.preventDefault();event.returnValue="";}
   });
 
@@ -3900,6 +3918,7 @@ function wireEvents() {
 }
 
 function updateRefreshBlocker() {
+  if (syncState.restoring) return "正在恢复版本，请完成后再更新";
   if (document.querySelector("dialog[open]")) return "请先保存或关闭当前窗口，再更新";
   if (activeAccountId && (dirtyProjectIds.size || syncState.saving)) return "排期尚未同步完成，请稍后再更新";
   if (!navigator.onLine) return "当前离线，请联网后再更新";

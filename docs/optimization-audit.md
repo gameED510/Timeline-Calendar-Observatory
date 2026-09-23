@@ -18,6 +18,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - More than six same-day nodes open a scrollable action list; 12 nodes at 320px were tested, including rescheduling the last node.
 - Explicitly saved drafts persist locally per account for 30 days; recovery compares project fingerprints and never saves without user confirmation. Unit tests cover memory reset and account isolation.
 - Recovery history offers read-only project/field comparison. Both restoration paths and cloud-conflict reconciliation stop before overwriting when local protection cannot be stored.
+- Cloud restoration rejects pending sync work, locks editing/background sync for the request, and unlocks after failure or completion. Account changes reset the lock without allowing stale callbacks to change a new account.
 - New service-worker activation prompts for user-controlled refresh; open dialogs, pending project uploads and offline status block the refresh action. Physical update timing still needs live verification.
 
 ## Still open: do not claim all 100 complete

@@ -79,6 +79,29 @@ test("sync conflict never overwrites local edits if the recovery backup fails", 
   assert.equal(run('JSON.stringify(projects)===originalProjects'),true);
 });
 
+test("cloud restoration rejects pending work and locks editing and background sync until settled", async () => {
+  const {run,context}=app();
+  run(`window.confirm=()=>true;rpcCalls=0;createLocalRecoveryPoint=()=>({id:'backup'});
+    syncState.client={rpc:()=>{rpcCalls++;throw Error('unexpected')}};dirtyProjectIds.add('p');`);
+  await run(`restoreCloudSnapshot('snapshot')`);
+  assert.equal(run('rpcCalls'),0);
+  let finish;
+  const pending=new Promise(resolve=>{finish=resolve;});pending.abortSignal=()=>pending;
+  context.pendingRestore=pending;
+  run(`dirtyProjectIds.clear();syncState.client={rpc:()=>{rpcCalls++;return pendingRestore;}}`);
+  const restore=run(`restoreCloudSnapshot('snapshot')`);
+  assert.equal(run('syncState.restoring'),true);
+  assert.equal(run('canEditProjects()'),false);
+  await run('saveCloudProjects()');
+  await run('loadCloudProjects()');
+  assert.equal(run('rpcCalls'),1);
+  assert.match(run('updateRefreshBlocker()'),/恢复/);
+  finish({error:new Error('test failure')});
+  await restore;
+  assert.equal(run('syncState.restoring'),false);
+  assert.equal(run('projects.length'),1);
+});
+
 test("project search matches short names, account and platform together", () => {
   const {run}=app();
   run(`projects[0].shortName='耳机';projects[0].publicationAccount='wen';projects[0].publication={douyin:{count:1}};
