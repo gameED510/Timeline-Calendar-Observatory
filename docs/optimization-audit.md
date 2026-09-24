@@ -19,6 +19,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Template copying has explicit account/platform/gift, appearance and date options. Dates default to cleared; completion is never copied. The compact mobile option dialog and full workflow regression passed.
 - Local recovery history renders before remote requests finish. Cloud failures offer independent retry; stale account responses cannot populate the current history.
 - A focused card can close on a second click. Date picker rescheduling supports undo.
+- Timeline and milestone chips use separate native buttons for completion and selection, with full accessible names instead of nested button roles. Enter/Space browser flows and the broader workflow regression pass; this is not a complete screen-reader audit.
 - Keyboard viewport adaptation is simulated in Chromium, not verified on physical iOS.
 - More than six same-day nodes open a scrollable action list; 12 nodes at 320px were tested, including rescheduling the last node.
 - Explicitly saved drafts persist locally per account for 30 days; recovery compares project fingerprints and never saves without user confirmation. Unit tests cover memory reset and account isolation.

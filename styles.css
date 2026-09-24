@@ -5007,6 +5007,10 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .template-options-dialog .project-form-body { display: grid; gap: 12px; }
 .template-options-dialog label { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 14px; }
 .template-options-dialog input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; }
+.timeline-event-text[type="button"] { border: 0; background: transparent; color: inherit; text-align: left; font: inherit; padding: 4px; min-width: 0; min-height: 44px; cursor: pointer; position: relative; z-index: 1; }
+.timeline-event-text[type="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.chip-text[type="button"] { border: 0; background: transparent; color: inherit; text-align: left; font: inherit; padding: 2px; min-width: 0; min-height: 44px; cursor: pointer; position: relative; z-index: 1; }
+.chip-text[type="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .recovery-comparison h3 { font-size: 15px; margin: 20px 0 8px; overflow-wrap: anywhere; }
 .recovery-diff-row { display: grid; grid-template-columns: 80px minmax(0,1fr) minmax(0,1fr); gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .recovery-diff-row span { overflow-wrap: anywhere; min-width: 0; }

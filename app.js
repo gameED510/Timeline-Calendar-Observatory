@@ -1761,8 +1761,7 @@ function createTimelineEvent(item) {
   const { project, stage, date, completed } = item;
   const card = document.createElement("div");
   card.className = "timeline-event-card";
-  card.role = "button";
-  card.tabIndex = 0;
+  card.role = "group";
   card.dataset.projectId = project.id;
   card.dataset.stage = stage;
   card.style.setProperty("--project-color", project.color);
@@ -1782,10 +1781,19 @@ function createTimelineEvent(item) {
   check.addEventListener("click", (event) => {
     event.stopPropagation();
     toggleMilestoneCompleted(project.id, stage);
+    const replacement = [...elements.timelineShell.querySelectorAll(".timeline-event-card")].find(node=>node.dataset.projectId===project.id&&node.dataset.stage===stage);
+    const nextControl = replacement?.querySelector(".timeline-event-check") || elements.timelineShell.querySelector(".timeline-event-text");
+    nextControl?.focus({preventScroll:true});
   });
 
-  const text = document.createElement("span");
+  const text = document.createElement("button");
+  text.type = "button";
   text.className = "timeline-event-text";
+  text.setAttribute("aria-label", `查看 ${project.name} · ${stage} · ${formatDateWithWeekday(date)} · ${completed ? "已完成" : "待处理"}`);
+  text.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openMilestoneInCalendar(project.id, stage);
+  });
 
   const stageLabel = document.createElement("strong");
   stageLabel.textContent = stage;
@@ -1800,13 +1808,6 @@ function createTimelineEvent(item) {
   card.append(check, text);
 
   card.addEventListener("click", () => openMilestoneInCalendar(project.id, stage));
-  card.addEventListener("keydown", (event) => {
-    if (event.target !== card) return;
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      openMilestoneInCalendar(project.id, stage);
-    }
-  });
 
   return card;
 }
@@ -1913,8 +1914,7 @@ function renderInspector() {
 function createMilestoneChip(project, stage, iso, draggable) {
   const chip = document.createElement("div");
   chip.className = "milestone-chip";
-  chip.role = "button";
-  chip.tabIndex = 0;
+  chip.role = "group";
   chip.draggable = draggable;
   chip.dataset.projectId = project.id;
   chip.dataset.stage = stage;
@@ -1940,8 +1940,15 @@ function createMilestoneChip(project, stage, iso, draggable) {
     toggleMilestoneCompleted(project.id, stage);
   });
 
-  const text = document.createElement("span");
+  const text = document.createElement("button");
+  text.type = "button";
   text.className = "chip-text";
+  text.setAttribute("aria-label", `查看 ${project.name} · ${stage} · ${formatDateWithWeekday(iso)}`);
+  text.addEventListener("click", (event) => {
+    event.stopPropagation();
+    selectedCalendarDate = iso;
+    selectMilestone(project.id, stage);
+  });
   const stageLabel = document.createElement("span");
   stageLabel.className = "chip-stage";
   stageLabel.textContent = stage;
@@ -1957,14 +1964,6 @@ function createMilestoneChip(project, stage, iso, draggable) {
   chip.addEventListener("click", () => {
     selectedCalendarDate = iso;
     selectMilestone(project.id, stage);
-  });
-  chip.addEventListener("keydown", (event) => {
-    if (event.target !== chip) return;
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      selectedCalendarDate = iso;
-      selectMilestone(project.id, stage);
-    }
   });
   chip.addEventListener("dragstart", (event) => {
     selected = { projectId: project.id, stage };
