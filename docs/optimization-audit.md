@@ -15,6 +15,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Settlement CSV exports monthly totals and ad rows, preserves missing values and neutralizes formula-like text cells.
 - Project search includes short names, accounts, platforms and combined terms; empty searches can reset filters.
 - Calendar mode, project filters and sorting persist per account. Temporary search text is not persisted. Invalid stored choices are ignored.
+- Overview next actions are deduplicated by project and ordered by earliest pending stage; empty projects have honest empty states. Risk view includes single overdue nodes and names overdue, multiple shoots or node density without claiming every dense date is high risk. Desktop overview and 320px risk flows passed.
 - Template copying has explicit account/platform/gift, appearance and date options. Dates default to cleared; completion is never copied. The compact mobile option dialog and full workflow regression passed.
 - Local recovery history renders before remote requests finish. Cloud failures offer independent retry; stale account responses cannot populate the current history.
 - A focused card can close on a second click. Date picker rescheduling supports undo.

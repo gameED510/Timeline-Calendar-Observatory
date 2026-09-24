@@ -46,6 +46,29 @@ test("view preferences restore valid choices without sharing them across account
   assert.equal(run('projectSort'),'next');
 });
 
+test("overview picks one earliest pending milestone per project without mutating input", () => {
+  const {run}=app();
+  run(`items=[
+    {project:{id:'a'},stage:'发布',date:'2026-09-28',completed:false},
+    {project:{id:'a'},stage:'拍摄',date:'2026-09-24',completed:false},
+    {project:{id:'b'},stage:'发布',date:'2026-09-25',completed:false},
+    {project:{id:'c'},stage:'发布',date:'2026-09-20',completed:true}];
+    nextItems=nextDistinctProjectMilestones(items);`);
+  assert.equal(run('nextItems.length'),2);
+  assert.equal(run('nextItems[0].stage'),'拍摄');
+  assert.equal(run('nextItems[1].project.id'),'b');
+  assert.equal(run('items[0].date'),'2026-09-28');
+  assert.equal(run('nextDistinctProjectMilestones(items,1).length'),1);
+});
+
+test("schedule risk names evidence instead of treating every dense date as high risk", () => {
+  const {run}=app();
+  assert.equal(run(`scheduleRisk('2026-09-25',[{stage:'脚本'},{stage:'初稿'},{stage:'发布'}],'2026-09-24').severe`),false);
+  assert.equal(run(`scheduleRisk('2026-09-25',[{stage:'拍摄'},{stage:'拍摄'}],'2026-09-24').label`),'拍摄同日');
+  assert.equal(run(`scheduleRisk('2026-09-23',[{stage:'发布'}],'2026-09-24').label`),'已逾期');
+  assert.equal(run(`scheduleRisk('2026-09-25',[{stage:'拍摄'},{stage:'拍摄',completed:true}],'2026-09-24').severe`),false);
+});
+
 test("version refresh blocks open dialogs, pending uploads and offline state", () => {
   const {run}=app();
   assert.equal(run('updateRefreshBlocker()'), '');

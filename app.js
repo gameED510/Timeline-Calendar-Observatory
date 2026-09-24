@@ -1131,14 +1131,18 @@ function compareProjectNextDate(a, b) {
     .localeCompare(getNextPendingMilestone(b)?.date || getProjectDeadline(b) || "9999-12-31");
 }
 
+function nextDistinctProjectMilestones(items, limit = 4) {
+  const seen = new Set();
+  return items.filter(item=>!item.completed)
+    .sort((a,b)=>a.date.localeCompare(b.date)||compareMilestones(a,b))
+    .filter(item=>!seen.has(item.project.id)&&seen.add(item.project.id)).slice(0,limit);
+}
+
 function renderSideInsights(grouped, allMilestones, conflictDays) {
   if (!elements.sideInsights) return;
   elements.sideInsights.innerHTML = "";
 
-  const nextItems = allMilestones
-    .filter((item) => !item.completed)
-    .sort((a, b) => a.date.localeCompare(b.date) || compareMilestones(a, b))
-    .slice(0, 4);
+  const nextItems = nextDistinctProjectMilestones(allMilestones);
 
   const nextSection = createSideSection("接下来", "最近要处理的节点");
   if (nextItems.length) {
@@ -1153,7 +1157,7 @@ function renderSideInsights(grouped, allMilestones, conflictDays) {
       nextSection.append(button);
     });
   } else {
-    nextSection.append(createSideEmpty("所有节点都完成了"));
+    nextSection.append(createSideEmpty(!projects.length ? "暂无项目" : !allMilestones.length ? "暂无已安排节点" : "所有节点都完成了"));
   }
   elements.sideInsights.append(nextSection);
 
@@ -1166,7 +1170,7 @@ function renderSideInsights(grouped, allMilestones, conflictDays) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "side-conflict-row";
-      button.innerHTML = `<strong>${formatDateWithWeekday(iso)}</strong><span>${escapeHtml(items.map((item) => getClientName(item.project.name)).join(" / "))}</span>`;
+      button.innerHTML = `<strong>${formatDateWithWeekday(iso)}</strong><span>${escapeHtml([...new Map(items.map(item=>[item.project.id,getClientName(item.project.name)])).values()].join(" / "))}</span>`;
       button.addEventListener("click", () => {
         selectedCalendarDate = iso;
         switchView("conflicts");
@@ -1180,7 +1184,7 @@ function renderSideInsights(grouped, allMilestones, conflictDays) {
   elements.sideInsights.append(conflictSection);
 
   const progressSection = createSideSection("项目进度", "仅显示进行中");
-  const activeProjects = projects.filter((project) => !isProjectComplete(project));
+  const activeProjects = projects.filter((project) => !isProjectComplete(project)).sort(compareProjectNextDate);
   activeProjects.forEach((project) => {
     const stageCount = getProjectStageCount(project);
     const completedCount = getProjectCompletedCount(project);
@@ -1198,7 +1202,7 @@ function renderSideInsights(grouped, allMilestones, conflictDays) {
     });
     progressSection.append(row);
   });
-  if (!activeProjects.length) progressSection.append(createSideEmpty("所有项目都完成了"));
+  if (!activeProjects.length) progressSection.append(createSideEmpty(projects.length ? "所有项目都完成了" : "暂无项目"));
   elements.sideInsights.append(progressSection);
 
 }
@@ -1807,17 +1811,26 @@ function createTimelineEvent(item) {
   return card;
 }
 
+function scheduleRisk(iso, items, today = TODAY_ISO) {
+  const pending = items.filter(item=>!item.completed);
+  const shoots = pending.filter(item=>item.stage==="拍摄").length;
+  if (pending.length && iso < today) return {label:"已逾期",severe:true,reason:`${pending.length} 个节点尚未完成`};
+  if (shoots > 1) return {label:"拍摄同日",severe:true,reason:`${shoots} 项拍摄，需核对时间与人员`};
+  if (pending.length >= 3) return {label:"节点密集",severe:false,reason:`${pending.length} 个待办节点`};
+  return {label:"需协调",severe:false,reason:`${pending.length} 个待办节点`};
+}
+
 function renderConflicts(grouped) {
   elements.conflictList.innerHTML = "";
   const conflicts = [...grouped.entries()]
     .map(([iso, items]) => [iso, items.filter((item) => !item.completed)])
-    .filter(([, items]) => items.length > 1)
+    .filter(([iso, items]) => items.length > 1 || (items.length && iso < TODAY_ISO))
     .sort(([a], [b]) => a.localeCompare(b));
 
   if (!conflicts.length) {
     const empty = document.createElement("div");
     empty.className = "empty-block";
-    empty.textContent = "暂无撞期";
+    empty.textContent = "暂无逾期或同日多节点";
     elements.conflictList.append(empty);
     return;
   }
@@ -1825,13 +1838,14 @@ function renderConflicts(grouped) {
   conflicts.forEach(([iso, items]) => {
     const section = document.createElement("section");
     section.className = "conflict-day";
-    if (items.length >= 3) section.classList.add("severe");
+    const risk = scheduleRisk(iso, items);
+    if (risk.severe) section.classList.add("severe");
 
     const title = document.createElement("h3");
     const left = document.createElement("strong");
     left.textContent = formatDateWithWeekday(iso);
     const right = document.createElement("span");
-    right.textContent = `${items.length} 个节点 · ${items.length >= 3 ? "高风险" : "需协调"}`;
+    right.textContent = `${risk.label} · ${risk.reason}`;
     title.append(left, right);
 
     const stack = document.createElement("div");
