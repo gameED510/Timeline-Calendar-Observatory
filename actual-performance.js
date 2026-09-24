@@ -122,7 +122,7 @@
       <p data-error role="alert"></p></div><footer class="dialog-actions"><button type="button" class="secondary-button" data-close>取消</button><button type="submit" class="primary-button"><i data-lucide="check"></i>确认保存</button></footer></form>`;
     document.body.append(dialog);
     const form = dialog.querySelector("form"), rows = dialog.querySelector(".actual-ad-rows"), notice = dialog.querySelector("[data-notice]"), error = dialog.querySelector("[data-error]");
-    let targetRecord, dirty = false;
+    let targetRecord, dirty = false, editingMonth = ctx.month;
     const balance = () => {
       const total = Number(form.elements.total.value), sum = [...rows.children].reduce((s,r)=>s+Number(r.querySelector('[data-revenue]').value || 0)*Number(r.dataset.rate || 0),0);
       const unknown = [...rows.children].filter(r => r.dataset.rate === "").length;
@@ -131,16 +131,26 @@
     };
     const add = (ad = {}) => {
       const row = document.createElement("div"); row.className = "actual-ad-row";
-      row.innerHTML = `<label>广告名称<input data-name maxlength="200" placeholder="广告名称" value="${esc(ad.name)}"></label><label>对应项目<select data-project><option value="">未匹配 · 保留金额</option>${ctx.projects.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}</select></label><label>实际收益<input data-revenue type="number" min="0" max="1000000000" step="any" inputmode="decimal" required value="${ad.revenue ?? ""}"></label><button type="button" class="icon-button mini-button" title="移除明细" aria-label="移除明细"><i data-lucide="trash-2"></i></button>`;
+      const choices = new Map(ctx.projects.map(project=>[project.id,project.name]));
+      for (const item of targetRecord?.snapshot?.rows || []) {
+        if (item.projectId && !choices.has(item.projectId)) choices.set(item.projectId,`${item.name || "历史项目"} · 历史记录`);
+      }
+      if (ad.projectId && !choices.has(ad.projectId)) choices.set(ad.projectId,`${ad.name || "原关联项目"} · 历史记录`);
+      row.innerHTML = `<label>广告名称<input data-name maxlength="200" placeholder="广告名称" value="${esc(ad.name)}"></label><label>对应项目<select data-project><option value="">未匹配 · 保留金额</option>${[...choices].map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join("")}</select></label><label>实际收益<input data-revenue type="number" min="0" max="1000000000" step="any" inputmode="decimal" required value="${ad.revenue ?? ""}"></label><button type="button" class="icon-button mini-button" title="移除明细" aria-label="移除明细"><i data-lucide="trash-2"></i></button>`;
       row.querySelector("select").value = ad.projectId || "";
       const rateForProject = id => {
+        const historical = (targetRecord?.snapshot?.rows || []).filter(item=>item.projectId===id);
+        if (historical.length) {
+          const rates = [...new Set(historical.map(item=>item.commissionRate))];
+          return rates.length===1 && Number.isFinite(rates[0]) && rates[0]>=0 && rates[0]<=1 ? rates[0] : null;
+        }
         const project=ctx.projects.find(p=>p.id===id);
         const profiles=targetRecord?.snapshot?.profiles || ctx.profiles;
         return project ? P.profiles(profiles).find(p=>p.id===P.account(project,profiles))?.commissionRate ?? null : null;
       };
       const initialRate = ad.commissionRate ?? rateForProject(ad.projectId);
       row.dataset.rate = initialRate ?? "";
-      row.querySelector("select").onchange = e => { if (!row.querySelector("[data-name]").value) row.querySelector("[data-name]").value = ctx.projects.find(p=>p.id===e.target.value)?.name || ""; row.dataset.rate=rateForProject(e.target.value) ?? ""; balance(); };
+      row.querySelector("select").onchange = e => { if (!row.querySelector("[data-name]").value) row.querySelector("[data-name]").value = choices.get(e.target.value) || ""; row.dataset.rate=rateForProject(e.target.value) ?? ""; dirty=true; balance(); };
       row.querySelector("button").onclick = () => { row.remove(); dirty = true; balance(); };
       rows.append(row); root.lucide?.createIcons(); balance();
     };
@@ -150,7 +160,17 @@
       if (initial || !dirty) { rows.replaceChildren(); form.elements.total.value = present(targetRecord) ? targetRecord.total : ""; (targetRecord?.ads || []).forEach(add); }
       balance();
     };
-    form.elements.month.onchange = () => selectMonth();
+    form.elements.month.onchange = () => {
+      const nextMonth = form.elements.month.value;
+      if (nextMonth === editingMonth) return;
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(nextMonth)) { form.elements.month.value=editingMonth; return; }
+      const existing = state.records.find(record=>record.month===nextMonth);
+      if (dirty && !root.confirm(`将当前未保存内容改记到 ${nextMonth}？${present(existing) ? "该月已有实际结算，确认保存后会更新该月记录。" : "当前输入会保留，只有确认保存后才写入。"}`)) {
+        form.elements.month.value=editingMonth; return;
+      }
+      editingMonth=nextMonth;
+      selectMonth();
+    };
     form.addEventListener("input", event => { if (event.target !== form.elements.month) dirty = true; balance(); });
     const requestClose=()=>{
       if(!dirty){close();return;}
