@@ -5002,6 +5002,11 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .app-update-notice { position: fixed; z-index: 1000; inset: auto 16px 90px auto; width: min(420px, calc(100vw - 32px)); box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 12px; background: var(--panel, #fff); color: var(--text, #222); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px #0002; }
 .app-update-notice { background: var(--bg-soft); color: var(--ink); }
 .recovery-comparison { width: min(720px, calc(100vw - 24px)); margin-inline: auto; }
+.template-options-dialog { width: min(440px, calc(100vw - 24px)); height: fit-content; max-height: 90dvh; margin: auto; }
+.template-options-dialog form { height: auto; min-height: 0; grid-template-rows: auto auto auto; }
+.template-options-dialog .project-form-body { display: grid; gap: 12px; }
+.template-options-dialog label { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 14px; }
+.template-options-dialog input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; }
 .recovery-comparison h3 { font-size: 15px; margin: 20px 0 8px; overflow-wrap: anywhere; }
 .recovery-diff-row { display: grid; grid-template-columns: 80px minmax(0,1fr) minmax(0,1fr); gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .recovery-diff-row span { overflow-wrap: anywhere; min-width: 0; }

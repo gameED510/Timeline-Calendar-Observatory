@@ -259,7 +259,7 @@ function changeCloudAccount(user) {
   syncState.user = user;
   if (nextId !== activeAccountId) {
     TLActualUI.reset();
-    document.querySelectorAll(".pricing-dialog, .actual-dialog, .import-preview, .reschedule-dialog, .dense-day-dialog, .recovery-comparison").forEach((dialog) => { dialog.close(); dialog.remove(); });
+    document.querySelectorAll(".pricing-dialog, .actual-dialog, .import-preview, .reschedule-dialog, .dense-day-dialog, .recovery-comparison, .template-options-dialog").forEach((dialog) => { dialog.close(); dialog.remove(); });
     document.querySelector("#actualPerformance")?.remove();
   }
   if (nextId === activeAccountId) return;
@@ -3286,6 +3286,36 @@ function discardProjectDraft(key) {
   projectDrafts.delete(key);
   try { localStorage.removeItem(`tl-project-draft:${key}`); } catch { /* Local storage may be disabled. */ }
 }
+function openTemplateOptions() {
+  if (!canEditProjects()) return;
+  const source=projectEditorState(), epoch=accountEpoch;
+  const dialog=document.createElement("dialog");
+  dialog.className="project-dialog template-options-dialog";
+  dialog.setAttribute("aria-label","复制为模板");
+  dialog.innerHTML='<form><header class="dialog-header"><h2>复制为模板</h2><button type="button" class="icon-button" aria-label="关闭">×</button></header><div class="project-form-body"><label><input type="checkbox" name="platforms" checked>保留账号、平台与赠送设置</label><label><input type="checkbox" name="appearance" checked>保留颜色与简称</label><label><input type="checkbox" name="dates">保留阶段日期</label></div><footer class="dialog-actions"><button type="submit" class="primary-button">创建副本</button></footer></form>';
+  dialog.querySelector('[aria-label="关闭"]').onclick=()=>dialog.close();
+  dialog.onclose=()=>dialog.remove();
+  dialog.querySelector("form").onsubmit=event=>{
+    event.preventDefault();if(epoch!==accountEpoch || !canEditProjects())return;
+    const options=new FormData(event.currentTarget);
+    dialog.close();elements.projectDialog.close();openProjectDialog();
+    for(const field of source.fields) {
+      const stage=STAGES.some(item=>item.name===field.name);
+      const platform=["publicationAccount","publicationGift","douyinPublished","xiaohongshuPublished"].includes(field.name);
+      if(stage&&!options.has("dates") || platform&&!options.has("platforms") || field.name==="shortName"&&!options.has("appearance"))continue;
+      const input=elements.projectForm.elements[field.name];
+      if(input){input.value=field.value;if(input.type==="checkbox")input.checked=field.checked;if(stage&&field.value)input.parentElement.hidden=false;}
+    }
+    elements.projectNameInput.value+=" · 副本";
+    if(options.has("appearance"))selectedProjectColor=source.color;
+    renderColorSwatches();renderDialogSequenceWarning();
+    elements.projectNameInput.dispatchEvent(new Event("input",{bubbles:true}));
+    document.querySelector("#smartImportDisclosure").open=false;
+    elements.projectNameInput.focus();
+  };
+  document.body.append(dialog);dialog.showModal();
+}
+
 function requestCloseProjectDialog() {
   if(JSON.stringify(projectEditorState())===editorBaseline){elements.projectDialog.close();return;}
   const notice=document.querySelector("#projectUnsaved");notice.hidden=false;
@@ -3839,13 +3869,7 @@ function wireEvents() {
     elements.projectNameInput.dispatchEvent(new Event("input",{bubbles:true}));
     document.querySelector("#projectDraftNotice").hidden=true;
   };
-  document.querySelector("#duplicateProjectTemplate").onclick=()=>{
-    const source=projectEditorState();elements.projectDialog.close();openProjectDialog();
-    source.fields.filter(field=>!STAGES.some(stage=>stage.name===field.name)).forEach(field=>{const input=elements.projectForm.elements[field.name];if(input){input.value=field.value;if(input.type==="checkbox")input.checked=field.checked;}});
-    elements.projectNameInput.value+=" · 副本";selectedProjectColor=source.color;renderColorSwatches();
-    document.querySelector("#smartImportDisclosure").open=false;
-    elements.projectNameInput.focus();
-  };
+  document.querySelector("#duplicateProjectTemplate").onclick=openTemplateOptions;
   const applySidebarState = collapsed => {
     elements.appShell.classList.toggle("sidebar-collapsed",collapsed);
     const button=document.querySelector("#sidebarToggle");button.setAttribute("aria-expanded",String(!collapsed));

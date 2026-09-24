@@ -15,6 +15,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Settlement CSV exports monthly totals and ad rows, preserves missing values and neutralizes formula-like text cells.
 - Project search includes short names, accounts, platforms and combined terms; empty searches can reset filters.
 - Calendar mode, project filters and sorting persist per account. Temporary search text is not persisted. Invalid stored choices are ignored.
+- Template copying has explicit account/platform/gift, appearance and date options. Dates default to cleared; completion is never copied. The compact mobile option dialog and full workflow regression passed.
 - Local recovery history renders before remote requests finish. Cloud failures offer independent retry; stale account responses cannot populate the current history.
 - A focused card can close on a second click. Date picker rescheduling supports undo.
 - Keyboard viewport adaptation is simulated in Chromium, not verified on physical iOS.
@@ -32,7 +33,7 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 - Live two-account RLS checks and full password reset delivery/login loop (#3, #12).
 - Broader conflict-comparison scenarios, live update timing and expanded financial boundary cases (#5, #9-10, #13-15). Local recycle-bin support is implemented; cross-device recycle history is not provided.
 - Motion stress/performance traces, edge scroll and cross-month drag, dependent stage rescheduling (#17-27, #29).
-- Configurable template copying and bulk project handling (#41-49); broader pricing-impact scenarios still need coverage.
+- Bulk project handling (#41-49); broader pricing-impact scenarios still need coverage.
 - Actual-record audit trail, matching confirmation, anomaly annotations and source-of-error decomposition (#52-60, #65-69).
 - Overview deduplication, risk severity/action refinement, timeline labels and persistent per-account view preferences (#71-79).
 - Full accessibility/large-text/contrast audit and consolidation of overlapping CSS/motion parameters (#85-100).
