@@ -104,6 +104,32 @@
       return byMonth.get(key) || {month:key,total:null,snapshot:null};
     });
   }
+  function settlementDifference(record) {
+    const total = actualAmount(record?.total), snapshot = record?.snapshot;
+    if (total === null || !Number.isFinite(snapshot?.formula)) return null;
+    const groups = new Map();
+    for (const row of snapshot.rows || []) {
+      if (!row.projectId || !Number.isFinite(row.estimated)) continue;
+      if (!groups.has(row.projectId)) groups.set(row.projectId, { estimate: 0, actual: 0, count: 0, incomplete: false });
+      groups.get(row.projectId).estimate += row.estimated;
+    }
+    for (const ad of record.ads || []) {
+      const group = groups.get(ad.projectId);
+      if (!group) continue;
+      const revenue = actualAmount(ad.revenue), rate = ad.commissionRate;
+      if (revenue === null || !Number.isFinite(rate) || rate < 0 || rate > 1) { group.incomplete = true; continue; }
+      group.actual += revenue * rate;
+      group.count++;
+    }
+    let matchedActual = 0, matchedEstimate = 0, matchedProjects = 0;
+    for (const group of groups.values()) {
+      if (!group.count || group.incomplete) continue;
+      matchedActual += group.actual; matchedEstimate += group.estimate; matchedProjects++;
+    }
+    return { matchedProjects, matchedDifference: matchedActual - matchedEstimate,
+      unallocatedActual: total - matchedActual, unmatchedEstimate: snapshot.formula - matchedEstimate,
+      difference: total - snapshot.formula };
+  }
   function settlementCsv(records) {
     const amount = value => Number.isFinite(value) ? Math.round(value * 100) / 100 : "";
     const rows = [["类型","结算月份","对应发布月","广告名称","平台","公式估算","校准估算","实际收益","个人提成","实际减估算","估算性质"]];
@@ -115,7 +141,11 @@
         const matched=(s.rows || []).filter(row=>row.projectId===ad.projectId);
         const estimate=matched.reduce((sum,row)=>sum+row.estimated,0);
         const commission=Number.isFinite(ad.revenue)&&Number.isFinite(ad.commissionRate)?ad.revenue*ad.commissionRate:null;
-        rows.push(["广告明细",record.month,month,ad.name || matched[0]?.name || "",[...new Set(matched.map(row=>row.platform==="douyin"?"抖音":"小红书"))].join(" + "),matched.length?amount(estimate):"","",amount(ad.revenue),amount(commission),matched.length&&commission!==null?amount(commission-estimate):"",kind]);
+        const related=(record.ads || []).filter(item=>item.projectId===ad.projectId);
+        const first=related[0]===ad;
+        const comparable=related.every(item=>actualAmount(item.revenue)!==null && Number.isFinite(item.commissionRate) && item.commissionRate>=0 && item.commissionRate<=1);
+        const difference=related.reduce((sum,item)=>sum+item.revenue*item.commissionRate,0)-estimate;
+        rows.push(["广告明细",record.month,month,ad.name || matched[0]?.name || "",[...new Set(matched.map(row=>row.platform==="douyin"?"抖音":"小红书"))].join(" + "),matched.length&&first?amount(estimate):"","",amount(ad.revenue),amount(commission),matched.length&&first&&comparable?amount(difference):"",kind]);
       }
     }
     const cell=value=>{
@@ -125,5 +155,5 @@
     };
     return "\uFEFF"+rows.map(row=>row.map(cell).join(',')).join('\r\n');
   }
-  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv, actualAmount };
+  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv, actualAmount, settlementDifference };
 })(globalThis);

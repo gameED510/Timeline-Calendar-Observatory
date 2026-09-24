@@ -4,6 +4,22 @@ import '../performance.js';
 import { readFileSync } from 'node:fs';
 const p = globalThis.TLPerformance;
 
+test('settlement difference groups duplicate ads and both platforms without counting estimates twice',()=>{
+  const record={total:200,snapshot:{formula:180,rows:[{projectId:'a',estimated:60},{projectId:'a',estimated:40},{projectId:'b',estimated:80}]},ads:[{projectId:'a',revenue:500,commissionRate:.1},{projectId:'a',revenue:700,commissionRate:.1}]};
+  assert.deepEqual(p.settlementDifference(record),{matchedProjects:1,matchedDifference:20,unallocatedActual:80,unmatchedEstimate:80,difference:20});
+  record.total=100;
+  const result=p.settlementDifference(record);
+  assert.equal(result.unallocatedActual,-20);
+  assert.equal(result.matchedDifference+result.unallocatedActual-result.unmatchedEstimate,result.difference);
+});
+
+test('incomplete rates and missing totals never become zero actuals',()=>{
+  const record={total:0,snapshot:{formula:100,rows:[{projectId:'a',estimated:100}]},ads:[{projectId:'a',revenue:500,commissionRate:.1},{projectId:'a',revenue:100,commissionRate:null}]};
+  assert.equal(p.settlementDifference(record).matchedProjects,0);
+  assert.equal(p.settlementDifference(record).unmatchedEstimate,100);
+  record.total=null;assert.equal(p.settlementDifference(record),null);
+});
+
 test('actual amount parsing keeps zero but rejects blank, nonnumeric and out-of-range values',()=>{
   for(const value of [null,undefined,'','  ',false,true,[],{},Infinity,NaN,-1,'-1',1e9+1])assert.equal(p.actualAmount(value),null);
   assert.equal(p.actualAmount(0),0);assert.equal(p.actualAmount('0'),0);

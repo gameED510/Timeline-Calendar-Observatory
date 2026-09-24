@@ -66,11 +66,13 @@
     const formula = snapshot.formula;
     const calibrated = record ? snapshot.calibrated : model.ready ? formula * model.factor : null;
     const evaluation = P.evaluate(state.records);
+    const breakdown = P.settlementDifference(record);
     const difference=present(record)?record.total-formula:null;
     const differenceLabel=difference===null ? "尚未录入实际提成" : difference===0 ? "与公式估算一致" : `比预计${difference>0?"多":"少"} ¥${money(Math.abs(difference))}${formula>0 ? `（${money(Math.abs(difference)/formula*100)}%）` : " · 估算为零，不计算误差率"}`;
     panel.innerHTML = `<div class="actual-heading"><div><p class="eyebrow">TL / SETTLEMENT</p><h3>真实结算与预测</h3></div><div class="actual-actions"><button type="button" class="icon-button mini-button" data-refresh title="刷新结算记录" aria-label="刷新结算记录"><i data-lucide="refresh-cw"></i></button><button type="button" class="secondary-button actual-entry" data-entry ${state.loading || !state.loaded ? "disabled" : ""}><i data-lucide="plus"></i>录入实际</button></div></div>
       <div class="actual-comparison"><div><span>公式估算</span><strong>¥${money(formula)}</strong><small>${record ? snapshot.kind === "forecast" ? "已保存预测快照" : "历史回算" : "当前报价回算"}</small></div><div><span>历史校准估算</span><strong>${Number.isFinite(calibrated) ? `¥${money(calibrated)}` : "—"}</strong><small>${Number.isFinite(calibrated) ? `${snapshot.calibrationMonths ?? model.n} 个月样本 · 校准试算` : "满 3 个有效月份后试算"}</small></div><div><span>实际总提成</span><strong>${present(record) ? `¥${money(record.total)}` : "—"}</strong><small>${differenceLabel}</small></div></div>
       <p class="performance-range">${esc(context.month)} 结算 · 对应 ${esc(P.naturalMonth(context.month,-3).start.slice(0,7))} 自然月发布</p>
+      ${breakdown ? `<details class="forecast-breakdown"><summary>差额构成 · ${breakdown.matchedProjects} 个项目可对照</summary><p><span>已关联项目的提成差异</span><strong>¥${money(breakdown.matchedDifference)}</strong></p><p><span>未纳入项目对照的实际金额</span><strong>¥${money(breakdown.unallocatedActual)}</strong></p><p><span>尚无完整实际明细的估算</span><strong>¥${money(breakdown.unmatchedEstimate)}</strong></p><p>总差额 = 提成差异 + 未纳入实际金额 − 尚无明细估算。明细未补齐不代表预测不准；同一项目的多条明细合并对照。${breakdown.unallocatedActual < 0 ? " 已关联明细超出确认总额，请核对。" : ""}</p></details>` : ""}
       <details class="forecast-breakdown"><summary>查看公式估算来源 · ${(snapshot.rows||[]).length} 条发布记录</summary>${(snapshot.rows||[]).map(row=>`<p><span>${esc(row.name)} · ${row.platform==="douyin"?"抖音":"小红书"}</span><strong>¥${money(row.estimated)}</strong></p>`).join("")||"此月暂无参与估算的发布记录"}</details>
       <details class="forecast-breakdown"><summary>当前校准样本 · ${model.n} 个月</summary><p>${model.months.map(esc).join("、") || "暂无有效历史结算"}</p><p>只采用当前结算月之前、已有实际总额且公式估算大于零的最近六个月；未录入和零估算月份不参与。</p><p>当前系数 ${model.factor.toFixed(3)}${record ? "；已保存估算仍沿用原快照，不随当前样本变化。" : ""}</p></details>
       ${model.n<3?`<div class="actual-sample-progress"><progress value="${model.n}" max="3" aria-label="校准样本积累"></progress><span>${model.n}/3 个有效结算月，继续积累后显示校准试算</span></div>`:""}
@@ -81,7 +83,11 @@
       ${present(record) ? `<details class="actual-details" open><summary>实际广告明细 · ${record.ads.length} 条</summary><div class="performance-table-wrap"><table class="performance-table"><thead><tr><th>广告 / 平台</th><th>实际收益</th><th>对应提成</th><th>较估算</th></tr></thead><tbody>${record.ads.map(ad => {
         const matched = (snapshot.rows || []).filter(r => r.projectId === ad.projectId);
         const estimate = matched.reduce((s,r) => s+r.estimated,0);
-        return `<tr><td><strong>${esc(ad.name || matched[0]?.name || "未命名广告")}</strong><span>${matched.length ? [...new Set(matched.map(r => r.platform === "douyin" ? "抖音" : "小红书"))].join(" + ") : "未匹配估算"}</span></td><td>¥${money(ad.revenue)}</td><td>${Number.isFinite(ad.commissionRate) ? `¥${money(adCommission(ad))} · ${money(ad.commissionRate*100)}%` : "比例待匹配"}</td><td>${matched.length && Number.isFinite(ad.commissionRate) ? `¥${money(adCommission(ad)-estimate)}` : "—"}</td></tr>`;
+        const related = record.ads.filter(item => item.projectId === ad.projectId);
+        const comparable = related.every(item => P.actualAmount(item.revenue) !== null && Number.isFinite(item.commissionRate) && item.commissionRate >= 0 && item.commissionRate <= 1);
+        const projectDifference = related.reduce((sum,item) => sum + adCommission(item),0) - estimate;
+        const comparison = matched.length && comparable ? related[0] === ad ? `¥${money(projectDifference)}${related.length > 1 ? "（项目合计）" : ""}` : "计入项目合计" : "—";
+        return `<tr><td><strong>${esc(ad.name || matched[0]?.name || "未命名广告")}</strong><span>${matched.length ? [...new Set(matched.map(r => r.platform === "douyin" ? "抖音" : "小红书"))].join(" + ") : "未匹配估算"}</span></td><td>¥${money(ad.revenue)}</td><td>${Number.isFinite(ad.commissionRate) ? `¥${money(adCommission(ad))} · ${money(ad.commissionRate*100)}%` : "比例待匹配"}</td><td>${comparison}</td></tr>`;
       }).join("")}</tbody></table></div><p class="performance-footnote">已匹配比例的明细提成合计 ¥${money(record.ads.reduce((s,a)=>s+adCommission(a),0))} · 与确认总提成差额 ¥${money(record.total-record.ads.reduce((s,a)=>s+adCommission(a),0))}。实际总提成以确认值为准。</p></details>` : ""}`;
     root.TLPerformanceCharts.render(panel.querySelector('.performance-charts'),state.records,snapshot,month=>context.onChange(month),context.month);
     panel.querySelector("[data-refresh]").onclick = () => load();
