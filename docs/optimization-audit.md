@@ -12,6 +12,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Project editor prioritizes account/platform/dates and shows live formula hints; visual settings are folded.
 - Settlement views show source month, missing detail balance, calibration sample months and readable errors.
 - Chart windows use continuous months; missing and zero totals remain distinct.
+- Actual amount parsing rejects blank and invalid values while preserving zero. Calibration/evaluation exclude invalid baseline snapshots. Browser tests cover blank rejection, zero submission, duplicate-submit protection and retry after failure.
 - Settlement CSV exports monthly totals and ad rows, preserves missing values and neutralizes formula-like text cells.
 - Project search includes short names, accounts, platforms and combined terms; empty searches can reset filters.
 - Calendar mode, project filters and sorting persist per account. Temporary search text is not persisted. Invalid stored choices are ignored.

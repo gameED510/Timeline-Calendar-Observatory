@@ -3,7 +3,7 @@
   const P = root.TLPerformance;
   const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const money = value => Number(value).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
-  const present = record => record && record.total !== null && Number.isFinite(Number(record.total));
+  const present = record => record && P.actualAmount(record.total) !== null;
   const adCommission = ad => Number.isFinite(ad.commissionRate) ? ad.revenue * ad.commissionRate : 0;
   let state = { userId: null, epoch: -1, records: [], loaded: false, loading: false, error: "" };
   let context, panel, activeDialog;
@@ -13,7 +13,7 @@
     state = { userId: null, epoch: -1, records: [], loaded: false, loading: false, error: "" };
   }
   const current = ctx => ctx.isCurrent(ctx.userId, ctx.epoch);
-  function normalize(record) { return { ...record, total: record.total === null ? null : Number(record.total), ads: Array.isArray(record.ads) ? record.ads : [] }; }
+  function normalize(record) { return { ...record, total: P.actualAmount(record.total), ads: Array.isArray(record.ads) ? record.ads : [] }; }
   async function load() {
     if (!context.userId || state.loading) return;
     const ctx = context;
@@ -161,17 +161,21 @@
     dialog.querySelectorAll("[data-close]").forEach(b=>b.onclick=requestClose);
     dialog.addEventListener("cancel", e=>{e.preventDefault();requestClose();});
     dialog.querySelector("[data-add]").onclick=()=>{dirty=true;add();};
+    let saving = false;
     form.onsubmit = async event => {
       event.preventDefault();
-      const total=Number(form.elements.total.value), month=form.elements.month.value;
-      const ads=[...rows.children].map(row=>({name:row.querySelector('[data-name]').value.trim(),projectId:row.querySelector('[data-project]').value,revenue:Number(row.querySelector('[data-revenue]').value),commissionRate:row.dataset.rate==="" ? null : Number(row.dataset.rate)}));
-      if (!Number.isFinite(total) || total<0 || total>1e9 || ads.length>500 || ads.some(a=>!Number.isFinite(a.revenue)||a.revenue<0||a.revenue>1e9)) { error.textContent="请检查金额与广告明细。"; return; }
+      if (saving) return;
+      const total=P.actualAmount(form.elements.total.value), month=form.elements.month.value;
+      const ads=[...rows.children].map(row=>({name:row.querySelector('[data-name]').value.trim(),projectId:row.querySelector('[data-project]').value,revenue:P.actualAmount(row.querySelector('[data-revenue]').value),commissionRate:row.dataset.rate==="" ? null : Number(row.dataset.rate)}));
+      if (total===null || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || ads.length>500 || ads.some(a=>a.revenue===null)) { error.textContent="请检查结算月份、金额与广告明细；空白金额不等于零。"; return; }
+      saving=true;
       const submit=form.querySelector('[type="submit"]'); submit.disabled=true; error.textContent="";
       try {
         const snapshot=targetRecord?.snapshot || makeSnapshot({...ctx,month},"historical");
         await persist(ctx,{month,total,ads,snapshot},targetRecord?.version || 0);
         close(); context.onChange(month);
       } catch(e) { if (dialog.isConnected) { error.textContent=e.message; submit.disabled=false; } }
+      finally { saving=false; }
     };
     selectMonth(true); dialog.showModal(); root.lucide?.createIcons();
   }

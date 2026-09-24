@@ -3,6 +3,22 @@ import assert from 'node:assert/strict';
 import '../performance.js';
 import { readFileSync } from 'node:fs';
 const p = globalThis.TLPerformance;
+
+test('actual amount parsing keeps zero but rejects blank, nonnumeric and out-of-range values',()=>{
+  for(const value of [null,undefined,'','  ',false,true,[],{},Infinity,NaN,-1,'-1',1e9+1])assert.equal(p.actualAmount(value),null);
+  assert.equal(p.actualAmount(0),0);assert.equal(p.actualAmount('0'),0);
+  assert.equal(p.actualAmount('4126.634'),4126.634);
+  assert.equal(p.actualAmount(1e9),1e9);
+});
+
+test('invalid forecast snapshots cannot poison calibration or evaluation',()=>{
+  const records=[{month:'2026-08',total:100,snapshot:{kind:'forecast',formula:Infinity,calibrated:100}},
+    {month:'2026-07',total:100,snapshot:{kind:'forecast',calibrated:100}},
+    {month:'invalid',total:100,snapshot:{formula:100}},
+    {month:'2026-06',total:0,snapshot:{kind:'forecast',formula:100,calibrated:90}}];
+  const model=p.calibration(records,'2026-09');assert.equal(model.n,1);assert.equal(model.factor,.75);
+  assert.deepEqual(p.evaluate(records),{n:1,formulaMae:100,calibratedMae:90});
+});
 test('settlement export keeps totals separate from ads and protects text cells',()=>{
   const csv=p.settlementCsv([{month:'2026-09',total:0,snapshot:{formula:100,calibrated:null,kind:'historical',rows:[]},ads:[{name:'=SUM(1,2)',revenue:200,commissionRate:null}]}]);
   assert.ok(csv.startsWith('\uFEFF'));

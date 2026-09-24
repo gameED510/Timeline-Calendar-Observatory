@@ -3,6 +3,12 @@
   const platforms = ["douyin", "xiaohongshu"];
   const rates = { douyin: 54000, xiaohongshu: 20000 };
   const ratio = (value, fallback) => value !== "" && value != null && Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 1 ? Number(value) : fallback;
+  function actualAmount(value) {
+    if (typeof value !== "number" && typeof value !== "string") return null;
+    if (typeof value === "string" && !value.trim()) return null;
+    const amount = Number(value);
+    return Number.isFinite(amount) && amount >= 0 && amount <= 1e9 ? amount : null;
+  }
   function profiles(value) {
     if (!Array.isArray(value)) return [{ id: "wen", name: "拜托了闻学长", keywords: "拜托了闻学长", rates: { ...rates }, revenueShare: 0.5, commissionRate: 0.1 }];
     const seen = new Set();
@@ -70,7 +76,7 @@
     return { start: iso(0, 1), end: iso(1, 1), last: iso(1, 0) };
   }
   function calibration(records, month) {
-    const valid = records.filter((r) => r.month < month && r.snapshot?.formula > 0 && Number.isFinite(r.total) && r.total >= 0)
+    const valid = records.filter((r) => /^\d{4}-(0[1-9]|1[0-2])$/.test(r.month) && r.month < month && Number.isFinite(r.snapshot?.formula) && r.snapshot.formula > 0 && Number.isFinite(r.total) && r.total >= 0)
       .sort((a, b) => b.month.localeCompare(a.month)).slice(0, 6);
     const n = valid.length;
     const formula = valid.reduce((s, r) => s + r.snapshot.formula, 0);
@@ -86,7 +92,7 @@
         commissionRate: profiles(config).find(p=>p.id===account(r.project,config))?.commissionRate ?? null })) };
   }
   function evaluate(records) {
-    const valid = records.filter(r => Number.isFinite(r.total) && r.snapshot?.kind === "forecast" && Number.isFinite(r.snapshot.calibrated));
+    const valid = records.filter(r => Number.isFinite(r.total) && r.total >= 0 && r.snapshot?.kind === "forecast" && Number.isFinite(r.snapshot.formula) && r.snapshot.formula >= 0 && Number.isFinite(r.snapshot.calibrated) && r.snapshot.calibrated >= 0);
     return { n: valid.length,
       formulaMae: valid.length ? valid.reduce((s,r) => s + Math.abs(r.total - r.snapshot.formula), 0) / valid.length : null,
       calibratedMae: valid.length ? valid.reduce((s,r) => s + Math.abs(r.total - r.snapshot.calibrated), 0) / valid.length : null };
@@ -119,5 +125,5 @@
     };
     return "\uFEFF"+rows.map(row=>row.map(cell).join(',')).join('\r\n');
   }
-  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv };
+  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv, actualAmount };
 })(globalThis);
