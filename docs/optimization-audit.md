@@ -16,6 +16,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Historical ad editing preserves removed project associations and snapshot commission rates. Dirty month changes require confirmation; cancellation preserves all inputs. Browser checks confirm submitted associations/rates and immutable snapshots.
 - Settlement differences separate matched-project variance, unallocated actual totals and estimates lacking complete details. Duplicate ad rows compare against a project estimate once, including both platforms. Unit tests cover incomplete rates and negative residuals; a 375px browser check verifies aggregation and no page overflow.
 - Milestone completion preserves keyboard focus within the current view. Removed risk items advance to the next control; clearing the last risk returns focus to the risk tab. Synthetic browser keyboard checks pass.
+- Desktop navigation also synchronizes mobile navigation state before resizing. All five views retain matching selected navigation across 20 viewport transitions (320/375/812/1280px); the 320px performance screenshot was inspected. Physical orientation testing remains open.
 - Settlement CSV exports monthly totals and ad rows, preserves missing values and neutralizes formula-like text cells.
 - Project search includes short names, accounts, platforms and combined terms; empty searches can reset filters.
 - Calendar mode, project filters and sorting persist per account. Temporary search text is not persisted. Invalid stored choices are ignored.

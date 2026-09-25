@@ -46,6 +46,18 @@ test("view preferences restore valid choices without sharing them across account
   assert.equal(run('projectSort'),'next');
 });
 
+test("desktop navigation keeps mobile navigation state ready for viewport changes", () => {
+  const {run}=app();
+  run(`document.querySelector=()=>({scrollTop:0});
+    requestAnimationFrame=fn=>fn();window.scrollTo=()=>{};
+    elements.appShell={classList:{toggle(){}}};
+    elements.views=Object.fromEntries(['calendar','projects','timeline','conflicts','performance'].map(key=>[key,{classList:{toggle(){}}}]));`);
+  for(const view of ['performance','conflicts','timeline','projects','calendar']) {
+    run(`switchView('${view}')`);
+    assert.equal(run('mobilePage'),view==='calendar'?'plan':view);
+  }
+});
+
 test("overview picks one earliest pending milestone per project without mutating input", () => {
   const {run}=app();
   run(`items=[

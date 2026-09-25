@@ -3759,7 +3759,7 @@ function switchView(view) {
   Object.entries(elements.views).forEach(([key, node]) => {
     node.classList.toggle("active", key === view);
   });
-  if (isMobileLayout()) setMobilePage(view === "calendar" ? "plan" : view);
+  setMobilePage(view === "calendar" ? "plan" : view);
   elements.appShell.classList.toggle("showing-performance", view === "performance");
   render();
   if(changed)requestAnimationFrame(()=>{
