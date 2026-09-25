@@ -45,6 +45,7 @@ let projectSearchTerm = "";
 let projectFilter = "active";
 let projectSort = "next";
 let syncAuthMode = "signin";
+let passwordRecoveryActive = false;
 let mobilePage = "plan";
 let selectedCalendarDate = getInitialCalendarDate();
 let calendarMode = getInitialCalendarMode();
@@ -176,6 +177,7 @@ const elements = {
   syncHistoryButton: document.querySelector("#syncHistoryButton"),
   syncLogoutButton: document.querySelector("#syncLogoutButton"),
   syncPasswordUpdateForm: document.querySelector("#syncPasswordUpdateForm"),
+  syncPasswordUpdateEmail: document.querySelector("#syncPasswordUpdateEmail"),
   syncNewPassword: document.querySelector("#syncNewPassword"),
   syncPasswordUpdateButton: document.querySelector("#syncPasswordUpdateButton"),
   workspaceBar: document.querySelector(".workspace-bar"),
@@ -2379,7 +2381,7 @@ function renderSyncPanel() {
 
   elements.syncLoginForm.classList.toggle("hidden", !syncState.configured || Boolean(syncState.user));
   elements.syncUserPanel.classList.toggle("hidden", !syncState.user);
-  elements.syncPasswordUpdateForm.classList.add("hidden");
+  elements.syncPasswordUpdateForm.classList.toggle("hidden", !syncState.user || !passwordRecoveryActive);
   setSyncAuthMode(syncAuthMode);
   renderAccountAvatar();
 
@@ -2429,10 +2431,11 @@ function renderSyncPanel() {
   }
 
   elements.syncUserEmail.textContent = syncState.user.email || "已登录";
+  elements.syncPasswordUpdateEmail.value = syncState.user.email || "";
   const summary = projectSyncSummary();
-  elements.syncStatus.textContent = summary.label;
-  elements.syncStatus.className = `sync-status ${summary.tone}`;
-  elements.syncNote.textContent = summary.note;
+  elements.syncStatus.textContent = passwordRecoveryActive ? "重置密码" : summary.label;
+  elements.syncStatus.className = `sync-status ${passwordRecoveryActive ? "saving" : summary.tone}`;
+  elements.syncNote.textContent = passwordRecoveryActive ? "请输入新密码完成重置" : summary.note;
   elements.avatarButton.title = `账户与云同步 · ${summary.label}`;
   elements.avatarButton.setAttribute("aria-label",elements.avatarButton.title);
   elements.avatarButton.dataset.sync = summary.tone;
@@ -2489,20 +2492,27 @@ async function initCloudSync() {
     syncState.ready = true;
     syncState.initializing = false;
 
-    const { data } = await syncState.client.auth.getSession();
-    changeCloudAccount(data.session?.user || null);
-
-    syncState.client.auth.onAuthStateChange((_event, session) => {
+    syncState.client.auth.onAuthStateChange((event, session) => {
       const nextUser = session?.user || null;
       const userChanged = (nextUser?.id || null) !== activeAccountId;
+      passwordRecoveryActive = event === "PASSWORD_RECOVERY" ? Boolean(nextUser) : passwordRecoveryActive && Boolean(nextUser);
       changeCloudAccount(nextUser);
       renderSyncPanel();
+      if (event === "PASSWORD_RECOVERY" && nextUser) {
+        window.requestAnimationFrame(() => {
+          setAccountPopoverOpen(true);
+          elements.syncNewPassword.focus({ preventScroll: true });
+        });
+      }
       if (nextUser && userChanged) {
         window.setTimeout(() => loadCloudProjects({ preferNewer: true }), 0);
         startCloudRefresh();
       }
       if (!nextUser) stopCloudRefresh();
     });
+
+    const { data } = await syncState.client.auth.getSession();
+    changeCloudAccount(data.session?.user || null);
 
     if (syncState.user) {
       await loadCloudProjects({ preferNewer: true });
@@ -2617,6 +2627,8 @@ async function updateCloudPassword(event) {
     const { error } = await syncState.client.auth.updateUser({ password });
     if (error) throw error;
     elements.syncNewPassword.value = "";
+    passwordRecoveryActive = false;
+    renderSyncPanel();
     showToast("密码已更新");
   } catch (error) {
     showToast(getCloudErrorMessage(error, "密码更新失败"));
