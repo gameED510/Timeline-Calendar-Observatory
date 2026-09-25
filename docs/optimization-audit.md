@@ -38,6 +38,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - New service-worker activation prompts for user-controlled refresh; open dialogs, pending project uploads and offline status block the refresh action. Physical update timing still needs live verification.
 - Browser and API boundaries were audited: the Supabase proxy restricts methods, paths, origins, body size and request rate; database policies scope records to the signed-in user; production targets now share strict CSP, HSTS, same-origin resource isolation and legacy cross-domain policy blocking. Dependency audit and 76 automated checks pass. Live two-account RLS and password-reset delivery remain separate release checks.
 - All five tab groups now use a single roving keyboard stop and support Left/Right, Home and End navigation. A synthetic-account browser flow verifies view, calendar mode, project filter, performance period and sign-in mode switching without touching production data; 77 automated checks pass.
+- Dynamic pricing, actual-settlement, template and recovery dialogs now expose their visible headings as accessible names and use the same icon-only close control as the rest of the product. A 320px browser flow verifies all four dialogs remain within the viewport without horizontal overflow.
 
 ## Still open: do not claim all 100 complete
 

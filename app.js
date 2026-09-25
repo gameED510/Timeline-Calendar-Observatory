@@ -741,7 +741,8 @@ function openPricingSettings() {
   const returnFocus = document.activeElement, focusEpoch = accountEpoch;
   const dialog = document.createElement("dialog");
   dialog.className = "project-dialog pricing-dialog";
-  dialog.innerHTML = `<form><div class="dialog-header"><h2>账号报价</h2><button type="button" class="icon-button" aria-label="关闭">×</button></div><div class="project-form-body"><div class="pricing-list"></div><button type="button" class="secondary-button pricing-add">添加账号</button><p class="pricing-status" role="status"></p></div><div class="dialog-actions"><button type="submit" class="primary-button">保存报价</button></div></form>`;
+  dialog.setAttribute("aria-labelledby", "pricingDialogTitle");
+  dialog.innerHTML = `<form><div class="dialog-header"><h2 id="pricingDialogTitle">账号报价</h2><button type="button" class="icon-button" aria-label="关闭"><i data-lucide="x"></i></button></div><div class="project-form-body"><div class="pricing-list"></div><button type="button" class="secondary-button pricing-add">添加账号</button><p class="pricing-status" role="status"></p></div><div class="dialog-actions"><button type="submit" class="primary-button">保存报价</button></div></form>`;
   const list = dialog.querySelector(".pricing-list");
   let pricingDirty=false;
   dialog.querySelector("form").addEventListener("input",()=>pricingDirty=true);
@@ -821,7 +822,7 @@ function openPricingSettings() {
     finally { button.disabled = false; }
   };
   document.body.append(dialog);
-  dialog.showModal();
+  dialog.showModal();activateIcons();
 }
 
 function renderPerformance() {
@@ -3039,8 +3040,8 @@ function openRecoveryComparison(saved) {
   const differences = recoveryDifferences(saved, projects);
   const dialog = document.createElement("dialog");
   dialog.className = "project-dialog recovery-comparison";
-  dialog.setAttribute("aria-label", "恢复点对照");
-  dialog.innerHTML = '<form method="dialog"><header class="dialog-header"><h2>恢复点对照</h2><button class="icon-button" aria-label="关闭">×</button></header><div class="project-form-body"></div></form>';
+  dialog.setAttribute("aria-labelledby", "recoveryComparisonTitle");
+  dialog.innerHTML = '<form method="dialog"><header class="dialog-header"><h2 id="recoveryComparisonTitle">恢复点对照</h2><button class="icon-button" aria-label="关闭"><i data-lucide="x"></i></button></header><div class="project-form-body"></div></form>';
   const body = dialog.querySelector(".project-form-body");
   const heading = document.createElement("p");
   heading.textContent = differences.length ? `${differences.length} 个项目不同 · 左侧恢复点，右侧当前数据` : "与当前项目一致";
@@ -3061,7 +3062,7 @@ function openRecoveryComparison(saved) {
     body.append(section);
   }
   dialog.onclose=()=>{dialog.remove();restoreDialogFocus(returnFocus,focusEpoch);};
-  document.body.append(dialog);dialog.showModal();
+  document.body.append(dialog);dialog.showModal();activateIcons();
 }
 
 function createHistoryEmpty(message) {
@@ -3350,8 +3351,8 @@ function openTemplateOptions() {
   let continueToEditor=false;
   const dialog=document.createElement("dialog");
   dialog.className="project-dialog template-options-dialog";
-  dialog.setAttribute("aria-label","复制为模板");
-  dialog.innerHTML='<form><header class="dialog-header"><h2>复制为模板</h2><button type="button" class="icon-button" aria-label="关闭">×</button></header><div class="project-form-body"><label><input type="checkbox" name="platforms" checked>保留账号、平台与赠送设置</label><label><input type="checkbox" name="appearance" checked>保留颜色与简称</label><label><input type="checkbox" name="dates">保留阶段日期</label></div><footer class="dialog-actions"><button type="submit" class="primary-button">创建副本</button></footer></form>';
+  dialog.setAttribute("aria-labelledby","templateOptionsTitle");
+  dialog.innerHTML='<form><header class="dialog-header"><h2 id="templateOptionsTitle">复制为模板</h2><button type="button" class="icon-button" aria-label="关闭"><i data-lucide="x"></i></button></header><div class="project-form-body"><label><input type="checkbox" name="platforms" checked>保留账号、平台与赠送设置</label><label><input type="checkbox" name="appearance" checked>保留颜色与简称</label><label><input type="checkbox" name="dates">保留阶段日期</label></div><footer class="dialog-actions"><button type="submit" class="primary-button">创建副本</button></footer></form>';
   dialog.querySelector('[aria-label="关闭"]').onclick=()=>dialog.close();
   dialog.onclose=()=>{dialog.remove();if(!continueToEditor)restoreDialogFocus(returnFocus,epoch);};
   dialog.querySelector("form").onsubmit=event=>{
@@ -3372,7 +3373,7 @@ function openTemplateOptions() {
     document.querySelector("#smartImportDisclosure").open=false;
     elements.projectNameInput.focus();
   };
-  document.body.append(dialog);dialog.showModal();
+  document.body.append(dialog);dialog.showModal();activateIcons();
 }
 
 function requestCloseProjectDialog() {

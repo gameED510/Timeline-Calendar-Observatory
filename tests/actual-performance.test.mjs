@@ -91,6 +91,18 @@ test('manual settlement modules ship without screenshot recognition',()=>{
   assert.doesNotMatch(ui,/actualFiles|recognize|type="file"/);
   assert.match(ui,/个人总提成/);
 });
+test('dynamic dialogs expose titled names and consistent close icons',()=>{
+  const app=readFileSync(new URL('../app.js',import.meta.url),'utf8');
+  const actual=readFileSync(new URL('../actual-performance.js',import.meta.url),'utf8');
+  for(const id of ['pricingDialogTitle','recoveryComparisonTitle','templateOptionsTitle']) {
+    assert.ok(app.includes(`aria-labelledby\", \"${id}`) || app.includes(`aria-labelledby\",\"${id}`));
+    assert.ok(app.includes(`id=\"${id}\"`));
+  }
+  assert.ok(actual.includes('aria-labelledby\", \"actualPerformanceDialogTitle'));
+  assert.ok(actual.includes('id=\"actualPerformanceDialogTitle\"'));
+  assert.doesNotMatch(app,/aria-label=["']关闭["']>×<\/button>/);
+  assert.match(app,/data-lucide=["']x["']/);
+});
 test('settlement writes enforce ownership, immutable snapshot and optimistic versions',()=>{
   const sql=readFileSync(new URL('../supabase/migrations/20260913090000_actual_performance.sql',import.meta.url),'utf8');
   assert.match(sql,/enable row level security/);

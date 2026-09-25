@@ -119,6 +119,7 @@
     const ctx = { ...context }, controller = new AbortController();
     const returnFocus = root.document.activeElement;
     const dialog = document.createElement("dialog"); dialog.className = "project-dialog actual-dialog";
+    dialog.setAttribute("aria-labelledby", "actualPerformanceDialogTitle");
     const close = () => {
       controller.abort(); dialog.close(); dialog.remove(); if (activeDialog?.element === dialog) activeDialog = null;
       root.requestAnimationFrame(() => {
@@ -130,7 +131,7 @@
     activeDialog = { element: dialog, close };
     const onAccountAbort = () => close(); ctx.signal.addEventListener("abort", onAccountAbort, { once: true });
     dialog.addEventListener("close", () => { controller.abort(); ctx.signal.removeEventListener("abort", onAccountAbort); });
-    dialog.innerHTML = `<form><header class="dialog-header"><div><p class="eyebrow">TL / SETTLEMENT</p><h2>录入实际</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><i data-lucide="x"></i></button></header><div class="project-form-body">
+    dialog.innerHTML = `<form><header class="dialog-header"><div><p class="eyebrow">TL / SETTLEMENT</p><h2 id="actualPerformanceDialogTitle">录入实际</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><i data-lucide="x"></i></button></header><div class="project-form-body">
       <div class="actual-fields"><label>结算月份<input name="month" type="month" required value="${ctx.month}"></label><label>个人总提成<input name="total" type="number" min="0" max="1000000000" step="any" required inputmode="decimal"></label></div>
       <p data-notice role="status"></p><div class="actual-heading"><h3>广告明细</h3><button type="button" class="icon-button mini-button" data-add title="添加广告" aria-label="添加广告"><i data-lucide="plus"></i></button></div><div class="actual-ad-rows"></div><p data-balance class="performance-footnote"></p>
       <p data-error role="alert"></p></div><footer class="dialog-actions"><button type="button" class="secondary-button" data-close>取消</button><button type="submit" class="primary-button"><i data-lucide="check"></i>确认保存</button></footer></form>`;
