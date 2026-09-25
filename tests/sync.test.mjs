@@ -59,6 +59,16 @@ test("desktop navigation keeps mobile navigation state ready for viewport change
   }
 });
 
+test("tablists wrap with arrow keys and honor Home and End", () => {
+  const {run}=app();
+  assert.equal(run(`tablistTargetIndex(0,5,'ArrowLeft')`),4);
+  assert.equal(run(`tablistTargetIndex(4,5,'ArrowRight')`),0);
+  assert.equal(run(`tablistTargetIndex(2,5,'Home')`),0);
+  assert.equal(run(`tablistTargetIndex(2,5,'End')`),4);
+  assert.equal(run(`tablistTargetIndex(2,5,'Enter')`),-1);
+  assert.equal(run(`tablistTargetIndex(-1,5,'ArrowRight')`),-1);
+});
+
 test("overview picks one earliest pending milestone per project without mutating input", () => {
   const {run}=app();
   run(`items=[

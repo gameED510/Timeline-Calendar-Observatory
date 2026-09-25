@@ -850,6 +850,7 @@ function renderPerformance() {
     const active = button.dataset.performanceDetail === performanceDetail;
     button.classList.toggle("active", active);
     button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
   });
   const details = document.querySelector("#performanceDetails");
   details.innerHTML = `<p class="performance-range">${range(detailPeriod)} · ${data.total} 条平台发布</p>`;
@@ -1097,6 +1098,7 @@ function renderProjectControls() {
     const active = button.dataset.projectFilter === projectFilter;
     button.classList.toggle("active", active);
     button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
     button.textContent = `${labels[key] || key} ${counts[key] ?? 0}`;
   });
 
@@ -1623,6 +1625,7 @@ function renderCalendarModeControls() {
     const active = button.dataset.calendarMode === calendarMode;
     button.classList.toggle("active", active);
     button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
   });
   if (elements.calendarPeriodNav) {
     elements.calendarPeriodNav.classList.toggle("hidden", calendarMode !== "month");
@@ -2426,6 +2429,7 @@ function setSyncAuthMode(mode) {
     const active = button.dataset.syncMode === syncAuthMode;
     button.classList.toggle("active", active);
     button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
   });
 
   if (elements.syncPassword) {
@@ -3785,6 +3789,7 @@ function applyViewSelection(view) {
     const active = button.dataset.view === view;
     button.classList.toggle("active", active);
     button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
   });
   Object.entries(elements.views).forEach(([key, node]) => {
     node?.classList.toggle("active", key === view);
@@ -3809,6 +3814,28 @@ function switchView(view) {
 function keyboardViewport(viewport, layoutHeight, editing) {
   if (!viewport || !editing || viewport.scale > 1.05 || layoutHeight - viewport.height < 120) return null;
   return { top: Math.max(0,viewport.offsetTop), height: Math.max(180,viewport.height) };
+}
+
+function tablistTargetIndex(currentIndex, count, key) {
+  if (!count || currentIndex < 0) return -1;
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  if (key === "ArrowRight") return (currentIndex + 1) % count;
+  if (key === "ArrowLeft") return (currentIndex - 1 + count) % count;
+  return -1;
+}
+
+function wireTablistKeyboard(tablist) {
+  tablist.addEventListener("keydown", (event) => {
+    if (!event.target.matches('[role="tab"]')) return;
+    const tabs = [...tablist.querySelectorAll('[role="tab"]')]
+      .filter((tab) => !tab.disabled && !tab.hidden);
+    const nextIndex = tablistTargetIndex(tabs.indexOf(event.target), tabs.length, event.key);
+    if (nextIndex < 0) return;
+    event.preventDefault();
+    tabs[nextIndex].focus({ preventScroll: true });
+    tabs[nextIndex].click();
+  });
 }
 
 function updateKeyboardViewport() {
@@ -3851,6 +3878,7 @@ function jumpToToday() {
 }
 
 function wireEvents() {
+  document.querySelectorAll('[role="tablist"]').forEach(wireTablistKeyboard);
   document.querySelector("#accountGateButton")?.addEventListener("click", (event) => {
     event.stopPropagation();
     if (activeAccountId) loadCloudProjects();
