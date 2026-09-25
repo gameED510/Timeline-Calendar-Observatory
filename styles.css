@@ -5044,3 +5044,78 @@ html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden
   .actual-heading h3 { font-size: 16px; }.actual-actions { gap: 4px; margin-left: auto; }
   .actual-fields { grid-template-columns: minmax(0,1fr); }
 }
+
+/* Mobile controls keep compact icons while providing finger-sized hit areas. */
+@media (max-width: 860px) {
+  .project-card-head { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .calendar-detail-card .mini-button { width: 44px; height: 44px; min-height: 44px; }
+  .project-done-toggle,
+  .stage-complete-toggle,
+  .timeline-event-check,
+  .agenda-grid .chip-check,
+  #conflictsView .chip-check {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    justify-self: center;
+    border-color: transparent;
+    background: transparent;
+  }
+  .project-done-toggle::before,
+  .stage-complete-toggle::before,
+  .timeline-event-check::before,
+  .agenda-grid .chip-check::before,
+  #conflictsView .chip-check::before {
+    content: "";
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--surface);
+  }
+  .project-done-toggle::before { width: 34px; height: 34px; }
+  .agenda-grid .chip-check::before,
+  #conflictsView .chip-check::before { width: 32px; height: 32px; }
+  .project-done-toggle[aria-pressed="true"],
+  .stage-complete-toggle[aria-pressed="true"],
+  .timeline-event-check[aria-pressed="true"],
+  .agenda-grid .chip-check[aria-pressed="true"],
+  #conflictsView .chip-check[aria-pressed="true"] { border-color: transparent; background: transparent; }
+  .project-done-toggle[aria-pressed="true"]::before,
+  .stage-complete-toggle[aria-pressed="true"]::before,
+  .timeline-event-check[aria-pressed="true"]::before,
+  .agenda-grid .chip-check[aria-pressed="true"]::before,
+  #conflictsView .chip-check[aria-pressed="true"]::before { border-color: var(--success); background: var(--success); }
+  .project-done-toggle svg,
+  .stage-complete-toggle svg,
+  .timeline-event-check svg,
+  .agenda-grid .chip-check svg,
+  #conflictsView .chip-check svg { position: relative; z-index: 1; }
+  .project-stage-row { grid-template-columns: 44px minmax(0, 1fr); min-height: 54px; }
+  .project-next-step,
+  .project-signal-pill,
+  .day-date-button,
+  .agenda-day-head,
+  .project-filter button,
+  .sync-auth-mode button,
+  .conflict-actions .ghost-button,
+  .segmented.compact .segmented-button { min-height: 44px; }
+  .performance-heading #pricingSettings { width: 44px; min-width: 44px; height: 44px; }
+  .day-date-button { width: 100%; justify-content: center; }
+  .calendar-detail-main { min-height: 44px; }
+  .inline-pile:not(.expanded):not(.dragging) .motion-card-main { position: relative; z-index: 2; }
+  .inline-pile:not(.expanded):not(.dragging) .motion-card-main::before {
+    content: "";
+    position: absolute;
+    inset: -9px -6px;
+  }
+  .timeline-event-card { grid-template-columns: 44px minmax(0, 1fr); }
+  .agenda-grid .milestone-chip,
+  #conflictsView .milestone-chip { grid-template-columns: 4px 44px minmax(0, 1fr); min-height: 56px; }
+  .performance-explanation summary,
+  .forecast-breakdown summary,
+  .actual-details summary,
+  .chart-data-table summary { display: flex; align-items: center; min-height: 44px; padding-block: 0; }
+}

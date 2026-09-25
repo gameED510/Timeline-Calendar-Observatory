@@ -39,6 +39,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Browser and API boundaries were audited: the Supabase proxy restricts methods, paths, origins, body size and request rate; database policies scope records to the signed-in user; production targets now share strict CSP, HSTS, same-origin resource isolation and legacy cross-domain policy blocking. Dependency audit and 76 automated checks pass. Live two-account RLS and password-reset delivery remain separate release checks.
 - All five tab groups now use a single roving keyboard stop and support Left/Right, Home and End navigation. A synthetic-account browser flow verifies view, calendar mode, project filter, performance period and sign-in mode switching without touching production data; 77 automated checks pass.
 - Dynamic pricing, actual-settlement, template and recovery dialogs now expose their visible headings as accessible names and use the same icon-only close control as the rest of the product. A 320px browser flow verifies all four dialogs remain within the viewport without horizontal overflow.
+- Mobile completion controls now reserve 44px touch boxes while keeping the visible circles compact; calendar, project, timeline, conflict and performance controls were scanned for names, duplicate IDs, undersized targets and overflow. A direct hit-test verifies the stacked calendar card's expanded invisible target, and the 40-state visual matrix remains overflow-free.
 
 ## Still open: do not claim all 100 complete
 
