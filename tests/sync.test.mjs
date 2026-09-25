@@ -148,6 +148,24 @@ test("cloud restoration rejects pending work and locks editing and background sy
   assert.equal(run('projects.length'),1);
 });
 
+test("successful restoration unlocks before history refresh and ignores late account errors", async () => {
+  const {run,context}=app();
+  let rejectHistory;
+  context.historyPending=new Promise((resolve,reject)=>{rejectHistory=reject;});
+  run(`window.confirm=()=>true;createLocalRecoveryPoint=()=>({id:'backup'});
+    persistLocalProjects=()=>{};messages=[];showToast=message=>messages.push(message);
+    renderRecoveryHistory=()=>historyPending;
+    syncState.client={rpc:()=>({abortSignal:()=>Promise.resolve({data:[]})})};`);
+  await run(`restoreCloudSnapshot('snapshot')`);
+  assert.equal(run('syncState.restoring'),false);
+  assert.equal(run('canEditProjects()'),true);
+  assert.match(run('messages[0]'),/已恢复/);
+  run('accountEpoch++');
+  rejectHistory(new Error('late history failure'));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(run('messages.length'),1);
+});
+
 test("project search matches short names, account and platform together", () => {
   const {run}=app();
   run(`projects[0].shortName='耳机';projects[0].publicationAccount='wen';projects[0].publication={douyin:{count:1}};

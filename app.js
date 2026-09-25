@@ -3090,7 +3090,9 @@ async function restoreCloudSnapshot(snapshotId) {
     persistLocalProjects();
     createLocalRecoveryPoint("已恢复云端版本");
     render();
-    await renderRecoveryHistory();
+    renderRecoveryHistory().catch(() => {
+      if (epoch === accountEpoch) showToast("恢复已完成，历史列表暂未刷新，请重新打开查看");
+    });
     showToast("已恢复云端版本，并生成新的保护快照");
   } catch (error) {
     if (epoch !== accountEpoch) return;
