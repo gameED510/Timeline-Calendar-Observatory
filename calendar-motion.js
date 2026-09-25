@@ -25,6 +25,14 @@ window.CalendarMotion = (() => {
   }
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const animate = (node, frames, options = {}) => reduced() ? null : node.animate(frames, { duration: 520, easing: 'cubic-bezier(.2,.8,.25,1)', ...options });
+  function restoreDialogFocus(target, item) {
+    requestAnimationFrame(() => {
+      if (document.querySelector('dialog[open]')) return;
+      const replacement=item ? [...document.querySelectorAll('.motion-card')].find(node=>node.dataset.projectId===item.project.id&&node.dataset.stage===item.stage)?.querySelector('.motion-card-main') : null;
+      const control=target?.isConnected ? target : replacement;
+      control?.focus({preventScroll:true});
+    });
+  }
   function icon(name, label, action) {
     const button = document.createElement('button');
     button.type='button'; button.className='motion-icon'; button.title=label; button.setAttribute('aria-label',label);
@@ -33,6 +41,7 @@ window.CalendarMotion = (() => {
   }
   function openDenseDay(group) {
     close(false);
+    const returnFocus=document.activeElement;
     const {items,handlers}=groups.get(group);
     const dialog=document.createElement('dialog');dialog.className='project-dialog dense-day-dialog';
     dialog.setAttribute('aria-label',`${items[0].date} 的项目节点`);
@@ -46,13 +55,15 @@ window.CalendarMotion = (() => {
       const stage=document.createElement('span');stage.textContent=`${item.stage}${item.completed?' · 已完成':''}`;
       const text=document.createElement('div');text.append(name,stage);
       const actions=document.createElement('div');actions.className='dense-day-actions';
-      actions.append(icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>{dialog.close();handlers.toggle(item);}),icon('calendar-days','调整日期',()=>{dialog.close();chooseDate(item,handlers);}),icon('pencil','编辑项目',()=>{dialog.close();handlers.edit(item);}));
+      actions.append(icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>{dialog.close();handlers.toggle(item);}),icon('calendar-days','调整日期',()=>{dialog.close();chooseDate(item,handlers,returnFocus);}),icon('pencil','编辑项目',()=>{dialog.close();returnFocus?.focus({preventScroll:true});handlers.edit(item);}));
       row.append(text,actions);list.append(row);
     });
-    dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+    dialog.addEventListener('close',()=>{dialog.remove();restoreDialogFocus(returnFocus,items[0]);},{once:true});
     document.body.append(dialog);window.lucide?.createIcons();dialog.showModal();
   }
-  function chooseDate(item, handlers) {
+  function chooseDate(item, handlers, focusTarget = null) {
+    const invoked=document.activeElement;
+    const returnFocus=focusTarget || invoked?.closest?.('.motion-card')?.querySelector('.motion-card-main') || invoked;
     close(false);
     const dialog=document.createElement('dialog');
     dialog.className='project-dialog reschedule-dialog';
@@ -67,7 +78,7 @@ window.CalendarMotion = (() => {
       const date=input.value;dialog.close();
       if(date!==item.date)handlers.move(item,date);
     };
-    dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+    dialog.addEventListener('close',()=>{dialog.remove();restoreDialogFocus(returnFocus,item);},{once:true});
     document.body.append(dialog);dialog.showModal();input.focus();
   }
   function close(restoreFocus = true, immediate = false) {

@@ -28,6 +28,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Timeline and milestone chips use separate native buttons for completion and selection, with full accessible names instead of nested button roles. Enter/Space browser flows and the broader workflow regression pass; this is not a complete screen-reader audit.
 - Keyboard viewport adaptation is simulated in Chromium, not verified on physical iOS.
 - More than six same-day nodes open a scrollable action list; 12 nodes at 320px were tested, including rescheduling the last node.
+- Dense-day and reschedule dialogs restore focus to the originating card, or its newly rendered replacement after a move. A 390px browser flow covers successful move and cancellation; reduced-motion emulation reports no running animation longer than 1ms after expansion.
 - Explicitly saved drafts persist locally per account for 30 days; recovery compares project fingerprints and never saves without user confirmation. Unit tests cover memory reset and account isolation.
 - Recovery history offers read-only project/field comparison. Both restoration paths and cloud-conflict reconciliation stop before overwriting when local protection cannot be stored.
 - Cloud restoration rejects pending sync work, locks editing/background sync for the request, and unlocks after failure or completion. Account changes reset the lock without allowing stale callbacks to change a new account.
