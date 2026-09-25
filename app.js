@@ -36,7 +36,7 @@ let syncedProjects = localState.sync.projects;
 let projectTombstones = localState.sync.tombstones;
 let dirtyProjectIds = new Set(localState.sync.dirtyIds);
 let currentView = "calendar";
-let performanceMonth = TODAY_ISO.slice(0, 7);
+let performanceMonth = TLPerformance.cycleMonth(TODAY_ISO);
 let performanceDetail = "current";
 let selected = null;
 let editingProjectId = null;
@@ -1342,6 +1342,18 @@ function isProjectComplete(project) {
   return stageCount > 0 && getProjectCompletedCount(project) === stageCount;
 }
 
+function publicationCompletionMessage(project) {
+  const date = project.milestones?.["发布"];
+  if (!date) return `${getClientName(project.name)} 已完成，已移入“已完成”`;
+  const month = TLPerformance.cycleMonth(date);
+  const publication = TLPerformance.normalize(project.publication);
+  const hasPlatform = TLPerformance.platforms.some((platform) => publication[platform].count > 0);
+  const monthLabel = `${month.slice(0, 4)}年${Number(month.slice(5))}月`;
+  return hasPlatform
+    ? `${getClientName(project.name)} · 已计入 ${monthLabel}发布绩效`
+    : `${getClientName(project.name)} · 发布已完成，选择平台后计入 ${monthLabel}绩效`;
+}
+
 function toggleProjectCompleted(projectId) {
   if (!canEditProjects()) return;
   const project = projects.find((item) => item.id === projectId);
@@ -1361,7 +1373,9 @@ function toggleProjectCompleted(projectId) {
   }
   saveProjects();
   render();
-  showToast(nextDone ? `${getClientName(project.name)} 已完成，已移入“已完成”` : `${getClientName(project.name)} 已恢复到“进行中”`);
+  showToast(nextDone && project.completedMilestones?.["发布"]
+    ? publicationCompletionMessage(project)
+    : nextDone ? `${getClientName(project.name)} 已完成，已移入“已完成”` : `${getClientName(project.name)} 已恢复到“进行中”`);
 }
 
 function toggleMilestoneCompleted(projectId, stageName) {
@@ -1384,7 +1398,9 @@ function toggleMilestoneCompleted(projectId, stageName) {
   }
   saveProjects();
   render();
-  showToast(projectNowComplete
+  showToast(project.completedMilestones[stageName] && stageName === "发布"
+    ? publicationCompletionMessage(project)
+    : projectNowComplete
     ? `${getClientName(project.name)} 已完成，已移入“已完成”`
     : `${getClientName(project.name)} · ${stageName} ${project.completedMilestones[stageName] ? "已完成" : "已恢复"}`);
 }
@@ -3853,7 +3869,9 @@ function updateKeyboardViewport() {
 function refreshCurrentDate(now = new Date()) {
   const next = dateToIso(now);
   if (next === TODAY_ISO) return false;
+  const previousPerformanceMonth = TLPerformance.cycleMonth(TODAY_ISO);
   TODAY_ISO = next;
+  if (performanceMonth === previousPerformanceMonth) performanceMonth = TLPerformance.cycleMonth(TODAY_ISO);
   render();
   return true;
 }

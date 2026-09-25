@@ -45,6 +45,12 @@
     const iso = (delta, day) => new Date(Date.UTC(year, number - 1 + offset + delta, day)).toISOString().slice(0, 10);
     return { start: iso(-1, 16), end: iso(0, 16), last: iso(0, 15) };
   }
+  function cycleMonth(date) {
+    if (!validDate(date)) throw new Error("Invalid performance date");
+    if (Number(date.slice(8, 10)) <= 15) return date.slice(0, 7);
+    const [year, month] = date.slice(0, 7).split("-").map(Number);
+    return new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 7);
+  }
   function summarize(projects, period, today, config) {
     const rows = [];
     const missing = [];
@@ -155,5 +161,5 @@
     };
     return "\uFEFF"+rows.map(row=>row.map(cell).join(',')).join('\r\n');
   }
-  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv, actualAmount, settlementDifference };
+  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, cycleMonth, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv, actualAmount, settlementDifference };
 })(globalThis);

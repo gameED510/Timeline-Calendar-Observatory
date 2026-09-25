@@ -40,6 +40,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - All five tab groups now use a single roving keyboard stop and support Left/Right, Home and End navigation. A synthetic-account browser flow verifies view, calendar mode, project filter, performance period and sign-in mode switching without touching production data; 77 automated checks pass.
 - Dynamic pricing, actual-settlement, template and recovery dialogs now expose their visible headings as accessible names and use the same icon-only close control as the rest of the product. A 320px browser flow verifies all four dialogs remain within the viewport without horizontal overflow.
 - Mobile completion controls now reserve 44px touch boxes while keeping the visible circles compact; calendar, project, timeline, conflict and performance controls were scanned for names, duplicate IDs, undersized targets and overflow. A direct hit-test verifies the stacked calendar card's expanded invisible target, and the 40-state visual matrix remains overflow-free.
+- The performance view now opens the active 15th-to-15th cycle instead of the calendar month: dates through the 15th stay in that month and dates from the 16th move to the next performance month. Completing publication names the destination month, and a browser flow verifies a September 17 publication appears as one item in October rather than disappearing from view.
 
 ## Still open: do not claim all 100 complete
 
