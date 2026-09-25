@@ -36,6 +36,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Cloud restoration rejects pending sync work, locks editing/background sync for the request, and unlocks after failure or completion. Account changes reset the lock without allowing stale callbacks to change a new account.
 - Successful cloud restoration unlocks without waiting for the independent history refresh. Late history failures cannot report against a different account or mislabel restoration as failed; deferred-promise tests cover this boundary.
 - New service-worker activation prompts for user-controlled refresh; open dialogs, pending project uploads and offline status block the refresh action. Physical update timing still needs live verification.
+- Browser and API boundaries were audited: the Supabase proxy restricts methods, paths, origins, body size and request rate; database policies scope records to the signed-in user; production targets now share strict CSP, HSTS, same-origin resource isolation and legacy cross-domain policy blocking. Dependency audit and 76 automated checks pass. Live two-account RLS and password-reset delivery remain separate release checks.
 
 ## Still open: do not claim all 100 complete
 
