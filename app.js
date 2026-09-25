@@ -56,6 +56,7 @@ let calendarProjectFilter = null;
 let editorBaseline = "";
 let editorProjectFingerprint = null;
 let editorReturnFocus = null;
+let historyReturnFocus = null;
 const viewScrollPositions = new Map();
 const projectDrafts = new Map();
 
@@ -191,6 +192,14 @@ const elements = {
   toast: document.querySelector("#toast")
 };
 
+function restoreDialogFocus(target, epoch = accountEpoch) {
+  window.requestAnimationFrame(() => {
+    if (epoch !== accountEpoch || !target?.isConnected) return;
+    if (document.querySelector("dialog[open]") && !target.closest?.("dialog[open]")) return;
+    target.focus({ preventScroll: true });
+  });
+}
+
 const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
 function getActiveTheme() {
@@ -298,6 +307,7 @@ function changeCloudAccount(user) {
   elements.projectDialog?.close();
   elements.projectForm?.reset();
   elements.historyDialog?.close();
+  historyReturnFocus = null;
   if (nextId) {
     const cached = loadLocalState(nextId);
     if (cached.projects.length) createLocalRecoveryPoint("登录前本机备份", cached.projects);
@@ -725,6 +735,7 @@ function pricingProfiles() {
 
 function openPricingSettings() {
   if (!canEditProjects()) return;
+  const returnFocus = document.activeElement, focusEpoch = accountEpoch;
   const dialog = document.createElement("dialog");
   dialog.className = "project-dialog pricing-dialog";
   dialog.innerHTML = `<form><div class="dialog-header"><h2>账号报价</h2><button type="button" class="icon-button" aria-label="关闭">×</button></div><div class="project-form-body"><div class="pricing-list"></div><button type="button" class="secondary-button pricing-add">添加账号</button><p class="pricing-status" role="status"></p></div><div class="dialog-actions"><button type="submit" class="primary-button">保存报价</button></div></form>`;
@@ -763,7 +774,7 @@ function openPricingSettings() {
   };
   dialog.querySelector(".dialog-header button").onclick = closePricing;
   dialog.addEventListener('cancel',event=>{event.preventDefault();closePricing();});
-  dialog.onclose = () => dialog.remove();
+  dialog.onclose = () => { dialog.remove(); restoreDialogFocus(returnFocus, focusEpoch); };
   const userId = syncState.user.id;
   let confirmedPricing = null;
   dialog.querySelector("form").addEventListener("input", () => {
@@ -2882,6 +2893,7 @@ function stopCloudRefresh() {
 
 async function openHistoryDialog() {
   if (!elements.historyDialog || !syncState.user) return;
+  historyReturnFocus = document.activeElement;
   setAccountPopoverOpen(false);
   elements.historyList.innerHTML = '<div class="history-empty">正在读取恢复记录...</div>';
   elements.historyDialog.showModal();
@@ -3005,6 +3017,7 @@ function recoveryDifferences(saved, current) {
 
 function openRecoveryComparison(saved) {
   if (!canEditProjects() || !validateProjects(saved)) return;
+  const returnFocus = document.activeElement, focusEpoch = accountEpoch;
   const differences = recoveryDifferences(saved, projects);
   const dialog = document.createElement("dialog");
   dialog.className = "project-dialog recovery-comparison";
@@ -3029,7 +3042,7 @@ function openRecoveryComparison(saved) {
     }
     body.append(section);
   }
-  dialog.onclose=()=>dialog.remove();
+  dialog.onclose=()=>{dialog.remove();restoreDialogFocus(returnFocus,focusEpoch);};
   document.body.append(dialog);dialog.showModal();
 }
 
@@ -3314,17 +3327,19 @@ function discardProjectDraft(key) {
 }
 function openTemplateOptions() {
   if (!canEditProjects()) return;
+  const returnFocus=document.activeElement;
   const source=projectEditorState(), epoch=accountEpoch;
+  let continueToEditor=false;
   const dialog=document.createElement("dialog");
   dialog.className="project-dialog template-options-dialog";
   dialog.setAttribute("aria-label","复制为模板");
   dialog.innerHTML='<form><header class="dialog-header"><h2>复制为模板</h2><button type="button" class="icon-button" aria-label="关闭">×</button></header><div class="project-form-body"><label><input type="checkbox" name="platforms" checked>保留账号、平台与赠送设置</label><label><input type="checkbox" name="appearance" checked>保留颜色与简称</label><label><input type="checkbox" name="dates">保留阶段日期</label></div><footer class="dialog-actions"><button type="submit" class="primary-button">创建副本</button></footer></form>';
   dialog.querySelector('[aria-label="关闭"]').onclick=()=>dialog.close();
-  dialog.onclose=()=>dialog.remove();
+  dialog.onclose=()=>{dialog.remove();if(!continueToEditor)restoreDialogFocus(returnFocus,epoch);};
   dialog.querySelector("form").onsubmit=event=>{
     event.preventDefault();if(epoch!==accountEpoch || !canEditProjects())return;
     const options=new FormData(event.currentTarget);
-    dialog.close();elements.projectDialog.close();openProjectDialog();
+    continueToEditor=true;dialog.close();elements.projectDialog.close();openProjectDialog();
     for(const field of source.fields) {
       const stage=STAGES.some(item=>item.name===field.name);
       const platform=["publicationAccount","publicationGift","douyinPublished","xiaohongshuPublished"].includes(field.name);
@@ -3644,6 +3659,7 @@ function importChanges(incoming, existing) {
 function previewProjectImport(incoming) {
   const changes = importChanges(incoming, projects);
   return new Promise(resolve => {
+    const returnFocus=document.activeElement, focusEpoch=accountEpoch;
     const dialog = document.createElement("dialog");
     dialog.className = "project-dialog import-preview";
     dialog.setAttribute("aria-labelledby", "importPreviewTitle");
@@ -3654,7 +3670,7 @@ function previewProjectImport(incoming) {
       row.textContent = `${item.kind} · ${item.name}`;
       dialog.querySelector("[data-changes]").append(row);
     }
-    dialog.addEventListener("close", () => { const accepted = dialog.returnValue === "apply"; dialog.remove(); resolve(accepted); }, { once: true });
+    dialog.addEventListener("close", () => { const accepted = dialog.returnValue === "apply"; dialog.remove(); restoreDialogFocus(returnFocus,focusEpoch); resolve(accepted); }, { once: true });
     document.body.append(dialog);
     dialog.showModal();
     dialog.querySelector('[value="cancel"]').focus();
@@ -4000,6 +4016,10 @@ function wireEvents() {
   elements.closeHistoryDialogButton?.addEventListener("click", () => elements.historyDialog.close());
   elements.historyDialog?.addEventListener("click", (event) => {
     if (event.target === elements.historyDialog) elements.historyDialog.close();
+  });
+  elements.historyDialog?.addEventListener("close", () => {
+    const target=historyReturnFocus;historyReturnFocus=null;
+    restoreDialogFocus(target);
   });
   window.addEventListener("focus", () => { refreshCurrentDate(); loadCloudProjects({ preferNewer: true }); });
   document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible")refreshCurrentDate(); });

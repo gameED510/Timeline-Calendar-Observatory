@@ -17,6 +17,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Settlement differences separate matched-project variance, unallocated actual totals and estimates lacking complete details. Duplicate ad rows compare against a project estimate once, including both platforms. Unit tests cover incomplete rates and negative residuals; a 375px browser check verifies aggregation and no page overflow.
 - Milestone completion preserves keyboard focus within the current view. Removed risk items advance to the next control; clearing the last risk returns focus to the risk tab. Synthetic browser keyboard checks pass.
 - Desktop navigation also synchronizes mobile navigation state before resizing. All five views retain matching selected navigation across 20 viewport transitions (320/375/812/1280px); the 320px performance screenshot was inspected. Physical orientation testing remains open.
+- Pricing, history, actual settlement and nested template dialogs restore focus to their valid invoking control when dismissed. Account changes suppress stale focus restoration. Browser regression covers the four primary dialog paths; this is not yet a full screen-reader audit.
 - Settlement CSV exports monthly totals and ad rows, preserves missing values and neutralizes formula-like text cells.
 - Project search includes short names, accounts, platforms and combined terms; empty searches can reset filters.
 - Calendar mode, project filters and sorting persist per account. Temporary search text is not persisted. Invalid stored choices are ignored.

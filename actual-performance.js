@@ -117,8 +117,16 @@
   function open() {
     if (!state.loaded || !current(context) || state.capturing) return;
     const ctx = { ...context }, controller = new AbortController();
+    const returnFocus = root.document.activeElement;
     const dialog = document.createElement("dialog"); dialog.className = "project-dialog actual-dialog";
-    const close = () => { controller.abort(); dialog.close(); dialog.remove(); if (activeDialog?.element === dialog) activeDialog = null; };
+    const close = () => {
+      controller.abort(); dialog.close(); dialog.remove(); if (activeDialog?.element === dialog) activeDialog = null;
+      root.requestAnimationFrame(() => {
+        if (!current(ctx)) return;
+        const target=returnFocus?.isConnected ? returnFocus : panel?.querySelector("[data-entry]");
+        target?.focus({preventScroll:true});
+      });
+    };
     activeDialog = { element: dialog, close };
     const onAccountAbort = () => close(); ctx.signal.addEventListener("abort", onAccountAbort, { once: true });
     dialog.addEventListener("close", () => { controller.abort(); ctx.signal.removeEventListener("abort", onAccountAbort); });
