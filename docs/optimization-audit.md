@@ -42,6 +42,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Mobile completion controls now reserve 44px touch boxes while keeping the visible circles compact; calendar, project, timeline, conflict and performance controls were scanned for names, duplicate IDs, undersized targets and overflow. A direct hit-test verifies the stacked calendar card's expanded invisible target, and the 40-state visual matrix remains overflow-free.
 - The performance view now opens the active 15th-to-15th cycle instead of the calendar month: dates through the 15th stay in that month and dates from the 16th move to the next performance month. Completing publication names the destination month, and a browser flow verifies a September 17 publication appears as one item in October rather than disappearing from view.
 - Password recovery now handles the recovery authentication event before reading the initial session, opens the account panel, exposes the new-password form and returns to normal sync status after success. Login, signup and recovery forms also provide distinct password-manager semantics instead of allowing current and new credentials to be cross-filled.
+- Login, recovery, project search and smart-paste controls now have persistent accessible names instead of depending on disappearing placeholder text. Authentication inputs are required, linked to the live status message and tuned for mobile email/password entry.
 
 ## Still open: do not claim all 100 complete
 

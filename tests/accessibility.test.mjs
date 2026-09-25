@@ -20,3 +20,13 @@ test("password forms expose correct account and recovery semantics", () => {
   assert.match(app, /event === "PASSWORD_RECOVERY"/);
   assert.match(app, /syncPasswordUpdateForm\.classList\.toggle\("hidden", !syncState\.user \|\| !passwordRecoveryActive\)/);
 });
+
+test("primary text fields have persistent accessible labels and status relationships", () => {
+  for (const id of ["syncEmail", "syncPassword", "syncNewPassword"]) {
+    assert.match(html, new RegExp(`<label[^>]+for="${id}"[^>]*>`));
+    assert.match(html, new RegExp(`id="${id}"[^>]+aria-describedby="syncNote"`));
+  }
+  assert.match(html, /id="syncNote"[^>]+role="status"[^>]+aria-live="polite"/);
+  assert.match(html, /id="projectSearch"[^>]+aria-label=/);
+  assert.match(html, /id="smartPasteInput"[^>]+aria-label=/);
+});
