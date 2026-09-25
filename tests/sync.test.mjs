@@ -77,8 +77,16 @@ test("schedule risk names evidence instead of treating every dense date as high 
   const {run}=app();
   assert.equal(run(`scheduleRisk('2026-09-25',[{stage:'脚本'},{stage:'初稿'},{stage:'发布'}],'2026-09-24').severe`),false);
   assert.equal(run(`scheduleRisk('2026-09-25',[{stage:'拍摄'},{stage:'拍摄'}],'2026-09-24').label`),'拍摄同日');
-  assert.equal(run(`scheduleRisk('2026-09-23',[{stage:'发布'}],'2026-09-24').label`),'已逾期');
+  assert.equal(run(`scheduleRisk('2026-09-23',[{stage:'发布'}],'2026-09-24').label`),'逾期 1 天');
   assert.equal(run(`scheduleRisk('2026-09-25',[{stage:'拍摄'},{stage:'拍摄',completed:true}],'2026-09-24').severe`),false);
+});
+
+test("focus summary separates overdue work from today's nodes", () => {
+  const {run}=app();
+  run(`focus=pendingFocusSummary([{date:'2026-09-23',project:{id:'a'}},{date:'2026-09-24',project:{id:'b'}},{date:'2026-09-25',project:{id:'c'}}],'2026-09-24')`);
+  assert.equal(run('focus.title'),'逾期 1 个 · 今日 1 个');
+  assert.equal(run('focus.first.project.id'),'a');
+  assert.equal(run(`pendingFocusSummary([{date:'2026-09-25'}],'2026-09-24').title`),'今日待办已清空');
 });
 
 test("version refresh blocks open dialogs, pending uploads and offline state", () => {

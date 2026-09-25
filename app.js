@@ -1149,6 +1149,17 @@ function nextDistinctProjectMilestones(items, limit = 4) {
     .filter(item=>!seen.has(item.project.id)&&seen.add(item.project.id)).slice(0,limit);
 }
 
+function pendingFocusSummary(pending, today = TODAY_ISO) {
+  const overdue=pending.filter(item=>item.date<today);
+  const todayItems=pending.filter(item=>item.date===today);
+  const first=overdue[0] || todayItems[0] || null;
+  const title=overdue.length && todayItems.length ? `逾期 ${overdue.length} 个 · 今日 ${todayItems.length} 个`
+    : overdue.length ? `逾期 ${overdue.length} 个节点`
+    : todayItems.length ? `今日 ${todayItems.length} 个节点`
+    : "今日待办已清空";
+  return {overdue,todayItems,first,title};
+}
+
 function renderSideInsights(grouped, allMilestones, conflictDays) {
   if (!elements.sideInsights) return;
   elements.sideInsights.innerHTML = "";
@@ -1378,7 +1389,7 @@ function renderFocusRow(grouped, activeMilestones) {
     .filter((item) => !item.completed)
     .sort((a, b) => a.date.localeCompare(b.date) || compareMilestones(a, b));
   const doneCount = activeMilestones.length - pending.length;
-  const dueItems = pending.filter((item) => item.date <= TODAY_ISO);
+  const focus = pendingFocusSummary(pending);
   const nextItem = pending.find((item) => item.date > TODAY_ISO) || pending[0];
   const conflicts = [...grouped.entries()]
     .map(([iso, items]) => [iso, items.filter((item) => !item.completed)])
@@ -1391,10 +1402,10 @@ function renderFocusRow(grouped, activeMilestones) {
     createFocusCard({
       icon: "sun-medium",
       label: "当前焦点",
-      title: !projects.length ? "暂无项目" : dueItems.length ? `${dueItems.length} 个逾期/今日节点` : "今天没有卡住的节点",
-      meta: !projects.length ? "添加第一个项目" : dueItems.length ? `${describeMilestone(dueItems[0])} · ${describeRelativeDate(dueItems[0].date)}` : "可以从下一节点继续推进",
-      tone: dueItems.length ? "warning" : "calm",
-      onClick: dueItems.length ? () => openMilestoneInCalendar(dueItems[0].project.id, dueItems[0].stage) : () => switchView("timeline")
+      title: !projects.length ? "暂无项目" : focus.title,
+      meta: !projects.length ? "添加第一个项目" : focus.first ? `${describeMilestone(focus.first)} · ${describeRelativeDate(focus.first.date)}` : nextItem ? `下一节点 ${formatDateWithWeekday(nextItem.date)}` : "所有节点已完成",
+      tone: focus.overdue.length ? "warning" : "calm",
+      onClick: focus.first ? () => openMilestoneInCalendar(focus.first.project.id, focus.first.stage) : () => switchView("timeline")
     }),
     createFocusCard({
       icon: "arrow-right-circle",
@@ -1826,7 +1837,7 @@ function createTimelineEvent(item) {
 function scheduleRisk(iso, items, today = TODAY_ISO) {
   const pending = items.filter(item=>!item.completed);
   const shoots = pending.filter(item=>item.stage==="拍摄").length;
-  if (pending.length && iso < today) return {label:"已逾期",severe:true,reason:`${pending.length} 个节点尚未完成`};
+  if (pending.length && iso < today) return {label:`逾期 ${daysBetween(iso,today)} 天`,severe:true,reason:`${pending.length} 个节点尚未完成`};
   if (shoots > 1) return {label:"拍摄同日",severe:true,reason:`${shoots} 项拍摄，需核对时间与人员`};
   if (pending.length >= 3) return {label:"节点密集",severe:false,reason:`${pending.length} 个待办节点`};
   return {label:"需协调",severe:false,reason:`${pending.length} 个待办节点`};
