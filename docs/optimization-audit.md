@@ -14,6 +14,8 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Chart windows use continuous months; missing and zero totals remain distinct.
 - Actual amount parsing rejects blank and invalid values while preserving zero. Calibration/evaluation exclude invalid baseline snapshots. Browser tests cover blank rejection, zero submission, duplicate-submit protection and retry after failure.
 - Historical ad editing preserves removed project associations and snapshot commission rates. Dirty month changes require confirmation; cancellation preserves all inputs. Browser checks confirm submitted associations/rates and immutable snapshots.
+- Settlement differences separate matched-project variance, unallocated actual totals and estimates lacking complete details. Duplicate ad rows compare against a project estimate once, including both platforms. Unit tests cover incomplete rates and negative residuals; a 375px browser check verifies aggregation and no page overflow.
+- Milestone completion preserves keyboard focus within the current view. Removed risk items advance to the next control; clearing the last risk returns focus to the risk tab. Synthetic browser keyboard checks pass.
 - Settlement CSV exports monthly totals and ad rows, preserves missing values and neutralizes formula-like text cells.
 - Project search includes short names, accounts, platforms and combined terms; empty searches can reset filters.
 - Calendar mode, project filters and sorting persist per account. Temporary search text is not persisted. Invalid stored choices are ignored.
@@ -38,7 +40,7 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 - Broader conflict-comparison scenarios, live update timing and expanded financial boundary cases (#5, #9-10, #13-15). Local recycle-bin support is implemented; cross-device recycle history is not provided.
 - Motion stress/performance traces, edge scroll and cross-month drag, dependent stage rescheduling (#17-27, #29).
 - Bulk project handling (#41-49); broader pricing-impact scenarios still need coverage.
-- Actual-record audit trail, matching confirmation, anomaly annotations and source-of-error decomposition (#52-60, #65-69).
+- Actual-record audit trail, matching confirmation and anomaly annotations (#52-60, #65-69). Difference decomposition is implemented; it does not claim causal attribution.
 - Overview deduplication, risk severity/action refinement, timeline labels and persistent per-account view preferences (#71-79).
 - Full accessibility/large-text/contrast audit and consolidation of overlapping CSS/motion parameters (#85-100).
 

@@ -1937,7 +1937,18 @@ function createMilestoneChip(project, stage, iso, draggable) {
   check.innerHTML = '<i data-lucide="check"></i>';
   check.addEventListener("click", (event) => {
     event.stopPropagation();
+    const focused = document.activeElement === check;
+    const view = chip.closest(".view");
+    const controls = view ? [...view.querySelectorAll(".milestone-chip .chip-check")] : [];
+    const index = controls.indexOf(check);
     toggleMilestoneCompleted(project.id, stage);
+    if (focused && view) {
+      const chips = [...view.querySelectorAll(".milestone-chip")];
+      const replacement = chips.find(node => node.dataset.projectId === project.id && node.dataset.stage === stage);
+      const next = replacement?.querySelector(".chip-check") || chips[Math.min(Math.max(index, 0), chips.length - 1)]?.querySelector(".chip-check");
+      const fallback = elements.viewButtons.find(button => `${button.dataset.view}View` === view.id);
+      (next || fallback)?.focus({ preventScroll: true });
+    }
   });
 
   const text = document.createElement("button");
