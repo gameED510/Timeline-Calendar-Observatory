@@ -21,6 +21,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Settlement CSV exports monthly totals and ad rows, preserves missing values and neutralizes formula-like text cells.
 - Project search includes short names, accounts, platforms and combined terms; empty searches can reset filters.
 - Calendar mode, project filters and sorting persist per account. Temporary search text is not persisted. Invalid stored choices are ignored.
+- The last active page now persists per account alongside calendar/filter preferences. Switching between two accounts restores the correct view and both navigation states; invalid saved views fall back to calendar. Unit and 390px browser checks pass.
 - Overview next actions are deduplicated by project and ordered by earliest pending stage; empty projects have honest empty states. Risk view includes single overdue nodes and names overdue, multiple shoots or node density without claiming every dense date is high risk. Desktop overview and 320px risk flows passed.
 - The focus summary separates overdue and today counts instead of merging them into one ambiguous label. Risk rows show exact overdue days. Unit coverage and a 390px visual check verify wording and page width.
 - Template copying has explicit account/platform/gift, appearance and date options. Dates default to cleared; completion is never copied. The compact mobile option dialog and full workflow regression passed.

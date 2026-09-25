@@ -312,6 +312,7 @@ function changeCloudAccount(user) {
     const cached = loadLocalState(nextId);
     if (cached.projects.length) createLocalRecoveryPoint("登录前本机备份", cached.projects);
   }
+  applyViewSelection(currentView);
   render();
 }
 
@@ -674,6 +675,7 @@ function render() {
 
 function restoreViewPreferences() {
   calendarMode = window.matchMedia("(max-width: 860px)").matches ? "agenda" : "month";
+  currentView = "calendar";
   if (!activeAccountId) return;
   try {
     const saved = JSON.parse(localStorage.getItem(`tl-view:${activeAccountId}`) || "null");
@@ -681,12 +683,13 @@ function restoreViewPreferences() {
     if (["month","week","agenda"].includes(saved.calendarMode)) calendarMode=saved.calendarMode;
     if (["all","active","done","conflict"].includes(saved.projectFilter)) projectFilter=saved.projectFilter;
     if (["next","priority","progress","conflict","name"].includes(saved.projectSort)) projectSort=saved.projectSort;
+    if (["calendar","projects","timeline","conflicts","performance"].includes(saved.currentView)) currentView=saved.currentView;
   } catch { /* Preferences must not prevent opening an account. */ }
 }
 
 function saveViewPreferences() {
   if (!activeAccountId) return;
-  try { localStorage.setItem(`tl-view:${activeAccountId}`,JSON.stringify({calendarMode,projectFilter,projectSort})); }
+  try { localStorage.setItem(`tl-view:${activeAccountId}`,JSON.stringify({calendarMode,projectFilter,projectSort,currentView})); }
   catch { /* Continue with session preferences when storage is unavailable. */ }
 }
 
@@ -3775,10 +3778,8 @@ function resetToDefaults() {
   loadCloudProjects({ manual: true, authoritative: true });
 }
 
-function switchView(view) {
+function applyViewSelection(view) {
   if (!elements.views[view]) view = "calendar";
-  const workspace=document.querySelector(".workspace"), changed=currentView!==view;
-  if(changed)viewScrollPositions.set(currentView,{page:window.scrollY,workspace:workspace.scrollTop});
   currentView = view;
   elements.viewButtons.forEach((button) => {
     const active = button.dataset.view === view;
@@ -3786,10 +3787,18 @@ function switchView(view) {
     button.setAttribute("aria-selected", String(active));
   });
   Object.entries(elements.views).forEach(([key, node]) => {
-    node.classList.toggle("active", key === view);
+    node?.classList.toggle("active", key === view);
   });
   setMobilePage(view === "calendar" ? "plan" : view);
-  elements.appShell.classList.toggle("showing-performance", view === "performance");
+  elements.appShell?.classList.toggle("showing-performance", view === "performance");
+}
+
+function switchView(view) {
+  if (!elements.views[view]) view = "calendar";
+  const workspace=document.querySelector(".workspace"), changed=currentView!==view;
+  if(changed)viewScrollPositions.set(currentView,{page:window.scrollY,workspace:workspace.scrollTop});
+  applyViewSelection(view);
+  if(changed)saveViewPreferences();
   render();
   if(changed)requestAnimationFrame(()=>{
     const position=viewScrollPositions.get(view)||{page:0,workspace:0};

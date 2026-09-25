@@ -37,13 +37,14 @@ test("persistent project drafts survive memory reset and remain account scoped",
 
 test("view preferences restore valid choices without sharing them across accounts", () => {
   const {run}=app();
-  run(`calendarMode='week';projectFilter='done';projectSort='name';saveViewPreferences();
-    calendarMode='month';projectFilter='active';projectSort='next';restoreViewPreferences()`);
+  run(`calendarMode='week';projectFilter='done';projectSort='name';currentView='performance';saveViewPreferences();
+    calendarMode='month';projectFilter='active';projectSort='next';currentView='projects';restoreViewPreferences()`);
   assert.equal(run('calendarMode'),'week');assert.equal(run('projectFilter'),'done');assert.equal(run('projectSort'),'name');
-  run(`activeAccountId='other';projectFilter='active';projectSort='next';restoreViewPreferences()`);
-  assert.equal(run('calendarMode'),'month');assert.equal(run('projectFilter'),'active');
-  run(`localStorage.setItem('tl-view:other','{"calendarMode":"bad","projectSort":"bad"}');restoreViewPreferences()`);
-  assert.equal(run('projectSort'),'next');
+  assert.equal(run('currentView'),'performance');
+  run(`activeAccountId='other';projectFilter='active';projectSort='next';currentView='timeline';restoreViewPreferences()`);
+  assert.equal(run('calendarMode'),'month');assert.equal(run('projectFilter'),'active');assert.equal(run('currentView'),'calendar');
+  run(`localStorage.setItem('tl-view:other','{"calendarMode":"bad","projectSort":"bad","currentView":"bad"}');restoreViewPreferences()`);
+  assert.equal(run('projectSort'),'next');assert.equal(run('currentView'),'calendar');
 });
 
 test("desktop navigation keeps mobile navigation state ready for viewport changes", () => {
