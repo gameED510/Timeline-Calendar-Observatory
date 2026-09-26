@@ -47,6 +47,9 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Light and dark themes now separate solid-action blue from text-link blue and use dedicated metadata colors on tinted schedule cards. Automated contrast scans across all five views at 390px report no normal-text failures; light/dark screenshots were inspected.
 - Completed publications now enter their scheduled performance cycle immediately, even when the release node is later than today. Pending projects remain excluded, while completed projects without a platform appear in the missing-platform list.
 - Month view now keeps the complete calendar grid whenever the month has projects, including adjacent-month dates as drop targets. A synthetic September 30 to October 1 drag ran eight round trips with correct dates, no residual ghost cards and no horizontal overflow; the 390px five-week layout was inspected.
+- Dragging near the bottom of a 600px mobile viewport auto-scrolls the document (0 to 328px in the browser check). Releasing outside a date preserves the original milestone and clears all drag proxies and dragging classes.
+- Rescheduling now surfaces stage-order conflicts directly in the mobile toast instead of relying on the desktop inspector. A shooting date moved after the first draft displayed the exact conflict, retained an undo action and restored the original date without overflow.
+- A 300-project synthetic workload rendered every view at 390px without horizontal overflow. The slowest measured view stayed below 60ms in this Chromium run; this is a regression baseline, not a guarantee for every device.
 
 ## Still open: do not claim all 100 complete
 
@@ -55,8 +58,8 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 - Physical iPhone Safari drag/keyboard/orientation testing (#2, #83-87).
 - Live two-account RLS checks and full password reset delivery/login loop (#3, #12).
 - Broader conflict-comparison scenarios, live update timing and expanded financial boundary cases (#5, #9-10, #13-15). Local recycle-bin support is implemented; cross-device recycle history is not provided.
-- Motion performance traces, vertical edge auto-scroll and dependent stage rescheduling (#17-27, #29). Adjacent cross-month drag is covered.
-- Bulk project handling (#41-49); broader pricing-impact scenarios still need coverage.
+- Motion performance traces and an explicit optional workflow for shifting dependent stages (#17-27, #29). Adjacent cross-month drag and vertical edge auto-scroll are covered.
+- Bulk actions and lower-end physical-device profiling (#41-49); 300-project render/overflow behavior is covered in synthetic Chromium. Broader pricing-impact scenarios still need coverage.
 - Actual-record audit trail, matching confirmation and anomaly annotations (#52-60, #65-69). Difference decomposition is implemented; it does not claim causal attribution.
 - Further risk severity/action refinement and timeline-label stress cases (#71-79).
 - Physical screen-reader and large-text verification, plus consolidation of overlapping CSS/motion parameters (#85-100).

@@ -52,3 +52,9 @@ test("month calendars keep adjacent dates available as cross-month drop targets"
   assert.match(app, /cell\.classList\.add\("outside-month"\)/);
   assert.match(styles, /\.day-cell\.outside-month\s*\{/);
 });
+
+test("rescheduling surfaces sequence conflicts without silently moving other stages", () => {
+  assert.match(app, /const sequenceWarnings = getSequenceWarnings\(project\)/);
+  assert.match(app, /顺序提醒：\$\{sequenceWarnings\.join\("、"\)\}/);
+  assert.match(app, /showToast\([^;]+sequenceNote[^;]+, \(\) => \{/s);
+});

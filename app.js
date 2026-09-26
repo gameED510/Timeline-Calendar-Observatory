@@ -2132,7 +2132,9 @@ function moveMilestone(projectId, stage, iso) {
       ], { duration: 340, easing: "cubic-bezier(.2,.8,.25,1)" });
     });
   }
-  showToast(`${getClientName(project.name)} · ${stage} 已调整到 ${formatDateWithWeekday(iso)}`, () => {
+  const sequenceWarnings = getSequenceWarnings(project);
+  const sequenceNote = sequenceWarnings.length ? `；顺序提醒：${sequenceWarnings.join("、")}` : "";
+  showToast(`${getClientName(project.name)} · ${stage} 已调整到 ${formatDateWithWeekday(iso)}${sequenceNote}`, () => {
     const current=projects.find(item=>item.id===projectId);
     if(activeAccountId!==ownerId||!current||current.milestones[stage]!==iso) {
       showToast("节点已发生其他修改，请在项目中调整日期");return;
