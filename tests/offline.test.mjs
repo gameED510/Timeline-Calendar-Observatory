@@ -51,5 +51,5 @@ test("activation removes only this application's previous cache", async () => {
   let work;
   sw.handlers.activate({ waitUntil: (promise) => { work = promise; } });
   await work;
-  assert.deepEqual(sw.deleted, ["tl-calendar-shell-v9"]);
+  assert.deepEqual(sw.deleted, ["tl-calendar-shell-v9", "tl-calendar-shell-v62"]);
 });

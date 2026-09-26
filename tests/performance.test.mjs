@@ -43,7 +43,17 @@ test("project publication date is authoritative even for legacy platform dates",
   assert.equal(summarize([p], cycle("2026-07"), "2026-06-15").total, 0);
   p.milestones["发布"] = "2026-06-16";
   assert.equal(summarize([p], cycle("2026-06"), "2026-07-20").total, 0);
-  assert.equal(summarize([p], cycle("2026-07"), "2026-07-20").total, 2);
+  assert.equal(summarize([p], cycle("2026-07"), "2026-06-15").total, 2);
+});
+test("an explicitly completed publication counts even when its scheduled date is ahead of today", () => {
+  const completed = project("future-complete", "2026-10-05", { douyin: { count: 1 } });
+  const pending = project("future-pending", "2026-10-06", { xiaohongshu: { count: 1 } }, false);
+  const missingPlatform = project("future-missing", "2026-10-07", undefined, true);
+  const result = summarize([completed, pending, missingPlatform], cycle("2026-10"), "2026-09-26");
+  assert.equal(result.total, 1);
+  assert.equal(result.counts.douyin, 1);
+  assert.equal(result.projects, 1);
+  assert.deepEqual(result.missing.map((item) => item.id), ["future-missing"]);
 });
 test("other accounts count publications but never inherit Wen's commission rates", () => {
   assert.equal(globalThis.TLPerformance.account({name:"拜托了闻学长TCL"}),"wen");

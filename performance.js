@@ -51,18 +51,18 @@
     const [year, month] = date.slice(0, 7).split("-").map(Number);
     return new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 7);
   }
-  function summarize(projects, period, today, config) {
+  function summarize(projects, period, _today, config) {
     const rows = [];
     const missing = [];
     for (const project of projects) {
       if (!project.completedMilestones?.["发布"]) continue;
       const publication = normalize(project.publication);
       const scheduled = project.milestones?.["发布"];
-      if (!platforms.some((platform) => publication[platform].count) && validDate(scheduled) && scheduled >= period.start && scheduled < period.end && scheduled <= today) missing.push(project);
+      if (!platforms.some((platform) => publication[platform].count) && validDate(scheduled) && scheduled >= period.start && scheduled < period.end) missing.push(project);
       for (const platform of platforms) {
         const item = publication[platform];
         const date = scheduled;
-        if (!item.count || !validDate(date) || date < period.start || date >= period.end || date > today) continue;
+        if (!item.count || !validDate(date) || date < period.start || date >= period.end) continue;
         const gifted = project.publicationGift === true;
         const profile = profiles(config).find((entry) => entry.id === account(project, config));
         const rate = profile?.rates[platform];

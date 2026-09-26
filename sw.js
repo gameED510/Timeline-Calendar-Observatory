@@ -1,4 +1,4 @@
-const CACHE_NAME = "tl-calendar-shell-v62";
+const CACHE_NAME = "tl-calendar-shell-v63";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -6,7 +6,7 @@ const APP_SHELL = [
   "./styles.css?v=36",
   "./vendor/motion.js?v=1",
   "./calendar-motion.js?v=20",
-  "./performance.js?v=11",
+  "./performance.js?v=12",
   "./performance-charts.js?v=3",
   "./actual-performance.js?v=10",
   "./app.js?v=47",
