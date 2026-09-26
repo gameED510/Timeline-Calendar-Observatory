@@ -2323,6 +2323,25 @@ function toggleAccountPopover() {
   setAccountPopoverOpen(elements.accountPopover.classList.contains("hidden"));
 }
 
+function trapAccountPopoverFocus(event) {
+  if (event.key !== "Tab" || elements.accountPopover?.classList.contains("hidden")) return;
+  const controls = [...elements.accountPopover.querySelectorAll("button, input, select, textarea, [tabindex]")]
+    .filter((node) => !node.disabled && node.tabIndex >= 0 && !node.closest(".hidden") && node.getClientRects().length);
+  if (!controls.length) return;
+  const first = controls[0];
+  const last = controls.at(-1);
+  if (!elements.accountPopover.contains(document.activeElement)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 function getCloudErrorMessage(error, fallback = "云服务操作失败") {
   const message = String(error?.message || "").trim();
   const normalized = message.toLowerCase();
@@ -4042,6 +4061,7 @@ function wireEvents() {
   });
   elements.accountBackdrop?.addEventListener("click", () => setAccountPopoverOpen(false));
   elements.closeAccountPopoverButton?.addEventListener("click", () => setAccountPopoverOpen(false));
+  elements.accountPopover?.addEventListener("keydown", trapAccountPopoverFocus);
   document.addEventListener("click", (event) => {
     const path = event.composedPath();
     if (!path.includes(elements.accountMenu)) setAccountPopoverOpen(false);

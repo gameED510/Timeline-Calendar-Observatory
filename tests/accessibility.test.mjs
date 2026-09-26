@@ -30,3 +30,11 @@ test("primary text fields have persistent accessible labels and status relations
   assert.match(html, /id="projectSearch"[^>]+aria-label=/);
   assert.match(html, /id="smartPasteInput"[^>]+aria-label=/);
 });
+
+test("the modal account popover traps tab focus and restores through its opener", () => {
+  assert.match(app, /function trapAccountPopoverFocus\(event\)/);
+  assert.match(app, /event\.shiftKey && document\.activeElement === first/);
+  assert.match(app, /!event\.shiftKey && document\.activeElement === last/);
+  assert.match(app, /accountPopover\?\.addEventListener\("keydown", trapAccountPopoverFocus\)/);
+  assert.match(app, /avatarButton\.focus\(\{ preventScroll: true \}\)/);
+});
