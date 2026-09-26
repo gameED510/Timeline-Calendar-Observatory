@@ -16,7 +16,7 @@ function worker(fetch) {
   vm.runInNewContext(source, {
     URL, Response, fetch,
     self: { location: new URL("https://calendar.example/sw.js"), addEventListener: (name, fn) => { handlers[name] = fn; }, clients: { claim() {} }, skipWaiting() {} },
-    caches: { open: async () => cache, keys: async () => ["unrelated-cache", "tl-calendar-shell-v9", "tl-calendar-shell-v62"], delete: async (key) => deleted.push(key) }
+    caches: { open: async () => cache, keys: async () => ["unrelated-cache", "tl-calendar-shell-v9", "tl-calendar-shell-v63"], delete: async (key) => deleted.push(key) }
   });
   return { stored, deleted, handlers, request(path, mode = "cors") {
     let response;
@@ -51,5 +51,5 @@ test("activation removes only this application's previous cache", async () => {
   let work;
   sw.handlers.activate({ waitUntil: (promise) => { work = promise; } });
   await work;
-  assert.deepEqual(sw.deleted, ["tl-calendar-shell-v9", "tl-calendar-shell-v62"]);
+  assert.deepEqual(sw.deleted, ["tl-calendar-shell-v9", "tl-calendar-shell-v63"]);
 });

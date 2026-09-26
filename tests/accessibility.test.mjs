@@ -38,3 +38,11 @@ test("the modal account popover traps tab focus and restores through its opener"
   assert.match(app, /accountPopover\?\.addEventListener\("keydown", trapAccountPopoverFocus\)/);
   assert.match(app, /avatarButton\.focus\(\{ preventScroll: true \}\)/);
 });
+
+test("interactive blue and colored-card metadata use contrast-safe tokens", () => {
+  assert.match(styles, /--accent-fill:\s*#0066cc/);
+  assert.match(styles, /--accent-label:\s*#0066cc/);
+  assert.match(styles, /--event-muted:\s*#4b4b50/);
+  assert.match(styles, /\.mobile-tabbar button\.active\s*\{[^}]*color:\s*var\(--accent-label\)/s);
+  assert.match(styles, /\.chip-project,[\s\S]*?color:\s*var\(--event-muted\)/);
+});

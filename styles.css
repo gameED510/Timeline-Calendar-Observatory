@@ -22,6 +22,9 @@
   --accent: #007aff;
   --accent-strong: #005ecb;
   --accent-soft: rgba(0, 122, 255, 0.12);
+  --accent-fill: #0066cc;
+  --accent-label: #0066cc;
+  --event-muted: #4b4b50;
   --success: #34c759;
   --success-bg: rgba(52, 199, 89, 0.12);
   --danger: #ff3b30;
@@ -65,6 +68,9 @@
     --accent: #0a84ff;
     --accent-strong: #8ec7ff;
     --accent-soft: rgba(10, 132, 255, 0.18);
+    --accent-fill: #0066cc;
+    --accent-label: #409cff;
+    --event-muted: #a1a1a6;
     --success: #30d158;
     --success-bg: rgba(48, 209, 88, 0.16);
     --danger: #ff453a;
@@ -111,6 +117,9 @@
   --accent: #0a84ff;
   --accent-strong: #8ec7ff;
   --accent-soft: rgba(10, 132, 255, 0.18);
+  --accent-fill: #0066cc;
+  --accent-label: #409cff;
+  --event-muted: #a1a1a6;
   --success: #30d158;
   --success-bg: rgba(48, 209, 88, 0.16);
   --danger: #ff453a;
@@ -479,7 +488,7 @@ button {
 
 .avatar-button.signed-in {
   border-color: rgba(40, 124, 142, 0.35);
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
 }
 
@@ -583,7 +592,7 @@ button {
 }
 
 .sync-auth-mode button.active {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
 }
 
@@ -840,7 +849,7 @@ button {
 }
 
 .project-filter button.active {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
 }
 
@@ -1155,7 +1164,7 @@ button {
 }
 
 .segmented-button.active {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
 }
 
@@ -1213,7 +1222,7 @@ button {
 
 .primary-button {
   border-color: var(--accent);
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
 }
 
@@ -3005,6 +3014,13 @@ textarea {
   color: var(--muted);
 }
 
+.chip-project,
+.chip-date,
+.timeline-event-text span,
+.timeline-event-text small {
+  color: var(--event-muted);
+}
+
 .metric-item.warning,
 .focus-card.warning,
 .project-signal-pill.warning,
@@ -3050,7 +3066,7 @@ textarea::placeholder {
 .sync-auth-mode button.active,
 .mobile-tabbar button.active {
   border-color: transparent;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
   box-shadow: none;
 }
@@ -3092,7 +3108,7 @@ textarea::placeholder {
 
 .avatar-button.signed-in {
   border-color: color-mix(in srgb, var(--accent), transparent 42%);
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
 }
 
@@ -4153,7 +4169,7 @@ textarea::placeholder {
 
   .mobile-tabbar button.active {
     background: transparent;
-    color: var(--accent);
+    color: var(--accent-label);
     box-shadow: none;
   }
 
@@ -4526,7 +4542,7 @@ html:has(#projectDialog[open]), body:has(#projectDialog[open]) { overflow: hidde
 }
 .account-gate > svg { width: 40px; height: 40px; color: var(--muted); }
 .account-gate h2 { font-size: 20px; font-weight: 600; }
-.account-gate button { min-height: 44px; padding: 10px 28px; border-radius: 8px; background: var(--accent); color: white; border: 0; }
+.account-gate button { min-height: 44px; padding: 10px 28px; border-radius: 8px; background: var(--accent-fill); color: white; border: 0; }
 .account-locked .focus-row, .account-locked .legend-strip,
 .account-locked .view, .account-locked .side-panel,
 .account-locked .mobile-tabbar, .account-locked .inspector { display: none !important; }
