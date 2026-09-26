@@ -3253,6 +3253,14 @@ textarea::placeholder {
   background: var(--calendar-cell-soft);
 }
 
+.day-cell.outside-month {
+  background: color-mix(in srgb, var(--calendar-cell-soft), var(--bg) 34%);
+}
+
+.day-cell.outside-month .day-date-button {
+  color: var(--muted);
+}
+
 .day-cell.medium-density,
 .day-cell.high-density {
   background: linear-gradient(180deg, color-mix(in srgb, var(--warning-bg), var(--calendar-cell) 72%), var(--calendar-cell));

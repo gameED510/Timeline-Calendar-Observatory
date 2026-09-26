@@ -586,14 +586,7 @@ function getMonthGridDays(anchorIso) {
 function getRelevantMonthGridDays(anchorIso, grouped) {
   const monthDays = getMonthGridDays(anchorIso);
   const monthKey = startOfMonthIso(anchorIso).slice(0, 7);
-  const relevantDates = [...grouped.keys()]
-    .filter((iso) => iso.startsWith(monthKey))
-    .sort();
-  if (!relevantDates.length) return [];
-
-  const firstVisible = dateToIso(startOfWeek(isoToDate(relevantDates[0])));
-  const lastVisible = dateToIso(endOfWeek(isoToDate(relevantDates.at(-1))));
-  return monthDays.filter((iso) => iso >= firstVisible && iso <= lastVisible);
+  return [...grouped.keys()].some((iso) => iso.startsWith(monthKey)) ? monthDays : [];
 }
 
 function changeCalendarMonth(offset) {
@@ -1563,6 +1556,7 @@ function renderCalendar(grouped) {
     const cell = document.createElement("section");
     cell.className = "day-cell";
     cell.dataset.date = iso;
+    if (!iso.startsWith(calendarMonthAnchor.slice(0, 7))) cell.classList.add("outside-month");
     if (isWeekend(iso)) cell.classList.add("weekend");
     if (iso === TODAY_ISO) cell.classList.add("today");
     if (iso === selectedCalendarDate) cell.classList.add("selected-day");

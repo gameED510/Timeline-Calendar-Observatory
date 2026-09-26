@@ -36,14 +36,17 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Cloud restoration rejects pending sync work, locks editing/background sync for the request, and unlocks after failure or completion. Account changes reset the lock without allowing stale callbacks to change a new account.
 - Successful cloud restoration unlocks without waiting for the independent history refresh. Late history failures cannot report against a different account or mislabel restoration as failed; deferred-promise tests cover this boundary.
 - New service-worker activation prompts for user-controlled refresh; open dialogs, pending project uploads and offline status block the refresh action. Physical update timing still needs live verification.
-- Browser and API boundaries were audited: the Supabase proxy restricts methods, paths, origins, body size and request rate; database policies scope records to the signed-in user; production targets now share strict CSP, HSTS, same-origin resource isolation and legacy cross-domain policy blocking. Dependency audit and 76 automated checks pass. Live two-account RLS and password-reset delivery remain separate release checks.
-- All five tab groups now use a single roving keyboard stop and support Left/Right, Home and End navigation. A synthetic-account browser flow verifies view, calendar mode, project filter, performance period and sign-in mode switching without touching production data; 77 automated checks pass.
+- Browser and API boundaries were audited: the Supabase proxy restricts methods, paths, origins, body size and request rate; database policies scope records to the signed-in user; production targets now share strict CSP, HSTS, same-origin resource isolation and legacy cross-domain policy blocking. The current dependency audit and automated suite pass. Live two-account RLS and password-reset delivery remain separate release checks.
+- All five tab groups now use a single roving keyboard stop and support Left/Right, Home and End navigation. A synthetic-account browser flow verifies view, calendar mode, project filter, performance period and sign-in mode switching without touching production data.
 - Dynamic pricing, actual-settlement, template and recovery dialogs now expose their visible headings as accessible names and use the same icon-only close control as the rest of the product. A 320px browser flow verifies all four dialogs remain within the viewport without horizontal overflow.
 - Mobile completion controls now reserve 44px touch boxes while keeping the visible circles compact; calendar, project, timeline, conflict and performance controls were scanned for names, duplicate IDs, undersized targets and overflow. A direct hit-test verifies the stacked calendar card's expanded invisible target, and the 40-state visual matrix remains overflow-free.
 - The performance view now opens the active 15th-to-15th cycle instead of the calendar month: dates through the 15th stay in that month and dates from the 16th move to the next performance month. Completing publication names the destination month, and a browser flow verifies a September 17 publication appears as one item in October rather than disappearing from view.
 - Password recovery now handles the recovery authentication event before reading the initial session, opens the account panel, exposes the new-password form and returns to normal sync status after success. Login, signup and recovery forms also provide distinct password-manager semantics instead of allowing current and new credentials to be cross-filled.
 - Login, recovery, project search and smart-paste controls now have persistent accessible names instead of depending on disappearing placeholder text. Authentication inputs are required, linked to the live status message and tuned for mobile email/password entry.
 - The modal cloud-account panel now keeps Tab and Shift+Tab inside its visible controls and returns focus to the avatar when closed, preventing keyboard focus from escaping behind the overlay.
+- Light and dark themes now separate solid-action blue from text-link blue and use dedicated metadata colors on tinted schedule cards. Automated contrast scans across all five views at 390px report no normal-text failures; light/dark screenshots were inspected.
+- Completed publications now enter their scheduled performance cycle immediately, even when the release node is later than today. Pending projects remain excluded, while completed projects without a platform appear in the missing-platform list.
+- Month view now keeps the complete calendar grid whenever the month has projects, including adjacent-month dates as drop targets. A synthetic September 30 to October 1 drag ran eight round trips with correct dates, no residual ghost cards and no horizontal overflow; the 390px five-week layout was inspected.
 
 ## Still open: do not claim all 100 complete
 
@@ -52,11 +55,11 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 - Physical iPhone Safari drag/keyboard/orientation testing (#2, #83-87).
 - Live two-account RLS checks and full password reset delivery/login loop (#3, #12).
 - Broader conflict-comparison scenarios, live update timing and expanded financial boundary cases (#5, #9-10, #13-15). Local recycle-bin support is implemented; cross-device recycle history is not provided.
-- Motion stress/performance traces, edge scroll and cross-month drag, dependent stage rescheduling (#17-27, #29).
+- Motion performance traces, vertical edge auto-scroll and dependent stage rescheduling (#17-27, #29). Adjacent cross-month drag is covered.
 - Bulk project handling (#41-49); broader pricing-impact scenarios still need coverage.
 - Actual-record audit trail, matching confirmation and anomaly annotations (#52-60, #65-69). Difference decomposition is implemented; it does not claim causal attribution.
-- Overview deduplication, risk severity/action refinement, timeline labels and persistent per-account view preferences (#71-79).
-- Full accessibility/large-text/contrast audit and consolidation of overlapping CSS/motion parameters (#85-100).
+- Further risk severity/action refinement and timeline-label stress cases (#71-79).
+- Physical screen-reader and large-text verification, plus consolidation of overlapping CSS/motion parameters (#85-100).
 
 ## Release gates
 
