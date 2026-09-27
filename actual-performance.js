@@ -55,7 +55,7 @@
   }
   async function captureForecast() {
     const ctx = context;
-    if (!state.loaded || state.error || !ctx.ready || state.capturing || ctx.month !== ctx.today.slice(0, 7) || state.records.some(r => r.month === ctx.month)) return;
+    if (!state.loaded || state.error || !ctx.ready || state.capturing || !P.isActivePerformanceMonth(ctx.month, ctx.today) || state.records.some(r => r.month === ctx.month)) return;
     const snapshot = makeSnapshot(ctx, "forecast");
     if (!snapshot.formula) return;
     state.capturing = true;

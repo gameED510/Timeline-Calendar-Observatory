@@ -51,6 +51,10 @@
     const [year, month] = date.slice(0, 7).split("-").map(Number);
     return new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 7);
   }
+  function isActivePerformanceMonth(month, today) {
+    try { return month === cycleMonth(today); }
+    catch { return false; }
+  }
   function summarize(projects, period, _today, config) {
     const rows = [];
     const missing = [];
@@ -163,5 +167,5 @@
     };
     return "\uFEFF"+rows.map(row=>row.map(cell).join(',')).join('\r\n');
   }
-  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, cycleMonth, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv, actualAmount, settlementDifference };
+  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, cycleMonth, isActivePerformanceMonth, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv, actualAmount, settlementDifference };
 })(globalThis);

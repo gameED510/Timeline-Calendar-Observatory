@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import "../performance.js";
-const { cycle, cycleMonth, summarize, normalize } = globalThis.TLPerformance;
+const { cycle, cycleMonth, isActivePerformanceMonth, summarize, normalize } = globalThis.TLPerformance;
 const project = (id, date, publication, completed = true) => ({ id, name: `拜托了闻学长 & ${id}`, milestones: { "发布": date }, completedMilestones: { "发布": completed }, publication });
 const both = { douyin: { count: 1 }, xiaohongshu: { count: 1 } };
 
@@ -27,6 +27,13 @@ test("the active performance month changes after the 15th and across years", () 
   assert.equal(cycleMonth("2026-09-16"), "2026-10");
   assert.equal(cycleMonth("2026-12-31"), "2027-01");
   assert.throws(() => cycleMonth("2026-02-30"));
+});
+test("forecast capture follows the same 15th-boundary performance month", () => {
+  assert.equal(isActivePerformanceMonth("2026-09", "2026-09-15"), true);
+  assert.equal(isActivePerformanceMonth("2026-09", "2026-09-16"), false);
+  assert.equal(isActivePerformanceMonth("2026-10", "2026-09-16"), true);
+  assert.equal(isActivePerformanceMonth("2027-01", "2026-12-31"), true);
+  assert.equal(isActivePerformanceMonth("2026-09", "invalid"), false);
 });
 test("completed platform publications count at the boundaries with exact commission", () => {
   const rows = [project("before", "2026-05-15", both), project("start", "2026-05-16", both), project("last", "2026-06-15", { douyin: { count: 2 } }), project("next", "2026-06-16", both), project("pending", "2026-06-10", both, false)];
