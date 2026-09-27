@@ -44,6 +44,8 @@ let selectedProjectColor = PROJECT_COLORS[0];
 let projectSearchTerm = "";
 let projectFilter = "active";
 let projectSort = "next";
+let bulkProjectMode = false;
+let bulkSelectedProjectIds = new Set();
 let syncAuthMode = "signin";
 let passwordRecoveryActive = false;
 let mobilePage = "plan";
@@ -95,6 +97,13 @@ const elements = {
   projectList: document.querySelector("#projectList"),
   projectSearch: document.querySelector("#projectSearch"),
   projectFilterButtons: [...document.querySelectorAll("[data-project-filter]")],
+  bulkProjectToggle: document.querySelector("#bulkProjectToggle"),
+  projectBulkBar: document.querySelector("#projectBulkBar"),
+  projectBulkCount: document.querySelector("#projectBulkCount"),
+  bulkSelectVisible: document.querySelector("#bulkSelectVisible"),
+  bulkCompleteProjects: document.querySelector("#bulkCompleteProjects"),
+  bulkExportProjects: document.querySelector("#bulkExportProjects"),
+  bulkDeleteProjects: document.querySelector("#bulkDeleteProjects"),
   projectLegend: document.querySelector("#projectLegend"),
   focusRow: document.querySelector("#focusRow"),
   rangeTitle: document.querySelector("#rangeTitle"),
@@ -284,6 +293,7 @@ function changeCloudAccount(user) {
   activeAccountId = nextId;
   calendarProjectFilter=null;viewScrollPositions.clear();projectDrafts.clear();
   projectSearchTerm="";projectFilter="active";projectSort="next";
+  bulkProjectMode=false;bulkSelectedProjectIds.clear();
   restoreViewPreferences();
   accountHydrated = false;
   projects = [];
@@ -705,6 +715,18 @@ function recycleProject(project) {
   } catch { return false; }
 }
 
+function recycleProjectsBatch(sourceProjects) {
+  if (!activeAccountId || !sourceProjects.length || sourceProjects.length>100) return false;
+  try {
+    const ids = new Set(sourceProjects.map(project=>project.id));
+    const retained = recycledProjects().filter(item=>!ids.has(item.project.id));
+    const deletedAt = Date.now();
+    const added = sourceProjects.map(project=>({project:cloneProject(project),deletedAt}));
+    localStorage.setItem(`tl-recycle:${activeAccountId}`,JSON.stringify([...added,...retained].slice(0,100)));
+    return true;
+  } catch { return false; }
+}
+
 function restoreRecycledProject(projectId) {
   if (!canEditProjects()) return;
   const entry = recycledProjects().find(item=>item.project.id===projectId);
@@ -917,11 +939,29 @@ function renderActualPerformance() {
   });
 }
 
+function selectedBulkProjects() {
+  return projects.filter(project=>bulkSelectedProjectIds.has(project.id));
+}
+
+function setBulkProjectMode(active) {
+  bulkProjectMode = Boolean(active);
+  if (!bulkProjectMode) bulkSelectedProjectIds.clear();
+  renderProjectList();
+  activateIcons();
+}
+
+function toggleBulkProjectSelection(projectId) {
+  if (!bulkProjectMode) return;
+  if (bulkSelectedProjectIds.has(projectId)) bulkSelectedProjectIds.delete(projectId);
+  else bulkSelectedProjectIds.add(projectId);
+  renderProjectList();
+  activateIcons();
+}
+
 function renderProjectList() {
   elements.projectList.innerHTML = "";
-  renderProjectControls();
-
   const visibleProjects = getVisibleProjects();
+  renderProjectControls(visibleProjects);
   if (!visibleProjects.length) {
     const empty = document.createElement("div");
     empty.className = "empty-block compact";
@@ -957,7 +997,10 @@ function renderProjectList() {
     card.style.setProperty("--project-color", project.color);
     if (isSelectedProject) card.classList.add("selected");
     if (isProjectComplete(project)) card.classList.add("completed");
+    if (bulkProjectMode) card.classList.add("bulk-selecting");
+    if (bulkSelectedProjectIds.has(project.id)) card.classList.add("bulk-selected");
     card.addEventListener("click", () => {
+      if (bulkProjectMode) { toggleBulkProjectSelection(project.id); return; }
       selected = { projectId: project.id, stage: next?.stage || getFirstScheduledStage(project)?.name };
       render();
     });
@@ -967,14 +1010,17 @@ function renderProjectList() {
 
     const doneButton = document.createElement("button");
     doneButton.type = "button";
-    doneButton.className = "project-done-toggle";
-    doneButton.title = isProjectComplete(project) ? "标记为未完成" : "标记项目完成";
+    doneButton.className = bulkProjectMode ? "project-bulk-toggle" : "project-done-toggle";
+    doneButton.title = bulkProjectMode
+      ? bulkSelectedProjectIds.has(project.id) ? "取消选择" : "选择项目"
+      : isProjectComplete(project) ? "标记为未完成" : "标记项目完成";
     doneButton.setAttribute("aria-label", doneButton.title);
-    doneButton.setAttribute("aria-pressed", String(isProjectComplete(project)));
+    doneButton.setAttribute("aria-pressed", String(bulkProjectMode ? bulkSelectedProjectIds.has(project.id) : isProjectComplete(project)));
     doneButton.innerHTML = '<i data-lucide="check"></i>';
     doneButton.addEventListener("click", (event) => {
       event.stopPropagation();
-      toggleProjectCompleted(project.id);
+      if (bulkProjectMode) toggleBulkProjectSelection(project.id);
+      else toggleProjectCompleted(project.id);
     });
 
     const titleWrap = document.createElement("div");
@@ -1094,7 +1140,7 @@ function renderProjectList() {
   });
 }
 
-function renderProjectControls() {
+function renderProjectControls(visibleProjects = getVisibleProjects()) {
   if (elements.projectSearch && elements.projectSearch.value !== projectSearchTerm) {
     elements.projectSearch.value = projectSearchTerm;
   }
@@ -1118,6 +1164,23 @@ function renderProjectControls() {
 
   if (elements.projectSort && elements.projectSort.value !== projectSort) {
     elements.projectSort.value = projectSort;
+  }
+
+  bulkSelectedProjectIds.forEach(projectId=>{
+    if (!projects.some(project=>project.id===projectId)) bulkSelectedProjectIds.delete(projectId);
+  });
+  const selectedProjects = selectedBulkProjects();
+  const allVisibleSelected = visibleProjects.length > 0 && visibleProjects.every(project=>bulkSelectedProjectIds.has(project.id));
+  elements.bulkProjectToggle?.classList.toggle("active",bulkProjectMode);
+  elements.bulkProjectToggle?.setAttribute("aria-pressed",String(bulkProjectMode));
+  if (elements.bulkProjectToggle) elements.bulkProjectToggle.querySelector("span").textContent = bulkProjectMode ? "完成" : "批量";
+  elements.projectBulkBar?.classList.toggle("hidden",!bulkProjectMode);
+  if (elements.projectBulkCount) elements.projectBulkCount.textContent=`已选择 ${selectedProjects.length} 项`;
+  if (elements.bulkSelectVisible) elements.bulkSelectVisible.textContent=allVisibleSelected ? "取消当前全选" : "全选当前结果";
+  [elements.bulkCompleteProjects,elements.bulkExportProjects,elements.bulkDeleteProjects].forEach(button=>{if(button)button.disabled=!selectedProjects.length;});
+  if (elements.bulkCompleteProjects) {
+    const allComplete=selectedProjects.length>0&&selectedProjects.every(isProjectComplete);
+    elements.bulkCompleteProjects.querySelector("span").textContent=allComplete?"恢复进行中":"标记完成";
   }
 }
 
@@ -3684,18 +3747,18 @@ function saveProjectFromForm() {
   return true;
 }
 
-function exportProjects() {
-  const payload = JSON.stringify({ exportedAt: new Date().toISOString(), projects }, null, 2);
+function exportProjects(sourceProjects = projects, filenameSuffix = "") {
+  const payload = JSON.stringify({ exportedAt: new Date().toISOString(), projects: sourceProjects }, null, 2);
   const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `tl-calendar-planner-${TODAY_ISO}.json`;
+  link.download = `tl-calendar-planner${filenameSuffix}-${TODAY_ISO}.json`;
   document.body.append(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-  showToast("已导出 JSON");
+  showToast(`已导出 ${sourceProjects.length} 个项目`);
 }
 
 function exportProjectsCsv() {
@@ -3729,6 +3792,10 @@ function exportProjectsCsv() {
 }
 
 const WEEKLY_REPORT_STAGES = ["大纲", "脚本", "拍摄", "发布"];
+
+function weeklyReportAnchor() {
+  return TODAY_ISO;
+}
 
 function weeklyReportRange(anchor) {
   const start = dateToIso(startOfWeek(isoToDate(anchor)));
@@ -3797,7 +3864,7 @@ async function copyPlainText(content) {
 
 function openWeeklyReport() {
   const returnFocus = document.activeElement;
-  const anchor = selectedCalendarDate || TODAY_ISO;
+  const anchor = weeklyReportAnchor();
   let completedOnly = true;
   const dialog = document.createElement("dialog");
   dialog.className = "project-dialog weekly-report-dialog";
@@ -3988,6 +4055,70 @@ function removeProjectWithUndo(project) {
   });
 }
 
+function toggleAllVisibleBulkProjects() {
+  if (!bulkProjectMode) return;
+  const visible = getVisibleProjects();
+  const allSelected = visible.length > 0 && visible.every(project=>bulkSelectedProjectIds.has(project.id));
+  visible.forEach(project=>allSelected ? bulkSelectedProjectIds.delete(project.id) : bulkSelectedProjectIds.add(project.id));
+  renderProjectList();
+  activateIcons();
+}
+
+function completeBulkProjects() {
+  if (!canEditProjects()) return;
+  const chosen = selectedBulkProjects().filter(project=>getProjectStageCount(project)>0);
+  if (!chosen.length) { showToast("所选项目没有可标记的排期节点"); return; }
+  if (!createLocalRecoveryPoint("批量完成前",projects)) { showToast("无法保存操作前备份，批量操作已取消"); return; }
+  const epoch=accountEpoch,account=activeAccountId;
+  const snapshots=chosen.map(project=>({id:project.id,completedMilestones:{...project.completedMilestones}}));
+  const nextDone=!chosen.every(isProjectComplete);
+  chosen.forEach(project=>{
+    project.completedMilestones=normalizeCompletedMilestones(project.completedMilestones,project.milestones);
+    getScheduledStages(project).forEach(stage=>{project.completedMilestones[stage.name]=nextDone;});
+  });
+  if(nextDone&&selected&&bulkSelectedProjectIds.has(selected.projectId))selected=null;
+  if(!nextDone&&projectFilter==="done")projectFilter="active";
+  bulkProjectMode=false;bulkSelectedProjectIds.clear();
+  saveProjects({reason:nextDone?"批量标记完成":"批量恢复进行中"});render();
+  showToast(`已${nextDone?"完成":"恢复"} ${chosen.length} 个项目`,()=>{
+    if(epoch!==accountEpoch||account!==activeAccountId||!canEditProjects())return;
+    const current=snapshots.map(snapshot=>projects.find(project=>project.id===snapshot.id));
+    if(current.some(project=>!project)||current.some(project=>getScheduledStages(project).some(stage=>Boolean(project.completedMilestones?.[stage.name])!==nextDone))){showToast("部分项目已再次修改，未覆盖当前内容");return;}
+    snapshots.forEach(snapshot=>{const project=projects.find(item=>item.id===snapshot.id);project.completedMilestones={...snapshot.completedMilestones};});
+    saveProjects({reason:"撤销批量完成"});render();showToast("已撤销批量状态修改");
+  });
+}
+
+function exportBulkProjects() {
+  const chosen=selectedBulkProjects();
+  if(!chosen.length)return;
+  if(chosen.length>100){showToast("回收站一次最多保护 100 个项目，请缩小选择范围后再删除");return;}
+  exportProjects(chosen,"-selected");
+}
+
+function deleteBulkProjects() {
+  if (!canEditProjects()) return;
+  const chosen=selectedBulkProjects();
+  if(!chosen.length)return;
+  if(!window.confirm(`删除选中的 ${chosen.length} 个项目？项目会进入本机回收站，并同步到云端。`))return;
+  if(!createLocalRecoveryPoint("批量删除前",projects)){showToast("无法保存删除前备份，批量删除已取消");return;}
+  if(!recycleProjectsBatch(chosen)){showToast("回收站保存失败，项目未删除，请检查本机存储空间");return;}
+  const epoch=accountEpoch,account=activeAccountId;
+  const saved=chosen.map(project=>({project:cloneProject(project),index:projects.findIndex(item=>item.id===project.id)})).sort((a,b)=>a.index-b.index);
+  const ids=new Set(saved.map(item=>item.project.id));
+  projects=projects.filter(project=>!ids.has(project.id));
+  if(selected&&ids.has(selected.projectId))selected=null;
+  saved.forEach(item=>discardProjectDraft(`${account}:${item.project.id}`));
+  bulkProjectMode=false;bulkSelectedProjectIds.clear();
+  saveProjects({reason:"批量删除"});render();
+  showToast(`已删除 ${saved.length} 个项目`,()=>{
+    if(epoch!==accountEpoch||account!==activeAccountId||!canEditProjects())return;
+    if(saved.some(item=>projects.some(project=>project.id===item.project.id))){showToast("部分项目已重新出现，未覆盖当前内容");return;}
+    saved.forEach(item=>projects.splice(Math.min(Math.max(item.index,0),projects.length),0,cloneProject(item.project)));
+    saveProjects({reason:"撤销批量删除"});render();showToast(`已恢复 ${saved.length} 个项目`);
+  });
+}
+
 function deleteSelectedProject() {
   if (!canEditProjects()) return;
   if (!selected) return;
@@ -4143,6 +4274,7 @@ function wireEvents() {
   elements.projectFilterButtons.forEach((button) => {
     button.addEventListener("click", () => {
       projectFilter = button.dataset.projectFilter || "all";
+      if(bulkProjectMode)bulkSelectedProjectIds.clear();
       saveViewPreferences();
       render();
     });
@@ -4150,6 +4282,7 @@ function wireEvents() {
 
   elements.projectSearch.addEventListener("input", (event) => {
     projectSearchTerm = event.target.value;
+    if(bulkProjectMode)bulkSelectedProjectIds.clear();
     renderProjectList();
     activateIcons();
   });
@@ -4169,6 +4302,14 @@ function wireEvents() {
   elements.editProjectButton.addEventListener("click", () => {
     if (selected) openProjectDialog(selected.projectId);
   });
+  elements.bulkProjectToggle?.addEventListener("click",()=>{
+    if(!canEditProjects())return;
+    setBulkProjectMode(!bulkProjectMode);
+  });
+  elements.bulkSelectVisible?.addEventListener("click",toggleAllVisibleBulkProjects);
+  elements.bulkCompleteProjects?.addEventListener("click",completeBulkProjects);
+  elements.bulkExportProjects?.addEventListener("click",exportBulkProjects);
+  elements.bulkDeleteProjects?.addEventListener("click",deleteBulkProjects);
   elements.addProjectButton.addEventListener("click", () => openProjectDialog());
   elements.quickAddButton.addEventListener("click", () => openProjectDialog());
   elements.smartPasteInput?.addEventListener("input", queueSmartScheduleParse);

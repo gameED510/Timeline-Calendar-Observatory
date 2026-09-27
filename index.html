@@ -10,7 +10,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="site.webmanifest" />
     <script src="theme.js?v=1"></script>
-    <link rel="stylesheet" href="styles.css?v=45" />
+    <link rel="stylesheet" href="styles.css?v=46" />
   </head>
   <body>
     <div class="app-shell mobile-page-plan account-locked account-loading" id="appShell">
@@ -239,10 +239,16 @@
                 <p class="eyebrow">Projects</p>
                 <h2>项目</h2>
               </div>
-              <button class="text-button" id="addProjectButton" type="button">
-                <i data-lucide="plus"></i>
-                新增
-              </button>
+              <div class="projects-page-actions">
+                <button class="ghost-button" id="bulkProjectToggle" type="button" aria-pressed="false">
+                  <i data-lucide="list-checks"></i>
+                  <span>批量</span>
+                </button>
+                <button class="text-button" id="addProjectButton" type="button">
+                  <i data-lucide="plus"></i>
+                  新增
+                </button>
+              </div>
             </div>
 
             <div class="project-tools">
@@ -261,6 +267,19 @@
                 <button class="active" type="button" data-project-filter="active" role="tab" aria-selected="true">进行中</button>
                 <button type="button" data-project-filter="done" role="tab" aria-selected="false">完成</button>
                 <button type="button" data-project-filter="conflict" role="tab" aria-selected="false">撞期</button>
+              </div>
+              <div class="project-bulk-bar hidden" id="projectBulkBar" role="group" aria-label="批量项目操作">
+                <strong id="projectBulkCount">已选择 0 项</strong>
+                <button class="ghost-button" id="bulkSelectVisible" type="button">全选当前结果</button>
+                <button class="ghost-button" id="bulkCompleteProjects" type="button" disabled>
+                  <i data-lucide="check"></i><span>标记完成</span>
+                </button>
+                <button class="ghost-button" id="bulkExportProjects" type="button" disabled>
+                  <i data-lucide="download"></i><span>导出</span>
+                </button>
+                <button class="danger-button" id="bulkDeleteProjects" type="button" disabled>
+                  <i data-lucide="trash-2"></i><span>删除</span>
+                </button>
               </div>
             </div>
 
@@ -482,7 +501,7 @@
     <script src="performance.js?v=14"></script>
     <script src="performance-charts.js?v=3"></script>
     <script src="actual-performance.js?v=15"></script>
-    <script src="app.js?v=54"></script>
+    <script src="app.js?v=55"></script>
     <script src="vendor/lucide.min.js?v=10" defer></script>
   </body>
 </html>

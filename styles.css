@@ -805,6 +805,12 @@ button {
   line-height: 1.2;
 }
 
+.projects-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .project-card-grid {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   align-items: start;
@@ -816,6 +822,26 @@ button {
   display: grid;
   gap: 10px;
   margin-top: 12px;
+}
+
+.project-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.project-bulk-bar > strong {
+  margin-right: auto;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.project-bulk-bar button {
+  min-height: 38px;
+  white-space: nowrap;
 }
 
 .project-search-row {
@@ -890,9 +916,25 @@ button {
   box-shadow: 0 0 0 2px rgba(40, 124, 142, 0.16);
 }
 
+.project-card.bulk-selecting:hover,
+.project-card.bulk-selecting:focus-within {
+  transform: translateY(-1px);
+}
+
+.project-card.bulk-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 35%, var(--surface));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent), transparent 78%);
+}
+
 .project-card.completed {
   border-left-color: var(--success);
   background: #fbfefd;
+}
+
+.project-card.completed.bulk-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 35%, var(--surface));
 }
 
 .project-card-head {
@@ -968,6 +1010,29 @@ button {
 .project-done-toggle {
   width: 34px;
   height: 34px;
+}
+
+.project-bulk-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: transparent;
+  padding: 0;
+}
+
+.project-bulk-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-fill);
+  color: #fff;
+}
+
+.project-bulk-toggle svg {
+  width: 17px;
+  height: 17px;
 }
 
 .stage-complete-toggle,
@@ -4044,6 +4109,18 @@ textarea::placeholder {
     font-size: 22px;
   }
 
+  .projects-page-actions {
+    gap: 6px;
+  }
+
+  .projects-page-actions .ghost-button,
+  .projects-page-actions .text-button {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    font-size: 0;
+  }
+
   .projects-page-head .text-button {
     width: 44px;
     min-width: 44px;
@@ -4079,6 +4156,29 @@ textarea::placeholder {
   #projectSort {
     order: 3;
     width: 100%;
+  }
+
+  .project-bulk-bar {
+    order: 4;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .project-bulk-bar > strong,
+  #bulkSelectVisible {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin: 0;
+  }
+
+  .project-bulk-bar button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #bulkDeleteProjects:last-child {
+    grid-column: 1 / -1;
   }
 
   .project-filter button {
@@ -5165,6 +5265,7 @@ html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden
 /* Mobile controls keep compact icons while providing finger-sized hit areas. */
 @media (max-width: 860px) {
   .project-card-head { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .project-bulk-toggle { width: 44px; height: 44px; }
   .calendar-detail-card .mini-button { width: 44px; height: 44px; min-height: 44px; }
   .project-done-toggle,
   .stage-complete-toggle,

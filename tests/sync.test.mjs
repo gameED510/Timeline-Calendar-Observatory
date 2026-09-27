@@ -232,6 +232,7 @@ test("weekly reports cover Monday through Sunday and include outline, script, sh
   ]);`);
   assert.equal(run(`weeklyReportRange('2026-09-23').start`),'2026-09-21');
   assert.equal(run(`weeklyReportRange('2026-09-23').end`),'2026-09-27');
+  assert.equal(run(`TODAY_ISO='2026-09-27';selectedCalendarDate='2026-09-28';weeklyReportAnchor()`),'2026-09-27');
   const completed=run(`buildWeeklyReportContent(projects,'2026-09-23',pricingProfiles(),true)`);
   assert.match(completed,/大纲：\n拜托了闻学长 \+ TCL/);
   assert.match(completed,/脚本：\n拜托了闻学长 \+ TCL/);
@@ -310,6 +311,38 @@ test("deletion stops when the recycle bin cannot persist the project", () => {
   const {run}=app();
   run(`localStorage.setItem=()=>{throw Error('full')};removeProjectWithUndo(projects[0])`);
   assert.equal(run('projects.length'),1);
+});
+
+test("bulk completion preserves each original stage state and can be undone once", () => {
+  const {run}=app();
+  run(`projects=normalizeProjects([
+    {id:'a',name:'A',milestones:{'脚本':'2026-09-01','发布':'2026-09-02'},completedMilestones:{'脚本':true,'发布':false}},
+    {id:'b',name:'B',milestones:{'拍摄':'2026-09-03','发布':'2026-09-04'},completedMilestones:{'拍摄':false,'发布':false}}
+  ]);saveProjects=()=>{};render=()=>{};let bulkUndo;showToast=(message,undo)=>{if(undo)bulkUndo=undo;};bulkSelectedProjectIds=new Set(['a','b']);completeBulkProjects();`);
+  assert.equal(run(`projects.every(isProjectComplete)`),true);
+  run(`bulkUndo()`);
+  assert.equal(run(`projects.find(p=>p.id==='a').completedMilestones['脚本']`),true);
+  assert.equal(run(`projects.find(p=>p.id==='a').completedMilestones['发布']`),false);
+  assert.equal(run(`projects.find(p=>p.id==='b').completedMilestones['拍摄']`),false);
+});
+
+test("bulk deletion stores every project together and undo restores order", () => {
+  const {run}=app();
+  run(`projects=normalizeProjects([
+    {id:'a',name:'A',milestones:{'发布':'2026-09-01'}},
+    {id:'b',name:'B',milestones:{'发布':'2026-09-02'}},
+    {id:'c',name:'C',milestones:{'发布':'2026-09-03'}}
+  ]);window.confirm=()=>true;saveProjects=()=>{};render=()=>{};let bulkUndo;showToast=(message,undo)=>{if(undo)bulkUndo=undo;};bulkSelectedProjectIds=new Set(['a','c']);deleteBulkProjects();`);
+  assert.equal(run(`projects.map(p=>p.id).join(',')`),'b');
+  assert.equal(run(`recycledProjects().map(entry=>entry.project.id).sort().join(',')`),'a,c');
+  run(`bulkUndo()`);
+  assert.equal(run(`projects.map(p=>p.id).join(',')`),'a,b,c');
+});
+
+test("bulk recycle refuses selections larger than its protected capacity", () => {
+  const {run,storage}=app();
+  assert.equal(run(`recycleProjectsBatch(Array.from({length:101},(_,index)=>({id:'p'+index,name:'项目'+index,milestones:{}})))`),false);
+  assert.equal(storage.has('tl-recycle:test'),false);
 });
 
 test("import preview classifies all changes and rejects duplicate identifiers", () => {
