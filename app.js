@@ -642,25 +642,24 @@ function render() {
   const activeProjects = projects.filter((project) => !isProjectComplete(project));
   const grouped = groupMilestonesByDate(visibleMilestones);
   const { min, max } = getDateBounds(visibleMilestones);
-  const conflictDays = [...grouped.entries()]
-    .map(([iso, items]) => [iso, items.filter((item) => !item.completed)])
-    .filter(([, items]) => items.length > 1);
+  const dateRisks = getDateRisks(grouped);
+  const sequenceRisks = getSequenceRisks(activeProjects);
 
   elements.projectCount.textContent = String(activeProjects.length);
   elements.milestoneCount.textContent = String(pendingMilestones.length);
-  elements.conflictCount.textContent = String(conflictDays.length);
+  elements.conflictCount.textContent = String(dateRisks.length + sequenceRisks.length);
   elements.rangeCount.textContent = visibleMilestones.length ? String(daysBetween(dateToIso(min), dateToIso(max)) + 1) : "0";
   elements.rangeTitle.textContent = !activeAccountId ? "我的排期" : !accountHydrated ? "读取云端中" : visibleMilestones.length ? `${formatDateShort(dateToIso(min))} 至 ${formatDateShort(dateToIso(max))}` : projects.length ? "所有项目已完成" : "暂无项目";
 
   if (currentView === "projects") renderProjectList();
-  renderSideInsights(grouped, allMilestones, conflictDays);
-  renderFocusRow(grouped, visibleMilestones);
+  renderSideInsights(allMilestones, dateRisks, sequenceRisks);
+  renderFocusRow(visibleMilestones, dateRisks, sequenceRisks);
   renderLegend();
   if(calendarProjectFilter&&!projects.some(project=>project.id===calendarProjectFilter))calendarProjectFilter=null;
   if (currentView === "calendar") renderCalendar(calendarProjectFilter
     ? groupMilestonesByDate(visibleMilestones.filter(item=>item.project.id===calendarProjectFilter)) : grouped);
   if (currentView === "timeline") renderTimeline();
-  if (currentView === "conflicts") renderConflicts(grouped);
+  if (currentView === "conflicts") renderConflicts(dateRisks, sequenceRisks);
   if (currentView === "performance") renderPerformance();
   renderInspector();
   renderSyncPanel();
@@ -1161,7 +1160,7 @@ function pendingFocusSummary(pending, today = TODAY_ISO) {
   return {overdue,todayItems,first,title};
 }
 
-function renderSideInsights(grouped, allMilestones, conflictDays) {
+function renderSideInsights(allMilestones, dateRisks, sequenceRisks) {
   if (!elements.sideInsights) return;
   elements.sideInsights.innerHTML = "";
 
@@ -1184,16 +1183,15 @@ function renderSideInsights(grouped, allMilestones, conflictDays) {
   }
   elements.sideInsights.append(nextSection);
 
-  const conflictSection = createSideSection("风险", "需要协调的日期");
-  const activeConflicts = conflictDays
-    .map(([iso, items]) => [iso, items.filter((item) => !item.completed).sort(compareMilestones)])
-    .slice(0, 3);
+  const conflictSection = createSideSection("风险", "逾期、撞期与阶段顺序");
+  const activeConflicts = dateRisks.slice(0, 3);
   if (activeConflicts.length) {
     activeConflicts.forEach(([iso, items]) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "side-conflict-row";
-      button.innerHTML = `<strong>${formatDateWithWeekday(iso)}</strong><span>${escapeHtml([...new Map(items.map(item=>[item.project.id,getClientName(item.project.name)])).values()].join(" / "))}</span>`;
+      const risk = scheduleRisk(iso, items);
+      button.innerHTML = `<strong>${formatDateWithWeekday(iso)} · ${escapeHtml(risk.label)}</strong><span>${escapeHtml([...new Map(items.map(item=>[item.project.id,getClientName(item.project.name)])).values()].join(" / "))}</span>`;
       button.addEventListener("click", () => {
         selectedCalendarDate = iso;
         switchView("conflicts");
@@ -1201,9 +1199,15 @@ function renderSideInsights(grouped, allMilestones, conflictDays) {
       });
       conflictSection.append(button);
     });
-  } else {
-    conflictSection.append(createSideEmpty("暂无撞期"));
   }
+  sequenceRisks.slice(0, Math.max(0, 3 - activeConflicts.length)).forEach(({project,warnings})=>{
+    const button=document.createElement("button");
+    button.type="button";button.className="side-conflict-row";
+    button.innerHTML=`<strong>${escapeHtml(getClientName(project.name))} · 阶段顺序</strong><span>${escapeHtml(warnings.join("；"))}</span>`;
+    button.addEventListener("click",()=>openProjectDialog(project.id));
+    conflictSection.append(button);
+  });
+  if (!activeConflicts.length && !sequenceRisks.length) conflictSection.append(createSideEmpty("暂无排期风险"));
   elements.sideInsights.append(conflictSection);
 
   const progressSection = createSideSection("项目进度", "仅显示进行中");
@@ -1400,7 +1404,7 @@ function toggleMilestoneCompleted(projectId, stageName) {
     : `${getClientName(project.name)} · ${stageName} ${project.completedMilestones[stageName] ? "已完成" : "已恢复"}`);
 }
 
-function renderFocusRow(grouped, activeMilestones) {
+function renderFocusRow(activeMilestones, dateRisks, sequenceRisks) {
   elements.focusRow.innerHTML = "";
   const pending = activeMilestones
     .filter((item) => !item.completed)
@@ -1408,11 +1412,17 @@ function renderFocusRow(grouped, activeMilestones) {
   const doneCount = activeMilestones.length - pending.length;
   const focus = pendingFocusSummary(pending);
   const nextItem = pending.find((item) => item.date > TODAY_ISO) || pending[0];
-  const conflicts = [...grouped.entries()]
-    .map(([iso, items]) => [iso, items.filter((item) => !item.completed)])
-    .filter(([, items]) => items.length > 1)
-    .sort(([a], [b]) => a.localeCompare(b));
-  const nextConflict = conflicts[0];
+  const nextConflict = dateRisks[0];
+  const nextSequenceRisk = sequenceRisks[0];
+  const nextRisk = nextConflict ? {
+    title: formatDateWithWeekday(nextConflict[0]),
+    meta: `${scheduleRisk(nextConflict[0],nextConflict[1]).label} · ${nextConflict[1].length} 个节点`,
+    onClick: () => switchView("conflicts")
+  } : nextSequenceRisk ? {
+    title: getClientName(nextSequenceRisk.project.name),
+    meta: `阶段顺序 · ${nextSequenceRisk.warnings.join("、")}`,
+    onClick: () => switchView("conflicts")
+  } : null;
   const progress = activeMilestones.length ? Math.round((doneCount / activeMilestones.length) * 100) : 100;
 
   elements.focusRow.append(
@@ -1435,10 +1445,10 @@ function renderFocusRow(grouped, activeMilestones) {
     createFocusCard({
       icon: "triangle-alert",
       label: "风险",
-      title: nextConflict ? `${formatDateWithWeekday(nextConflict[0])}` : "暂无风险",
-      meta: nextConflict ? `${nextConflict[1].length} 个节点需要协调` : "当前排期很干净",
-      tone: nextConflict ? "danger" : "calm",
-      onClick: nextConflict ? () => switchView("conflicts") : () => switchView("calendar")
+      title: nextRisk?.title || "暂无风险",
+      meta: nextRisk?.meta || "当前排期很干净",
+      tone: nextRisk ? "danger" : "calm",
+      onClick: nextRisk?.onClick || (() => switchView("calendar"))
     }),
     createFocusCard({
       icon: "gauge",
@@ -1856,20 +1866,29 @@ function createTimelineEvent(item) {
 function scheduleRisk(iso, items, today = TODAY_ISO) {
   const pending = items.filter(item=>!item.completed);
   const shoots = pending.filter(item=>item.stage==="拍摄").length;
-  if (pending.length && iso < today) return {label:`逾期 ${daysBetween(iso,today)} 天`,severe:true,reason:`${pending.length} 个节点尚未完成`};
+  const overdueDays = pending.length && iso < today ? daysBetween(iso,today) : 0;
+  if (overdueDays && shoots > 1) return {label:`逾期 ${overdueDays} 天 + 拍摄撞期`,severe:true,reason:`${pending.length} 个节点尚未完成，其中 ${shoots} 项拍摄需协调人员`};
+  if (overdueDays) return {label:`逾期 ${overdueDays} 天`,severe:true,reason:`${pending.length} 个节点尚未完成`};
   if (shoots > 1) return {label:"拍摄同日",severe:true,reason:`${shoots} 项拍摄，需核对时间与人员`};
   if (pending.length >= 3) return {label:"节点密集",severe:false,reason:`${pending.length} 个待办节点`};
-  return {label:"需协调",severe:false,reason:`${pending.length} 个待办节点`};
+  return {label:"同日待办",severe:false,reason:`${pending.length} 个节点，建议核对工作量`};
 }
 
-function renderConflicts(grouped) {
-  elements.conflictList.innerHTML = "";
-  const conflicts = [...grouped.entries()]
-    .map(([iso, items]) => [iso, items.filter((item) => !item.completed)])
-    .filter(([iso, items]) => items.length > 1 || (items.length && iso < TODAY_ISO))
+function getDateRisks(grouped, today = TODAY_ISO) {
+  return [...grouped.entries()]
+    .map(([iso, items]) => [iso, items.filter((item) => !item.completed).sort(compareMilestones)])
+    .filter(([iso, items]) => items.length > 1 || (items.length && iso < today))
     .sort(([a], [b]) => a.localeCompare(b));
+}
 
-  if (!conflicts.length) {
+function getSequenceRisks(source = projects) {
+  return source.map(project=>({project,warnings:getSequenceWarnings(project)})).filter(item=>item.warnings.length);
+}
+
+function renderConflicts(dateRisks, sequenceRisks) {
+  elements.conflictList.innerHTML = "";
+
+  if (!dateRisks.length && !sequenceRisks.length) {
     const empty = document.createElement("div");
     empty.className = "empty-block";
     empty.textContent = "暂无逾期或同日多节点";
@@ -1877,7 +1896,7 @@ function renderConflicts(grouped) {
     return;
   }
 
-  conflicts.forEach(([iso, items]) => {
+  dateRisks.forEach(([iso, items]) => {
     const section = document.createElement("section");
     section.className = "conflict-day";
     const risk = scheduleRisk(iso, items);
@@ -1898,6 +1917,23 @@ function renderConflicts(grouped) {
 
     section.append(title, stack);
     elements.conflictList.append(section);
+  });
+  sequenceRisks.forEach(({project,warnings})=>{
+    const section=document.createElement("section");
+    section.className="conflict-day sequence-risk severe";
+    const title=document.createElement("h3");
+    const left=document.createElement("strong");left.textContent="阶段顺序";
+    const right=document.createElement("span");right.textContent=`${warnings.length} 处异常`;
+    title.append(left,right);
+    const copy=document.createElement("div");copy.className="sequence-risk-copy";
+    const name=document.createElement("strong");name.textContent=getClientName(project.name);
+    const detail=document.createElement("span");detail.textContent=warnings.join("；");
+    copy.append(name,detail);
+    const actions=document.createElement("div");actions.className="conflict-actions";
+    const edit=document.createElement("button");edit.type="button";edit.className="ghost-button";
+    edit.innerHTML='<i data-lucide="pencil"></i>调整项目';
+    edit.addEventListener("click",()=>openProjectDialog(project.id));
+    actions.append(edit);section.append(title,copy,actions);elements.conflictList.append(section);
   });
 }
 

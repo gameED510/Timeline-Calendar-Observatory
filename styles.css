@@ -2020,6 +2020,34 @@ button svg {
   font-size: 13px;
 }
 
+.sequence-risk-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sequence-risk-copy strong,
+.sequence-risk-copy span {
+  overflow-wrap: anywhere;
+}
+
+.sequence-risk-copy span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sequence-risk .conflict-actions .ghost-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sequence-risk .conflict-actions svg {
+  width: 15px;
+  height: 15px;
+}
+
 .conflict-actions {
   display: flex;
   flex-wrap: wrap;

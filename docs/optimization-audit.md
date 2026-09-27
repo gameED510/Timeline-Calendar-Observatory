@@ -51,6 +51,8 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Rescheduling now surfaces stage-order conflicts directly in the mobile toast instead of relying on the desktop inspector. A shooting date moved after the first draft displayed the exact conflict, retained an undo action and restored the original date without overflow.
 - A 300-project synthetic workload rendered every view at 390px without horizontal overflow. The slowest measured view stayed below 60ms in this Chromium run; this is a regression baseline, not a guarantee for every device.
 - Actual-settlement records now expose their record version and last-updated time in both the performance view and editor. Existing optimistic version checks still reject stale writes and saved estimate snapshots remain immutable. When ad details are present but their matched commission does not equal the confirmed total, or a commission rate is unknown, the editor requires an explicit second save action; empty optional details remain a valid one-step total entry. Both paths passed at 390px with zero horizontal overflow.
+- Risk totals, the overview summary, side insights and the risk page now share one risk collection. Single overdue nodes count correctly, overdue shooting collisions retain both causes, and reversed project stages remain visible after the drag toast disappears. Sequence risks open the correct project editor directly; a 390px browser flow verified all three risk types, a total of three risk items and zero horizontal overflow.
+- Thirty-six synthetic projects with 180 milestones and deliberately long Chinese/Latin names were rendered across all five views at 320, 390, 834 and 1440px. No page, card or embedded control overflow was detected.
 
 ## Still open: do not claim all 100 complete
 
@@ -62,7 +64,7 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 - Motion performance traces and an explicit optional workflow for shifting dependent stages (#17-27, #29). Adjacent cross-month drag and vertical edge auto-scroll are covered.
 - Bulk actions and lower-end physical-device profiling (#41-49); 300-project render/overflow behavior is covered in synthetic Chromium. Broader pricing-impact scenarios still need coverage.
 - A full cross-device actual-record change history and richer anomaly annotations remain open (#52-60, #65-69). Current records expose version/update time, reject stale writes, reconfirm unmatched details and decompose differences without claiming causal attribution.
-- Further risk severity/action refinement and timeline-label stress cases (#71-79).
+- More advanced workload-aware risk severity and staffing/resource suggestions remain open (#71-79). Single overdue nodes, combined overdue/shooting collisions, reversed stages and long-label timeline stress are covered.
 - Physical screen-reader and large-text verification, plus consolidation of overlapping CSS/motion parameters (#85-100).
 
 ## Release gates

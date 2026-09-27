@@ -89,7 +89,14 @@ test("schedule risk names evidence instead of treating every dense date as high 
   assert.equal(run(`scheduleRisk('2026-09-25',[{stage:'脚本'},{stage:'初稿'},{stage:'发布'}],'2026-09-24').severe`),false);
   assert.equal(run(`scheduleRisk('2026-09-25',[{stage:'拍摄'},{stage:'拍摄'}],'2026-09-24').label`),'拍摄同日');
   assert.equal(run(`scheduleRisk('2026-09-23',[{stage:'发布'}],'2026-09-24').label`),'逾期 1 天');
+  assert.equal(run(`scheduleRisk('2026-09-23',[{stage:'拍摄'},{stage:'拍摄'},{stage:'发布'}],'2026-09-24').label`),'逾期 1 天 + 拍摄撞期');
   assert.equal(run(`scheduleRisk('2026-09-25',[{stage:'拍摄'},{stage:'拍摄',completed:true}],'2026-09-24').severe`),false);
+});
+
+test("risk collections include single overdue dates and reversed project stages", () => {
+  const {run}=app();
+  assert.equal(run(`getDateRisks(new Map([['2026-09-23',[{project:{id:'a'},stage:'发布',completed:false}]]]),'2026-09-24').length`),1);
+  assert.equal(run(`getSequenceRisks([{id:'a',name:'A',milestones:{'拍摄':'2026-09-25','初稿':'2026-09-24'},completedMilestones:{}}])[0].warnings[0]`),'初稿 早于 拍摄');
 });
 
 test("focus summary separates overdue work from today's nodes", () => {
