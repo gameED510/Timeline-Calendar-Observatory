@@ -212,6 +212,18 @@ test("project search matches short names, account and platform together", () => 
   assert.equal(run('getVisibleProjects().length'),0);
 });
 
+test("completing publication immediately makes it available to performance calculation", () => {
+  const {run}=app();
+  run(`projects[0].name='拜托了闻学长 & 测试项目';
+    projects[0].milestones['发布']='2026-09-27';
+    projects[0].publication={douyin:{count:1},xiaohongshu:{count:0}};
+    projects[0].completedMilestones={'拍摄':true,'发布':false};
+    toggleMilestoneCompleted('p','发布');`);
+  assert.equal(run(`projects[0].completedMilestones['发布']`),true);
+  assert.equal(run(`TLPerformance.summarize(projects,TLPerformance.cycle('2026-10'),TODAY_ISO,pricingProfiles()).total`),1);
+  assert.equal(run(`TLPerformance.summarize(projects,TLPerformance.cycle('2026-10'),TODAY_ISO,pricingProfiles()).commission`),2700);
+});
+
 test("keyboard viewport only adjusts for an editor and ignores pinch zoom", () => {
   const {run}=app();
   assert.equal(run(`keyboardViewport({height:500,offsetTop:20,scale:1},844,false)`),null);

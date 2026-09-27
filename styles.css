@@ -4603,6 +4603,11 @@ html:has(#projectDialog[open]), body:has(#projectDialog[open]) { overflow: hidde
 .performance-metric > strong { font-size: 36px; font-variant-numeric: tabular-nums; font-weight: 650; line-height: 1.2; overflow-wrap: anywhere; }
 .performance-metric small { font-size: 13px; color: var(--muted); font-weight: 400; }
 .performance-metric em { font-style: normal; font-size: 11px; color: var(--muted); }
+.performance-cycle-forecast { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.performance-cycle-forecast > div { display: flex; flex-direction: column; gap: 6px; }
+.performance-cycle-forecast span { color: var(--muted-strong); font-size: 12px; }
+.performance-cycle-forecast strong { font-size: 28px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.performance-cycle-forecast p { margin: 0; max-width: 460px; color: var(--muted); font-size: 12px; line-height: 1.6; text-align: right; }
 .platform-dot { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: #138b88; }
 .xiaohongshu .platform-dot { background: #df4d70; }
 .performance-commission { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; padding: 28px 0 20px; border-bottom: 1px solid var(--line); }
@@ -4628,6 +4633,9 @@ html:has(#projectDialog[open]), body:has(#projectDialog[open]) { overflow: hidde
 .performance-missing > p { color: var(--muted); font-size: 12px; }
 .performance-missing-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 14px; text-align: left; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); }
 .performance-missing-row span { overflow-wrap: anywhere; }
+.performance-missing-row span { display: flex; flex-direction: column; gap: 4px; }
+.performance-missing-row span strong { font-size: 13px; }
+.performance-missing-row span small { color: var(--muted); font-size: 11px; }
 .performance-missing-row svg { width: 16px; height: 16px; flex-shrink: 0; }
 .publication-fields { border: 0; border-top: 1px solid var(--line); padding: 16px 0 0; margin: 24px 0; min-width: 0; }
 .publication-fields legend { padding-right: 12px; font-weight: 600; }
@@ -4660,6 +4668,8 @@ html:has(#projectDialog[open]), body:has(#projectDialog[open]) { overflow: hidde
   .performance-heading { align-items: flex-start; }
   .performance-metric { padding: 0 10px; }
   .performance-metric > strong { font-size: 28px; }
+  .performance-cycle-forecast { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .performance-cycle-forecast p { text-align: left; }
   .performance-commission { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .commission-amount { font-size: 36px; }
   .performance-table th, .performance-table td { padding: 12px 5px; font-size: 11px; }

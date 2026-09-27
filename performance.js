@@ -67,13 +67,15 @@
         const profile = profiles(config).find((entry) => entry.id === account(project, config));
         const rate = profile?.rates[platform];
         const priced = rate != null && !gifted;
-        rows.push({ project, platform, count: item.count, date, priced, gifted, estimated: priced ? item.count * rate * profile.revenueShare * profile.commissionRate : 0 });
+        const pricingIssue = gifted ? null : !profile ? "未匹配提成账号" : rate == null ? "该平台未设置报价" : null;
+        rows.push({ project, platform, count: item.count, date, priced, gifted, pricingIssue, estimated: priced ? item.count * rate * profile.revenueShare * profile.commissionRate : 0 });
       }
     }
     rows.sort((a, b) => a.date.localeCompare(b.date) || a.project.name.localeCompare(b.project.name));
     const counts = Object.fromEntries(platforms.map((platform) => [platform, rows.filter((row) => row.platform === platform).reduce((sum, row) => sum + row.count, 0)]));
     const commissionCounts = Object.fromEntries(platforms.map((platform) => [platform, rows.filter((row) => row.platform === platform && row.priced).reduce((sum, row) => sum + row.count, 0)]));
-    return { rows, missing, counts, commissionCounts, total: counts.douyin + counts.xiaohongshu, projects: new Set(rows.map((row) => row.project.id)).size, commission: rows.reduce((sum, row) => sum + row.estimated, 0) };
+    const unpriced = rows.filter((row) => row.pricingIssue);
+    return { rows, missing, unpriced, counts, commissionCounts, total: counts.douyin + counts.xiaohongshu, projects: new Set(rows.map((row) => row.project.id)).size, commission: rows.reduce((sum, row) => sum + row.estimated, 0) };
   }
   function naturalMonth(month, offset = 0) {
     cycle(month);

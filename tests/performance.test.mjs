@@ -85,3 +85,15 @@ test("gifted projects keep publication counts but contribute no commission", () 
   p.publicationGift=false;
   assert.equal(summarize([p],cycle("2026-06"),"2026-09-13").commission,3700);
 });
+
+test("unpriced completed publications stay counted and explain why commission is zero", () => {
+  const config = TLPerformance.profiles([{id:"custom",name:"测试账号",keywords:"测试账号",rates:{douyin:12000,xiaohongshu:""},revenueShare:0.5,commissionRate:0.1}]);
+  const missingAccount = {...project("missing-account","2026-09-20",{douyin:{count:1}}),publicationAccount:"deleted"};
+  const missingRate = {...project("missing-rate","2026-09-21",{xiaohongshu:{count:1}}),publicationAccount:"custom"};
+  const gift = {...project("gift","2026-09-22",{douyin:{count:1}}),publicationAccount:"deleted",publicationGift:true};
+  const result = summarize([missingAccount,missingRate,gift],cycle("2026-10"),"2026-09-27",config);
+  assert.equal(result.total,3);
+  assert.equal(result.commission,0);
+  assert.deepEqual(result.unpriced.map(row=>row.pricingIssue),["未匹配提成账号","该平台未设置报价"]);
+  assert.equal(result.rows.find(row=>row.project.id==="gift").gifted,true);
+});

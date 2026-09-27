@@ -837,8 +837,12 @@ function renderPerformance() {
       <div class="performance-metric douyin"><span><b class="platform-dot"></b>抖音</span><strong>${current.counts.douyin}<small> 条</small></strong><em>全部账号的发布记录</em></div>
       <div class="performance-metric xiaohongshu"><span><b class="platform-dot"></b>小红书</span><strong>${current.counts.xiaohongshu}<small> 条</small></strong><em>全部账号的发布记录</em></div>
     </div>
+    <div class="performance-cycle-forecast">
+      <div><span>本期已完成发布预计提成</span><strong>¥${money(current.commission)}</strong></div>
+      <p>完成发布后立即计入这里；到账预测按自然发布月延后 3 个月。${current.unpriced.length ? `另有 ${current.unpriced.reduce((sum, row) => sum + row.count, 0)} 条待完善账号或报价，暂未计入金额。` : ""}</p>
+    </div>
     <p class="performance-range">${performanceMonth} 提成对应发布月 · ${earnedPeriod.start.slice(0,7)}</p>
-    <details class="performance-explanation"><summary>统计口径</summary><p>发布统计截至本月 15 日，16 日起计入下月。${performanceMonth} 提成对应自然发布月 ${range(earnedPeriod)}，仅计已完成发布；公式按各账号的收益分成与个人提成比例计算。${earned.missing.length ? `有 ${earned.missing.length} 个项目待补平台。` : ""}</p></details>`;
+    <details class="performance-explanation"><summary>统计口径</summary><p>发布统计截至本月 15 日，16 日起计入下月。上方“本期预计提成”会随完成发布即时更新；${performanceMonth} 到账预测对应自然发布月 ${range(earnedPeriod)}。公式仅计已完成发布，并按各账号的收益分成与个人提成比例计算。${earned.missing.length ? `有 ${earned.missing.length} 个项目待补平台。` : ""}${earned.unpriced.length ? `有 ${earned.unpriced.length} 条发布待完善账号或报价。` : ""}</p></details>`;
   const data = performanceDetail === "commission" ? earned : current;
   const detailPeriod = performanceDetail === "commission" ? earnedPeriod : period;
   document.querySelectorAll("[data-performance-detail]").forEach((button) => {
@@ -855,7 +859,7 @@ function renderPerformance() {
     table.innerHTML = `<table class="performance-table"><thead><tr><th>项目 / 平台</th><th>发布日期</th><th>条数</th><th>预估提成</th><th><span class="visually-hidden">操作</span></th></tr></thead><tbody></tbody></table>`;
     data.rows.forEach((row) => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td><strong>${escapeHtml(row.project.name)}</strong><span class="performance-platform ${row.platform}">${row.platform === "douyin" ? "抖音" : "小红书"}</span></td><td>${row.date}</td><td>${row.count}</td><td>${row.priced ? `¥${money(row.estimated)}` : row.gifted ? "赠送 · 不计提成" : "暂不计提成"}</td><td><button type="button" class="icon-button mini-button" title="编辑发布记录" aria-label="编辑发布记录"><i data-lucide="pencil"></i></button></td>`;
+      tr.innerHTML = `<td><strong>${escapeHtml(row.project.name)}</strong><span class="performance-platform ${row.platform}">${row.platform === "douyin" ? "抖音" : "小红书"}</span></td><td>${row.date}</td><td>${row.count}</td><td>${row.priced ? `¥${money(row.estimated)}` : row.gifted ? "赠送 · 不计提成" : escapeHtml(row.pricingIssue || "暂不计提成")}</td><td><button type="button" class="icon-button mini-button" title="编辑发布记录" aria-label="编辑发布记录"><i data-lucide="pencil"></i></button></td>`;
       tr.querySelector("button").addEventListener("click", () => openPerformanceRecord(row.project.id));
       table.querySelector("tbody").append(tr);
     });
@@ -879,6 +883,20 @@ function renderPerformance() {
       missing.append(button);
     });
     details.append(missing);
+  }
+  if (data.unpriced.length) {
+    const unpriced = document.createElement("section");
+    unpriced.className = "performance-missing performance-unpriced";
+    unpriced.innerHTML = `<h3>待完善提成配置 · ${data.unpriced.reduce((sum, row) => sum + row.count, 0)} 条</h3><p>发布数量已经计入；完善账号或平台报价后，预计提成会自动补算。</p>`;
+    data.unpriced.forEach((row) => {
+      const button = document.createElement("button");
+      button.className = "performance-missing-row";
+      button.type = "button";
+      button.innerHTML = `<span><strong>${escapeHtml(row.project.name)}</strong><small>${row.platform === "douyin" ? "抖音" : "小红书"} · ${escapeHtml(row.pricingIssue)}</small></span><i data-lucide="pencil"></i>`;
+      button.addEventListener("click", () => openPerformanceRecord(row.project.id));
+      unpriced.append(button);
+    });
+    details.append(unpriced);
   }
 }
 
