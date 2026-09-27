@@ -4926,6 +4926,12 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .actual-legend span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: #3785c5; }
 .actual-legend .trend-calibrated::before { background: #b58b24; }.actual-legend .trend-actual::before { background: #299481; }
 .actual-details { margin-top: 20px; }.actual-details summary { cursor: pointer; padding: 12px 0; }
+.actual-record-meta { display: inline-block; margin-left: 8px; color: var(--muted); white-space: nowrap; }
+.actual-balance { margin: 10px 0 0; padding: 10px 12px; border-left: 3px solid var(--line-strong); background: var(--bg-soft); }
+.actual-balance.warning { border-left-color: var(--warning); color: var(--ink); }
+.actual-balance.aligned { border-left-color: var(--success); }
+.actual-save-warning { margin: 16px 0 0; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--line)); border-radius: 8px; background: color-mix(in srgb, var(--warning) 9%, var(--surface)); color: var(--ink); font-size: 13px; line-height: 1.6; }
+.actual-save-warning[hidden] { display: none; }
 .performance-charts { min-width: 0; padding-top: 20px; }
 .actual-chart-heading { display: grid; grid-template-columns: minmax(0,1fr) 112px; gap: 12px; align-items: center; }
 .actual-chart-heading select { border: 1px solid var(--line); background: var(--field-bg); color: var(--ink); width: 112px; min-width: 0; padding: 8px; border-radius: 6px; font: inherit; font-size: 12px; }

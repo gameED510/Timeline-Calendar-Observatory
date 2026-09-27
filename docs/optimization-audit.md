@@ -50,6 +50,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Dragging near the bottom of a 600px mobile viewport auto-scrolls the document (0 to 328px in the browser check). Releasing outside a date preserves the original milestone and clears all drag proxies and dragging classes.
 - Rescheduling now surfaces stage-order conflicts directly in the mobile toast instead of relying on the desktop inspector. A shooting date moved after the first draft displayed the exact conflict, retained an undo action and restored the original date without overflow.
 - A 300-project synthetic workload rendered every view at 390px without horizontal overflow. The slowest measured view stayed below 60ms in this Chromium run; this is a regression baseline, not a guarantee for every device.
+- Actual-settlement records now expose their record version and last-updated time in both the performance view and editor. Existing optimistic version checks still reject stale writes and saved estimate snapshots remain immutable. When ad details are present but their matched commission does not equal the confirmed total, or a commission rate is unknown, the editor requires an explicit second save action; empty optional details remain a valid one-step total entry. Both paths passed at 390px with zero horizontal overflow.
 
 ## Still open: do not claim all 100 complete
 
@@ -60,7 +61,7 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 - Broader conflict-comparison scenarios, live update timing and expanded financial boundary cases (#5, #9-10, #13-15). Local recycle-bin support is implemented; cross-device recycle history is not provided.
 - Motion performance traces and an explicit optional workflow for shifting dependent stages (#17-27, #29). Adjacent cross-month drag and vertical edge auto-scroll are covered.
 - Bulk actions and lower-end physical-device profiling (#41-49); 300-project render/overflow behavior is covered in synthetic Chromium. Broader pricing-impact scenarios still need coverage.
-- Actual-record audit trail, matching confirmation and anomaly annotations (#52-60, #65-69). Difference decomposition is implemented; it does not claim causal attribution.
+- A full cross-device actual-record change history and richer anomaly annotations remain open (#52-60, #65-69). Current records expose version/update time, reject stale writes, reconfirm unmatched details and decompose differences without claiming causal attribution.
 - Further risk severity/action refinement and timeline-label stress cases (#71-79).
 - Physical screen-reader and large-text verification, plus consolidation of overlapping CSS/motion parameters (#85-100).
 

@@ -5,6 +5,11 @@
   const money = value => Number(value).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
   const present = record => record && P.actualAmount(record.total) !== null;
   const adCommission = ad => Number.isFinite(ad.commissionRate) ? ad.revenue * ad.commissionRate : 0;
+  const updatedLabel = value => {
+    const date = new Date(value);
+    if (!value || Number.isNaN(date.getTime())) return "更新时间未知";
+    return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
+  };
   let state = { userId: null, epoch: -1, records: [], loaded: false, loading: false, error: "" };
   let context, panel, activeDialog;
   function reset() {
@@ -68,10 +73,11 @@
     const evaluation = P.evaluate(state.records);
     const breakdown = P.settlementDifference(record);
     const difference=present(record)?record.total-formula:null;
+    const recordMeta=present(record)?`<span class="actual-record-meta">记录版本 ${Number(record.version) || 1} · 更新于 ${esc(updatedLabel(record.updated_at))}</span>`:"";
     const differenceLabel=difference===null ? "尚未录入实际提成" : difference===0 ? "与公式估算一致" : `比预计${difference>0?"多":"少"} ¥${money(Math.abs(difference))}${formula>0 ? `（${money(Math.abs(difference)/formula*100)}%）` : " · 估算为零，不计算误差率"}`;
     panel.innerHTML = `<div class="actual-heading"><div><p class="eyebrow">TL / SETTLEMENT</p><h3>真实结算与预测</h3></div><div class="actual-actions"><button type="button" class="icon-button mini-button" data-refresh title="刷新结算记录" aria-label="刷新结算记录"><i data-lucide="refresh-cw"></i></button><button type="button" class="secondary-button actual-entry" data-entry ${state.loading || !state.loaded ? "disabled" : ""}><i data-lucide="plus"></i>录入实际</button></div></div>
       <div class="actual-comparison"><div><span>公式估算</span><strong>¥${money(formula)}</strong><small>${record ? snapshot.kind === "forecast" ? "已保存预测快照" : "历史回算" : "当前报价回算"}</small></div><div><span>历史校准估算</span><strong>${Number.isFinite(calibrated) ? `¥${money(calibrated)}` : "—"}</strong><small>${Number.isFinite(calibrated) ? `${snapshot.calibrationMonths ?? model.n} 个月样本 · 校准试算` : "满 3 个有效月份后试算"}</small></div><div><span>实际总提成</span><strong>${present(record) ? `¥${money(record.total)}` : "—"}</strong><small>${differenceLabel}</small></div></div>
-      <p class="performance-range">${esc(context.month)} 结算 · 对应 ${esc(P.naturalMonth(context.month,-3).start.slice(0,7))} 自然月发布</p>
+      <p class="performance-range">${esc(context.month)} 结算 · 对应 ${esc(P.naturalMonth(context.month,-3).start.slice(0,7))} 自然月发布 ${recordMeta}</p>
       ${breakdown ? `<details class="forecast-breakdown"><summary>差额构成 · ${breakdown.matchedProjects} 个项目可对照</summary><p><span>已关联项目的提成差异</span><strong>¥${money(breakdown.matchedDifference)}</strong></p><p><span>未纳入项目对照的实际金额</span><strong>¥${money(breakdown.unallocatedActual)}</strong></p><p><span>尚无完整实际明细的估算</span><strong>¥${money(breakdown.unmatchedEstimate)}</strong></p><p>总差额 = 提成差异 + 未纳入实际金额 − 尚无明细估算。明细未补齐不代表预测不准；同一项目的多条明细合并对照。${breakdown.unallocatedActual < 0 ? " 已关联明细超出确认总额，请核对。" : ""}</p></details>` : ""}
       <details class="forecast-breakdown"><summary>查看公式估算来源 · ${(snapshot.rows||[]).length} 条发布记录</summary>${(snapshot.rows||[]).map(row=>`<p><span>${esc(row.name)} · ${row.platform==="douyin"?"抖音":"小红书"}</span><strong>¥${money(row.estimated)}</strong></p>`).join("")||"此月暂无参与估算的发布记录"}</details>
       <details class="forecast-breakdown"><summary>当前校准样本 · ${model.n} 个月</summary><p>${model.months.map(esc).join("、") || "暂无有效历史结算"}</p><p>只采用当前结算月之前、已有实际总额且公式估算大于零的最近六个月；未录入和零估算月份不参与。</p><p>当前系数 ${model.factor.toFixed(3)}${record ? "；已保存估算仍沿用原快照，不随当前样本变化。" : ""}</p></details>
@@ -80,7 +86,7 @@
       <div class="actual-analysis"><span>最近 ${model.n} 个有效月份</span>${model.mae === null ? "" : `<span>平均金额误差 ¥${money(model.mae)}</span><span>${model.bias > 0 ? "长期高估" : model.bias < 0 ? "长期低估" : "无整体偏差"} ${model.bias ? `¥${money(Math.abs(model.bias))}` : ""}</span>`}</div>
       <div class="performance-charts"></div>
       <p class="performance-footnote">${evaluation.n ? `${evaluation.n} 个后续结算检验：公式平均误差 ¥${money(evaluation.formulaMae)}，校准平均误差 ¥${money(evaluation.calibratedMae)}。` : "校准效果待后续真实结算检验，历史回算不作为预测成功样本。"}</p>
-      ${present(record) ? `<details class="actual-details" open><summary>实际广告明细 · ${record.ads.length} 条</summary><div class="performance-table-wrap"><table class="performance-table"><thead><tr><th>广告 / 平台</th><th>实际收益</th><th>对应提成</th><th>较估算</th></tr></thead><tbody>${record.ads.map(ad => {
+      ${present(record) ? `<details class="actual-details" open><summary>实际广告明细 · ${record.ads.length} 条</summary>${record.ads.length ? `<div class="performance-table-wrap"><table class="performance-table"><thead><tr><th>广告 / 平台</th><th>实际收益</th><th>对应提成</th><th>较估算</th></tr></thead><tbody>${record.ads.map(ad => {
         const matched = (snapshot.rows || []).filter(r => r.projectId === ad.projectId);
         const estimate = matched.reduce((s,r) => s+r.estimated,0);
         const related = record.ads.filter(item => item.projectId === ad.projectId);
@@ -88,7 +94,7 @@
         const projectDifference = related.reduce((sum,item) => sum + adCommission(item),0) - estimate;
         const comparison = matched.length && comparable ? related[0] === ad ? `¥${money(projectDifference)}${related.length > 1 ? "（项目合计）" : ""}` : "计入项目合计" : "—";
         return `<tr><td><strong>${esc(ad.name || matched[0]?.name || "未命名广告")}</strong><span>${matched.length ? [...new Set(matched.map(r => r.platform === "douyin" ? "抖音" : "小红书"))].join(" + ") : "未匹配估算"}</span></td><td>¥${money(ad.revenue)}</td><td>${Number.isFinite(ad.commissionRate) ? `¥${money(adCommission(ad))} · ${money(ad.commissionRate*100)}%` : "比例待匹配"}</td><td>${comparison}</td></tr>`;
-      }).join("")}</tbody></table></div><p class="performance-footnote">已匹配比例的明细提成合计 ¥${money(record.ads.reduce((s,a)=>s+adCommission(a),0))} · 与确认总提成差额 ¥${money(record.total-record.ads.reduce((s,a)=>s+adCommission(a),0))}。实际总提成以确认值为准。</p></details>` : ""}`;
+      }).join("")}</tbody></table></div><p class="performance-footnote actual-balance ${Math.abs(record.total-record.ads.reduce((s,a)=>s+adCommission(a),0))>.01 || record.ads.some(ad=>!Number.isFinite(ad.commissionRate)) ? "warning" : "aligned"}">已匹配比例的明细提成合计 ¥${money(record.ads.reduce((s,a)=>s+adCommission(a),0))} · 与确认总提成差额 ¥${money(record.total-record.ads.reduce((s,a)=>s+adCommission(a),0))}。${record.ads.some(ad=>!Number.isFinite(ad.commissionRate)) ? "部分比例待匹配；" : ""}实际总提成以确认值为准。</p>` : `<p class="performance-footnote actual-balance">尚未补充广告明细；当前统计只采用已确认的个人总提成。</p>`}</details>` : ""}`;
     root.TLPerformanceCharts.render(panel.querySelector('.performance-charts'),state.records,snapshot,month=>context.onChange(month),context.month);
     panel.querySelector("[data-refresh]").onclick = () => load();
     panel.querySelector("[data-entry]").onclick = () => open();
@@ -134,10 +140,14 @@
     dialog.innerHTML = `<form><header class="dialog-header"><div><p class="eyebrow">TL / SETTLEMENT</p><h2 id="actualPerformanceDialogTitle">录入实际</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><i data-lucide="x"></i></button></header><div class="project-form-body">
       <div class="actual-fields"><label>结算月份<input name="month" type="month" required value="${ctx.month}"></label><label>个人总提成<input name="total" type="number" min="0" max="1000000000" step="any" required inputmode="decimal"></label></div>
       <p data-notice role="status"></p><div class="actual-heading"><h3>广告明细</h3><button type="button" class="icon-button mini-button" data-add title="添加广告" aria-label="添加广告"><i data-lucide="plus"></i></button></div><div class="actual-ad-rows"></div><p data-balance class="performance-footnote"></p>
-      <p data-error role="alert"></p></div><footer class="dialog-actions"><button type="button" class="secondary-button" data-close>取消</button><button type="submit" class="primary-button"><i data-lucide="check"></i>确认保存</button></footer></form>`;
+      <p data-confirm class="actual-save-warning" role="status" hidden></p><p data-error role="alert"></p></div><footer class="dialog-actions"><button type="button" class="secondary-button" data-close>取消</button><button type="submit" class="primary-button"><i data-lucide="check"></i><span>确认保存</span></button></footer></form>`;
     document.body.append(dialog);
     const form = dialog.querySelector("form"), rows = dialog.querySelector(".actual-ad-rows"), notice = dialog.querySelector("[data-notice]"), error = dialog.querySelector("[data-error]");
+    const confirmNotice=dialog.querySelector("[data-confirm]"), submit=form.querySelector('[type="submit"]');
     let targetRecord, dirty = false, editingMonth = ctx.month;
+    let confirmedBalanceSignature="";
+    const setSubmitMode=warning=>{submit.innerHTML=`<i data-lucide="${warning ? "alert-triangle" : "check"}"></i><span>${warning ? "仍然保存" : "确认保存"}</span>`;root.lucide?.createIcons();};
+    const resetBalanceConfirmation=()=>{confirmedBalanceSignature="";confirmNotice.hidden=true;setSubmitMode(false);};
     const balance = () => {
       const total = Number(form.elements.total.value), sum = [...rows.children].reduce((s,r)=>s+Number(r.querySelector('[data-revenue]').value || 0)*Number(r.dataset.rate || 0),0);
       const unknown = [...rows.children].filter(r => r.dataset.rate === "").length;
@@ -171,7 +181,7 @@
     };
     const selectMonth = (initial = false) => {
       targetRecord = state.records.find(r=>r.month===form.elements.month.value);
-      notice.textContent = present(targetRecord) ? "该月已有实际记录，确认后更新；估算快照保持不变。" : targetRecord ? "该月已有预测快照，结算后保留原预测用于对照。" : "该月没有预测快照，将标记为历史回算。";
+      notice.textContent = present(targetRecord) ? `该月已有实际记录（版本 ${Number(targetRecord.version) || 1}，更新于 ${updatedLabel(targetRecord.updated_at)}），确认后更新；估算快照保持不变。` : targetRecord ? "该月已有预测快照，结算后保留原预测用于对照。" : "该月没有预测快照，将标记为历史回算。";
       if (initial || !dirty) { rows.replaceChildren(); form.elements.total.value = present(targetRecord) ? targetRecord.total : ""; (targetRecord?.ads || []).forEach(add); }
       balance();
     };
@@ -186,7 +196,7 @@
       editingMonth=nextMonth;
       selectMonth();
     };
-    form.addEventListener("input", event => { if (event.target !== form.elements.month) dirty = true; balance(); });
+    form.addEventListener("input", event => { if (event.target !== form.elements.month) dirty = true; resetBalanceConfirmation(); balance(); });
     const requestClose=()=>{
       if(!dirty){close();return;}
       let warning=dialog.querySelector('.editor-unsaved');
@@ -203,8 +213,19 @@
       const total=P.actualAmount(form.elements.total.value), month=form.elements.month.value;
       const ads=[...rows.children].map(row=>({name:row.querySelector('[data-name]').value.trim(),projectId:row.querySelector('[data-project]').value,revenue:P.actualAmount(row.querySelector('[data-revenue]').value),commissionRate:row.dataset.rate==="" ? null : Number(row.dataset.rate)}));
       if (total===null || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || ads.length>500 || ads.some(a=>a.revenue===null)) { error.textContent="请检查结算月份、金额与广告明细；空白金额不等于零。"; return; }
+      const matchedTotal=ads.reduce((sum,ad)=>sum+adCommission(ad),0), unknownRates=ads.filter(ad=>!Number.isFinite(ad.commissionRate)).length;
+      const balanceDelta=Math.round((total-matchedTotal)*100)/100;
+      const balanceSignature=JSON.stringify([month,total,ads]);
+      if(ads.length && (Math.abs(balanceDelta)>.01 || unknownRates) && confirmedBalanceSignature!==balanceSignature){
+        confirmedBalanceSignature=balanceSignature;
+        confirmNotice.hidden=false;
+        confirmNotice.textContent=`确认总提成与已匹配明细相差 ¥${money(Math.abs(balanceDelta))}${unknownRates ? `，另有 ${unknownRates} 条比例待匹配` : ""}。如数字无误，请再次点击“仍然保存”。`;
+        setSubmitMode(true);
+        confirmNotice.scrollIntoView({block:"nearest",behavior:"smooth"});
+        return;
+      }
       saving=true;
-      const submit=form.querySelector('[type="submit"]'); submit.disabled=true; error.textContent="";
+      submit.disabled=true; error.textContent="";
       try {
         const snapshot=targetRecord?.snapshot || makeSnapshot({...ctx,month},"historical");
         await persist(ctx,{month,total,ads,snapshot},targetRecord?.version || 0);

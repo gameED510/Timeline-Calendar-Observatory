@@ -110,6 +110,14 @@ test('settlement writes enforce ownership, immutable snapshot and optimistic ver
   assert.doesNotMatch(sql,/set[^;]+snapshot\s*=/);
   assert.match(sql,/revoke all on function/);
 });
+test('actual settlement editor exposes record revisions and requires mismatch reconfirmation',()=>{
+  const ui=readFileSync(new URL('../actual-performance.js',import.meta.url),'utf8');
+  assert.match(ui,/记录版本/);
+  assert.match(ui,/更新于/);
+  assert.match(ui,/confirmedBalanceSignature/);
+  assert.match(ui,/再次点击“仍然保存”/);
+  assert.match(ui,/尚未补充广告明细/);
+});
 test('calibration excludes current/future months and zero baseline', () => {
   const rows = ['01','02','03'].map(m => ({month:`2026-${m}`,total:200,snapshot:{formula:100}}));
   rows.push({month:'2026-04',total:999,snapshot:{formula:1}});
