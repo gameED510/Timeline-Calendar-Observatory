@@ -224,6 +224,24 @@ test("completing publication immediately makes it available to performance calcu
   assert.equal(run(`TLPerformance.summarize(projects,TLPerformance.cycle('2026-10'),TODAY_ISO,pricingProfiles()).commission`),2700);
 });
 
+test("weekly reports cover Monday through Sunday and include outline, script, shoot and release", () => {
+  const {run}=app();
+  run(`projects=normalizeProjects([
+    {id:'a',name:'拜托了闻学长 & TCL',milestones:{'大纲':'2026-09-21','脚本':'2026-09-22','拍摄':'2026-09-27','发布':'2026-09-28'},completedMilestones:{'大纲':true,'脚本':true,'拍摄':false,'发布':true}},
+    {id:'b',name:'拾光备忘录 & 周末项目',milestones:{'发布':'2026-09-27'},completedMilestones:{'发布':true},publicationAccount:'other'}
+  ]);`);
+  assert.equal(run(`weeklyReportRange('2026-09-23').start`),'2026-09-21');
+  assert.equal(run(`weeklyReportRange('2026-09-23').end`),'2026-09-27');
+  const completed=run(`buildWeeklyReportContent(projects,'2026-09-23',pricingProfiles(),true)`);
+  assert.match(completed,/大纲：\n拜托了闻学长 \+ TCL/);
+  assert.match(completed,/脚本：\n拜托了闻学长 \+ TCL/);
+  assert.match(completed,/拍摄：\n无/);
+  assert.match(completed,/发布：\n拾光备忘录 \+ 周末项目/);
+  assert.doesNotMatch(completed,/2026-09-28/);
+  const all=run(`buildWeeklyReportContent(projects,'2026-09-23',pricingProfiles(),false)`);
+  assert.match(all,/拍摄：\n拜托了闻学长 \+ TCL（待完成）/);
+});
+
 test("keyboard viewport only adjusts for an editor and ignores pinch zoom", () => {
   const {run}=app();
   assert.equal(run(`keyboardViewport({height:500,offsetTop:20,scale:1},844,false)`),null);

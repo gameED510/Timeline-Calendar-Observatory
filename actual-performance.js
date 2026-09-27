@@ -66,6 +66,7 @@
   function draw() {
     if (!panel || !context || !current(context)) return;
     const record = state.records.find(r => r.month === context.month);
+    const futureMonth = context.month > P.cycleMonth(context.today);
     const model = P.calibration(state.records, context.month);
     const snapshot = record?.snapshot || makeSnapshot(context, "historical");
     const formula = snapshot.formula;
@@ -75,14 +76,14 @@
     const difference=present(record)?record.total-formula:null;
     const recordMeta=present(record)?`<span class="actual-record-meta">记录版本 ${Number(record.version) || 1} · 更新于 ${esc(updatedLabel(record.updated_at))}</span>`:"";
     const differenceLabel=difference===null ? "尚未录入实际提成" : difference===0 ? "与公式估算一致" : `比预计${difference>0?"多":"少"} ¥${money(Math.abs(difference))}${formula>0 ? `（${money(Math.abs(difference)/formula*100)}%）` : " · 估算为零，不计算误差率"}`;
-    panel.innerHTML = `<div class="actual-heading"><div><p class="eyebrow">TL / SETTLEMENT</p><h3>本月到账与实际结算</h3></div><div class="actual-actions"><button type="button" class="icon-button mini-button" data-refresh title="刷新结算记录" aria-label="刷新结算记录"><i data-lucide="refresh-cw"></i></button><button type="button" class="secondary-button actual-entry" data-entry ${state.loading || !state.loaded ? "disabled" : ""}><i data-lucide="plus"></i>录入实际</button></div></div>
+    panel.innerHTML = `<div class="actual-heading"><div><p class="eyebrow">TL / SETTLEMENT</p><h3>本月到账与实际结算</h3></div><div class="actual-actions"><button type="button" class="icon-button mini-button" data-refresh title="刷新结算记录" aria-label="刷新结算记录"><i data-lucide="refresh-cw"></i></button><button type="button" class="secondary-button actual-entry" data-entry ${state.loading || !state.loaded || futureMonth ? "disabled" : ""} title="${futureMonth ? "未来绩效月尚不能录入实际到账" : "录入实际到账"}"><i data-lucide="plus"></i>录入实际</button></div></div>
       <p class="performance-range actual-period-context"><strong>${esc(context.month)} 到账</strong><span>对应 ${esc(P.naturalMonth(context.month,-3).start.slice(0,7))} 自然月发布</span>${recordMeta}</p>
       <div class="actual-comparison"><div><span>本月到账估算</span><strong>¥${money(formula)}</strong><small>${record ? snapshot.kind === "forecast" ? "已保存预测快照" : "历史回算" : "当前报价回算"}</small></div><div><span>校准到账估算</span><strong>${Number.isFinite(calibrated) ? `¥${money(calibrated)}` : "—"}</strong><small>${Number.isFinite(calibrated) ? `${snapshot.calibrationMonths ?? model.n} 个月样本 · 校准试算` : "满 3 个有效月份后试算"}</small></div><div><span>实际到账提成</span><strong>${present(record) ? `¥${money(record.total)}` : "—"}</strong><small>${differenceLabel}</small></div></div>
       ${breakdown ? `<details class="forecast-breakdown"><summary>差额构成 · ${breakdown.matchedProjects} 个项目可对照</summary><p><span>已关联项目的提成差异</span><strong>¥${money(breakdown.matchedDifference)}</strong></p><p><span>未纳入项目对照的实际金额</span><strong>¥${money(breakdown.unallocatedActual)}</strong></p><p><span>尚无完整实际明细的估算</span><strong>¥${money(breakdown.unmatchedEstimate)}</strong></p><p>总差额 = 提成差异 + 未纳入实际金额 − 尚无明细估算。明细未补齐不代表预测不准；同一项目的多条明细合并对照。${breakdown.unallocatedActual < 0 ? " 已关联明细超出确认总额，请核对。" : ""}</p></details>` : ""}
       <details class="forecast-breakdown"><summary>查看公式估算来源 · ${(snapshot.rows||[]).length} 条发布记录</summary>${(snapshot.rows||[]).map(row=>`<p><span>${esc(row.name)} · ${row.platform==="douyin"?"抖音":"小红书"}</span><strong>¥${money(row.estimated)}</strong></p>`).join("")||"此月暂无参与估算的发布记录"}</details>
       <details class="forecast-breakdown"><summary>当前校准样本 · ${model.n} 个月</summary><p>${model.months.map(esc).join("、") || "暂无有效历史结算"}</p><p>只采用当前结算月之前、已有实际总额且公式估算大于零的最近六个月；未录入和零估算月份不参与。</p><p>当前系数 ${model.factor.toFixed(3)}${record ? "；已保存估算仍沿用原快照，不随当前样本变化。" : ""}</p></details>
       ${model.n<3?`<div class="actual-sample-progress"><progress value="${model.n}" max="3" aria-label="校准样本积累"></progress><span>${model.n}/3 个有效结算月，继续积累后显示校准试算</span></div>`:""}
-      <p class="actual-status" role="status">${state.loading ? "正在读取结算记录…" : esc(state.error)}</p>
+      <p class="actual-status" role="status">${state.loading ? "正在读取结算记录…" : state.error ? esc(state.error) : futureMonth ? "这是未来绩效月，进入对应周期后才可录入实际到账。" : ""}</p>
       <div class="actual-analysis"><span>最近 ${model.n} 个有效月份</span>${model.mae === null ? "" : `<span>平均金额误差 ¥${money(model.mae)}</span><span>${model.bias > 0 ? "长期高估" : model.bias < 0 ? "长期低估" : "无整体偏差"} ${model.bias ? `¥${money(Math.abs(model.bias))}` : ""}</span>`}</div>
       <div class="performance-charts"></div>
       <p class="performance-footnote">${evaluation.n ? `${evaluation.n} 个后续结算检验：公式平均误差 ¥${money(evaluation.formulaMae)}，校准平均误差 ¥${money(evaluation.calibratedMae)}。` : "校准效果待后续真实结算检验，历史回算不作为预测成功样本。"}</p>
@@ -137,8 +138,9 @@
     activeDialog = { element: dialog, close };
     const onAccountAbort = () => close(); ctx.signal.addEventListener("abort", onAccountAbort, { once: true });
     dialog.addEventListener("close", () => { controller.abort(); ctx.signal.removeEventListener("abort", onAccountAbort); });
+    const latestActualMonth=P.cycleMonth(ctx.today);
     dialog.innerHTML = `<form><header class="dialog-header"><div><p class="eyebrow">TL / SETTLEMENT</p><h2 id="actualPerformanceDialogTitle">录入实际</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><i data-lucide="x"></i></button></header><div class="project-form-body">
-      <div class="actual-fields"><label>结算月份<input name="month" type="month" required value="${ctx.month}"></label><label>个人总提成<input name="total" type="number" min="0" max="1000000000" step="any" required inputmode="decimal"></label></div>
+      <div class="actual-fields"><label>结算月份<input name="month" type="month" required max="${latestActualMonth}" value="${ctx.month}"></label><label>个人总提成<input name="total" type="number" min="0" max="1000000000" step="any" required inputmode="decimal"></label></div>
       <p data-notice role="status"></p><div class="actual-heading"><h3>广告明细</h3><button type="button" class="icon-button mini-button" data-add title="添加广告" aria-label="添加广告"><i data-lucide="plus"></i></button></div><div class="actual-ad-rows"></div><p data-balance class="performance-footnote"></p>
       <p data-confirm class="actual-save-warning" role="status" hidden></p><p data-error role="alert"></p></div><footer class="dialog-actions"><button type="button" class="secondary-button" data-close>取消</button><button type="submit" class="primary-button"><i data-lucide="check"></i><span>确认保存</span></button></footer></form>`;
     document.body.append(dialog);
@@ -190,6 +192,8 @@
       if (nextMonth === editingMonth) return;
       if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(nextMonth)) { form.elements.month.value=editingMonth; return; }
       const existing = state.records.find(record=>record.month===nextMonth);
+      if (nextMonth > latestActualMonth) { form.elements.month.value=editingMonth; error.textContent=`实际到账只能记录到当前绩效月 ${latestActualMonth}；未来月份请等进入对应周期后再录入。`; return; }
+      error.textContent="";
       if (dirty && !root.confirm(`将当前未保存内容改记到 ${nextMonth}？${present(existing) ? "该月已有实际结算，确认保存后会更新该月记录。" : "当前输入会保留，只有确认保存后才写入。"}`)) {
         form.elements.month.value=editingMonth; return;
       }
@@ -212,7 +216,7 @@
       if (saving) return;
       const total=P.actualAmount(form.elements.total.value), month=form.elements.month.value;
       const ads=[...rows.children].map(row=>({name:row.querySelector('[data-name]').value.trim(),projectId:row.querySelector('[data-project]').value,revenue:P.actualAmount(row.querySelector('[data-revenue]').value),commissionRate:row.dataset.rate==="" ? null : Number(row.dataset.rate)}));
-      if (total===null || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || ads.length>500 || ads.some(a=>a.revenue===null)) { error.textContent="请检查结算月份、金额与广告明细；空白金额不等于零。"; return; }
+      if (total===null || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month>latestActualMonth || ads.length>500 || ads.some(a=>a.revenue===null)) { error.textContent=`请检查结算月份、金额与广告明细；实际到账月份不能晚于 ${latestActualMonth}，空白金额不等于零。`; return; }
       const matchedTotal=ads.reduce((sum,ad)=>sum+adCommission(ad),0), unknownRates=ads.filter(ad=>!Number.isFinite(ad.commissionRate)).length;
       const balanceDelta=Math.round((total-matchedTotal)*100)/100;
       const balanceSignature=JSON.stringify([month,total,ads]);

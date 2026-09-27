@@ -150,6 +150,7 @@ const elements = {
   closeDialogButton: document.querySelector("#closeDialogButton"),
   cancelDialogButton: document.querySelector("#cancelDialogButton"),
   quickAddButton: document.querySelector("#quickAddButton"),
+  weeklyReportButton: document.querySelector("#weeklyReportButton"),
   todayButton: document.querySelector("#todayButton"),
   themeButton: document.querySelector("#themeButton"),
   themeColorLight: document.querySelector("#themeColorLight"),
@@ -270,7 +271,7 @@ function changeCloudAccount(user) {
   syncState.user = user;
   if (nextId !== activeAccountId) {
     TLActualUI.reset();
-    document.querySelectorAll(".pricing-dialog, .actual-dialog, .import-preview, .reschedule-dialog, .dense-day-dialog, .recovery-comparison, .template-options-dialog").forEach((dialog) => { dialog.close(); dialog.remove(); });
+    document.querySelectorAll(".pricing-dialog, .actual-dialog, .import-preview, .reschedule-dialog, .dense-day-dialog, .recovery-comparison, .template-options-dialog, .weekly-report-dialog").forEach((dialog) => { dialog.close(); dialog.remove(); });
     document.querySelector("#actualPerformance")?.remove();
   }
   if (nextId === activeAccountId) return;
@@ -3727,6 +3728,130 @@ function exportProjectsCsv() {
   showToast("已导出 CSV");
 }
 
+const WEEKLY_REPORT_STAGES = ["大纲", "脚本", "拍摄", "发布"];
+
+function weeklyReportRange(anchor) {
+  const start = dateToIso(startOfWeek(isoToDate(anchor)));
+  return { start, end: dateToIso(addDays(isoToDate(start), 6)) };
+}
+
+function weeklyReportAccountName(project, config) {
+  const normalized = TLPerformance.profiles(config);
+  const matched = normalized.find((profile) => profile.id === TLPerformance.account(project, normalized));
+  if (matched?.name) return matched.name;
+  const parts = String(project.name || "").split("&").map((part) => part.trim()).filter(Boolean);
+  return parts.length > 1 ? parts[0] : "未匹配账号";
+}
+
+function weeklyReportItems(sourceProjects, anchor, config, completedOnly = true) {
+  const range = weeklyReportRange(anchor);
+  const items = [];
+  for (const project of sourceProjects) {
+    for (const stage of WEEKLY_REPORT_STAGES) {
+      const date = project.milestones?.[stage];
+      const completed = project.completedMilestones?.[stage] === true;
+      if (!date || date < range.start || date > range.end || (completedOnly && !completed)) continue;
+      items.push({ project, stage, date, completed, account: weeklyReportAccountName(project, config), name: getClientName(project.name) });
+    }
+  }
+  return items.sort((a, b) => WEEKLY_REPORT_STAGES.indexOf(a.stage) - WEEKLY_REPORT_STAGES.indexOf(b.stage) || a.date.localeCompare(b.date) || a.account.localeCompare(b.account, "zh-CN") || a.name.localeCompare(b.name, "zh-CN"));
+}
+
+function weeklyReportRangeLabel(anchor) {
+  const { start, end } = weeklyReportRange(anchor);
+  const short = (iso, includeYear) => {
+    const [year, month, day] = iso.split("-").map(Number);
+    return `${includeYear ? `${year}.` : ""}${String(month).padStart(2, "0")}.${String(day).padStart(2, "0")}`;
+  };
+  return `${short(start, true)}—${short(end, start.slice(0, 4) !== end.slice(0, 4))}`;
+}
+
+function buildWeeklyReportContent(sourceProjects, anchor, config, completedOnly = true) {
+  const items = weeklyReportItems(sourceProjects, anchor, config, completedOnly);
+  const lines = [`${weeklyReportRangeLabel(anchor)} 周报${completedOnly ? "（已完成）" : "（全部排期）"}`];
+  for (const stage of WEEKLY_REPORT_STAGES) {
+    lines.push("", `${stage}：`);
+    const stageItems = items.filter((item) => item.stage === stage);
+    if (!stageItems.length) lines.push("无");
+    else stageItems.forEach((item) => lines.push(`${item.account} + ${item.name}${!completedOnly && !item.completed ? "（待完成）" : ""}`));
+  }
+  return lines.join("\n");
+}
+
+async function copyPlainText(content) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(content);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = content;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("copy failed");
+}
+
+function openWeeklyReport() {
+  const returnFocus = document.activeElement;
+  const anchor = selectedCalendarDate || TODAY_ISO;
+  let completedOnly = true;
+  const dialog = document.createElement("dialog");
+  dialog.className = "project-dialog weekly-report-dialog";
+  dialog.setAttribute("aria-labelledby", "weeklyReportDialogTitle");
+  dialog.innerHTML = `<div class="dialog-header"><div><p class="eyebrow">TL / WEEKLY REPORT</p><h2 id="weeklyReportDialogTitle">本周周报</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><i data-lucide="x"></i></button></div><div class="project-form-body"><p class="weekly-report-range"></p><div class="segmented compact weekly-report-mode" role="tablist" aria-label="周报统计口径"><button type="button" class="segmented-button" role="tab" data-report-mode="completed">已完成</button><button type="button" class="segmented-button" role="tab" data-report-mode="all">全部排期</button></div><div class="weekly-report-sections"></div></div><footer class="dialog-actions"><button type="button" class="ghost-button" data-close>取消</button><button type="button" class="primary-button" data-copy><i data-lucide="copy"></i><span>复制周报</span></button></footer>`;
+  const close = () => dialog.close();
+  const renderReport = () => {
+    const items = weeklyReportItems(projects, anchor, pricingProfiles(), completedOnly);
+    dialog.querySelector(".weekly-report-range").textContent = `${weeklyReportRangeLabel(anchor)} · 周一至周日`;
+    dialog.querySelectorAll("[data-report-mode]").forEach((button) => {
+      const active = button.dataset.reportMode === (completedOnly ? "completed" : "all");
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+    const sections = dialog.querySelector(".weekly-report-sections");
+    sections.replaceChildren();
+    for (const stage of WEEKLY_REPORT_STAGES) {
+      const section = document.createElement("section");
+      const stageItems = items.filter((item) => item.stage === stage);
+      section.innerHTML = `<div class="weekly-report-section-head"><h3>${stage}</h3><span>${stageItems.length} 项</span></div>`;
+      if (!stageItems.length) {
+        const empty = document.createElement("p");
+        empty.className = "weekly-report-empty";
+        empty.textContent = completedOnly ? "本周没有标记为已完成的事项" : "本周没有排期";
+        section.append(empty);
+      } else {
+        stageItems.forEach((item) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "weekly-report-row";
+          button.innerHTML = `<span><strong>${escapeHtml(item.account)}</strong><b>+</b><strong>${escapeHtml(item.name)}</strong></span><small>${escapeHtml(formatDateWithWeekday(item.date))} · ${item.completed ? "已完成" : "待完成"}</small>`;
+          button.onclick = () => { dialog.close(); openProjectDialog(item.project.id); };
+          section.append(button);
+        });
+      }
+      sections.append(section);
+    }
+  };
+  dialog.querySelectorAll("[data-close]").forEach((button) => button.onclick = close);
+  dialog.querySelectorAll("[data-report-mode]").forEach((button) => button.onclick = () => { completedOnly = button.dataset.reportMode === "completed"; renderReport(); });
+  dialog.querySelector("[data-copy]").onclick = async () => {
+    try { await copyPlainText(buildWeeklyReportContent(projects, anchor, pricingProfiles(), completedOnly)); showToast("周报已复制，可直接粘贴"); }
+    catch { showToast("复制失败，请检查浏览器的剪贴板权限"); }
+  };
+  dialog.addEventListener("cancel", (event) => { event.preventDefault(); close(); });
+  dialog.addEventListener("close", () => { dialog.remove(); returnFocus?.isConnected && returnFocus.focus({ preventScroll: true }); }, { once: true });
+  document.body.append(dialog);
+  wireTablistKeyboard(dialog.querySelector('[role="tablist"]'));
+  renderReport();
+  dialog.showModal();
+  activateIcons();
+}
+
 function buildProjectTlContent(project) {
   const projectName = project.name
     .split("&")
@@ -3757,20 +3882,7 @@ async function copyProjectTlFromDialog() {
   });
   const content = buildProjectTlContent({ name, milestones });
   try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(content);
-    } else {
-      const textarea = document.createElement("textarea");
-      textarea.value = content;
-      textarea.setAttribute("readonly", "");
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.append(textarea);
-      textarea.select();
-      const copied = document.execCommand("copy");
-      textarea.remove();
-      if (!copied) throw new Error("copy failed");
-    }
+    await copyPlainText(content);
     showToast(`已复制「${name}」TL，可直接粘贴`);
   } catch {
     showToast("复制失败，请检查浏览器的剪贴板权限");
@@ -4108,6 +4220,7 @@ function wireEvents() {
   elements.copyProjectTlButton.addEventListener("click", copyProjectTlFromDialog);
   elements.deleteProjectFromDialogButton.addEventListener("click", deleteEditingProject);
   elements.deleteProjectButton.addEventListener("click", deleteSelectedProject);
+  elements.weeklyReportButton.addEventListener("click", openWeeklyReport);
   elements.todayButton.addEventListener("click", jumpToToday);
   elements.themeButton?.addEventListener("click", toggleTheme);
   elements.dataMenuButton?.addEventListener("click", () => {

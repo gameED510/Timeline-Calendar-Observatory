@@ -117,6 +117,8 @@ test('actual settlement editor exposes record revisions and requires mismatch re
   assert.match(ui,/confirmedBalanceSignature/);
   assert.match(ui,/再次点击“仍然保存”/);
   assert.match(ui,/尚未补充广告明细/);
+  assert.match(ui,/latestActualMonth=P\.cycleMonth\(ctx\.today\)/);
+  assert.match(ui,/实际到账只能记录到当前绩效月/);
 });
 test('calibration excludes current/future months and zero baseline', () => {
   const rows = ['01','02','03'].map(m => ({month:`2026-${m}`,total:200,snapshot:{formula:100}}));
