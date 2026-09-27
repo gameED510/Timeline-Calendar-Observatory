@@ -53,6 +53,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Actual-settlement records now expose their record version and last-updated time in both the performance view and editor. Existing optimistic version checks still reject stale writes and saved estimate snapshots remain immutable. When ad details are present but their matched commission does not equal the confirmed total, or a commission rate is unknown, the editor requires an explicit second save action; empty optional details remain a valid one-step total entry. Both paths passed at 390px with zero horizontal overflow.
 - Risk totals, the overview summary, side insights and the risk page now share one risk collection. Single overdue nodes count correctly, overdue shooting collisions retain both causes, and reversed project stages remain visible after the drag toast disappears. Sequence risks open the correct project editor directly; a 390px browser flow verified all three risk types, a total of three risk items and zero horizontal overflow.
 - Thirty-six synthetic projects with 180 milestones and deliberately long Chinese/Latin names were rendered across all five views at 320, 390, 834 and 1440px. No page, card or embedded control overflow was detected.
+- The date-rescheduling dialog now offers an explicit, default-off option to shift later unfinished stages by the same number of days. Completed stages are preserved, the toast names the affected count, and undo restores the entire plan only when none of its dates changed in the meantime. A 390px browser flow verified a two-day move, completed-stage preservation, grouped undo and zero overflow; the compact dialog no longer inherits the full-height project editor layout.
 
 ## Still open: do not claim all 100 complete
 
@@ -61,7 +62,7 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 - Physical iPhone Safari drag/keyboard/orientation testing (#2, #83-87).
 - Live two-account RLS checks and full password reset delivery/login loop (#3, #12).
 - Broader conflict-comparison scenarios, live update timing and expanded financial boundary cases (#5, #9-10, #13-15). Local recycle-bin support is implemented; cross-device recycle history is not provided.
-- Motion performance traces and an explicit optional workflow for shifting dependent stages (#17-27, #29). Adjacent cross-month drag and vertical edge auto-scroll are covered.
+- Full motion performance traces remain open (#17-27, #29). Adjacent cross-month drag, vertical edge auto-scroll and an explicit optional workflow for shifting later unfinished stages are covered.
 - Bulk actions and lower-end physical-device profiling (#41-49); 300-project render/overflow behavior is covered in synthetic Chromium. Broader pricing-impact scenarios still need coverage.
 - A full cross-device actual-record change history and richer anomaly annotations remain open (#52-60, #65-69). Current records expose version/update time, reject stale writes, reconfirm unmatched details and decompose differences without claiming causal attribution.
 - More advanced workload-aware risk severity and staffing/resource suggestions remain open (#71-79). Single overdue nodes, combined overdue/shooting collisions, reversed stages and long-label timeline stress are covered.

@@ -1631,7 +1631,8 @@ function renderCalendar(grouped) {
         label: item => item.project.shortName || getClientName(item.project.name),
         edit: item => openProjectDialog(item.project.id),
         toggle: item => toggleMilestoneCompleted(item.project.id, item.stage),
-        move: (item, date) => moveMilestone(item.project.id, item.stage, date),
+        move: (item, date, options) => moveMilestone(item.project.id, item.stage, date, options),
+        following: item => getShiftableFollowingStages(item.project, item.stage).length,
         icons: activateIcons
       });
       cell.append(pile);
@@ -2148,13 +2149,32 @@ function openMilestoneInCalendar(projectId, stage) {
   });
 }
 
-function moveMilestone(projectId, stage, iso) {
+function getShiftableFollowingStages(project, stage) {
+  const index=stageIndex(stage);
+  if(!project || index<0)return [];
+  return STAGES.slice(index+1).filter(item=>project.milestones?.[item.name]&&!project.completedMilestones?.[item.name]);
+}
+
+function milestoneMovePlan(project, stage, iso, shiftFollowing = false) {
+  const previousDate=project?.milestones?.[stage];
+  if(!previousDate||!iso||previousDate===iso)return [];
+  const plan=[{stage,from:previousDate,to:iso}];
+  if(!shiftFollowing)return plan;
+  const delta=daysBetween(previousDate,iso);
+  getShiftableFollowingStages(project,stage).forEach(item=>{
+    const from=project.milestones[item.name];
+    plan.push({stage:item.name,from,to:dateToIso(addDays(isoToDate(from),delta))});
+  });
+  return plan;
+}
+
+function moveMilestone(projectId, stage, iso, {shiftFollowing=false} = {}) {
   if (!canEditProjects()) return;
   const project = projects.find((item) => item.id === projectId);
   if (!project || !project.milestones[stage] || !iso) return;
-  const previousDate=project.milestones[stage], ownerId=activeAccountId;
-  if(previousDate===iso)return;
-  project.milestones[stage] = iso;
+  const ownerId=activeAccountId,plan=milestoneMovePlan(project,stage,iso,shiftFollowing);
+  if(!plan.length)return;
+  plan.forEach(item=>{project.milestones[item.stage]=item.to;});
   selected = { projectId, stage };
   selectedCalendarDate = iso;
   saveProjects();
@@ -2170,13 +2190,15 @@ function moveMilestone(projectId, stage, iso) {
   }
   const sequenceWarnings = getSequenceWarnings(project);
   const sequenceNote = sequenceWarnings.length ? `；顺序提醒：${sequenceWarnings.join("、")}` : "";
-  showToast(`${getClientName(project.name)} · ${stage} 已调整到 ${formatDateWithWeekday(iso)}${sequenceNote}`, () => {
+  const shiftedNote=plan.length>1?`，并同步 ${plan.length-1} 个后续节点`:"";
+  showToast(`${getClientName(project.name)} · ${stage} 已调整到 ${formatDateWithWeekday(iso)}${shiftedNote}${sequenceNote}`, () => {
     const current=projects.find(item=>item.id===projectId);
-    if(activeAccountId!==ownerId||!current||current.milestones[stage]!==iso) {
-      showToast("节点已发生其他修改，请在项目中调整日期");return;
+    if(activeAccountId!==ownerId||!current||plan.some(item=>current.milestones[item.stage]!==item.to)) {
+      showToast("相关节点已发生其他修改，请在项目中调整日期");return;
     }
-    moveMilestone(projectId,stage,previousDate);
-    showToast("已撤销日期调整");
+    plan.forEach(item=>{current.milestones[item.stage]=item.from;});
+    selected={projectId,stage};selectedCalendarDate=plan[0].from;
+    saveProjects();render();showToast(plan.length>1?"已撤销整组日期调整":"已撤销日期调整");
   });
 }
 

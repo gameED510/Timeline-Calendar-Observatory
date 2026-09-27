@@ -99,6 +99,15 @@ test("risk collections include single overdue dates and reversed project stages"
   assert.equal(run(`getSequenceRisks([{id:'a',name:'A',milestones:{'拍摄':'2026-09-25','初稿':'2026-09-24'},completedMilestones:{}}])[0].warnings[0]`),'初稿 早于 拍摄');
 });
 
+test("optional milestone shifting moves only later unfinished stages", () => {
+  const {run}=app();
+  run(`movePlan=milestoneMovePlan({milestones:{'拍摄':'2026-09-10','初稿':'2026-09-12','发布':'2026-09-15'},completedMilestones:{'发布':true}},'拍摄','2026-09-12',true)`);
+  assert.equal(run('movePlan.length'),2);
+  assert.equal(run(`movePlan[0].stage+':'+movePlan[0].to`),'拍摄:2026-09-12');
+  assert.equal(run(`movePlan[1].stage+':'+movePlan[1].to`),'初稿:2026-09-14');
+  assert.equal(run(`milestoneMovePlan({milestones:{'拍摄':'2026-09-10','初稿':'2026-09-12'}},'拍摄','2026-09-12',false).length`),1);
+});
+
 test("focus summary separates overdue work from today's nodes", () => {
   const {run}=app();
   run(`focus=pendingFocusSummary([{date:'2026-09-23',project:{id:'a'}},{date:'2026-09-24',project:{id:'b'}},{date:'2026-09-25',project:{id:'c'}}],'2026-09-24')`);

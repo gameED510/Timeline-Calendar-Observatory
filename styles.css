@@ -5053,10 +5053,17 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .avatar-button[data-sync="saving"], .avatar-button[data-sync="muted"] { position: relative; }
 .avatar-button[data-sync="saving"]::after, .avatar-button[data-sync="muted"]::after { content: ""; position: absolute; right: 0; bottom: 0; width: 9px; height: 9px; border: 2px solid var(--bg-soft); border-radius: 50%; background: #d99316; }
 .avatar-button[data-sync="muted"]::after { background: #777; }
-.reschedule-dialog { width: min(420px, calc(100vw - 24px)); height: auto; max-height: calc(100dvh - 24px); }
+.reschedule-dialog { width: min(420px, calc(100vw - 24px)); height: fit-content; max-height: calc(100dvh - 24px); margin: auto; }
+.reschedule-dialog form { height: auto; min-height: 0; max-height: calc(100dvh - 24px); grid-template-rows: auto auto auto; overflow: auto; }
 .reschedule-dialog .project-form-body { padding: 20px; }
 .reschedule-dialog input { width: 100%; min-width: 0; box-sizing: border-box; }
 .reschedule-dialog [data-name] { overflow-wrap: anywhere; }
+.reschedule-dialog .reschedule-shift { display: grid; grid-template-columns: 22px minmax(0,1fr); align-items: center; gap: 10px; margin-top: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-soft); cursor: pointer; }
+.reschedule-dialog .reschedule-shift[hidden] { display: none; }
+.reschedule-dialog .reschedule-shift input { width: 20px; min-width: 20px; height: 20px; min-height: 20px; margin: 0; accent-color: var(--accent-fill); }
+.reschedule-dialog .reschedule-shift span { display: grid; gap: 3px; min-width: 0; }
+.reschedule-dialog .reschedule-shift strong { font-size: 13px; }
+.reschedule-dialog .reschedule-shift small { color: var(--muted); font-size: 12px; line-height: 1.4; }
 .app-update-notice { position: fixed; z-index: 1000; inset: auto 16px 90px auto; width: min(420px, calc(100vw - 32px)); box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 12px; background: var(--panel, #fff); color: var(--text, #222); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px #0002; }
 .app-update-notice { background: var(--bg-soft); color: var(--ink); }
 .recovery-comparison { width: min(720px, calc(100vw - 24px)); margin-inline: auto; }

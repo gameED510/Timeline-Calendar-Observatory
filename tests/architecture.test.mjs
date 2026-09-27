@@ -13,6 +13,13 @@ test("blank day selection preserves cards until collapse finishes", async () => 
   assert.match(await read('styles.css'), /has\(\.inline-pile\.closing\)/);
 });
 
+test("date rescheduling offers explicit optional following-stage shifts", async () => {
+  const motion = await read("calendar-motion.js");
+  assert.match(motion, /同步后续节点/);
+  assert.match(motion, /shiftFollowing:following>0&&shift\.checked/);
+  assert.match(await read("app.js"), /getShiftableFollowingStages/);
+});
+
 test("calendar motion is local, included in both builds and offline shell", async () => {
   for (const path of ["index.html", "sw.js", "scripts/build-netlify.mjs", "scripts/build-edgeone.mjs", "scripts/prepare-static.mjs"]) {
     assert.match(await read(path), /calendar-motion\.js/);

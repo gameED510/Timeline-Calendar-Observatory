@@ -68,15 +68,18 @@ window.CalendarMotion = (() => {
     const dialog=document.createElement('dialog');
     dialog.className='project-dialog reschedule-dialog';
     dialog.setAttribute('aria-label','调整节点日期');
-    dialog.innerHTML='<form><header class="dialog-header"><h2>调整日期</h2></header><div class="project-form-body"><p data-name></p><label class="field-label" for="rescheduleDate">目标日期</label><input id="rescheduleDate" type="date" required></div><footer class="dialog-actions"><button type="button" class="secondary-button">取消</button><button type="submit" class="primary-button">确认改期</button></footer></form>';
+    dialog.innerHTML='<form><header class="dialog-header"><h2>调整日期</h2></header><div class="project-form-body"><p data-name></p><label class="field-label" for="rescheduleDate">目标日期</label><input id="rescheduleDate" type="date" required><label class="reschedule-shift" hidden><input type="checkbox" data-shift-following><span><strong>同步后续节点</strong><small></small></span></label></div><footer class="dialog-actions"><button type="button" class="secondary-button">取消</button><button type="submit" class="primary-button">确认改期</button></footer></form>';
     dialog.querySelector('[data-name]').textContent=`${item.project.name} · ${item.stage}`;
-    const input=dialog.querySelector('input');input.value=item.date;
+    const input=dialog.querySelector('#rescheduleDate');input.value=item.date;
+    const shift=dialog.querySelector('[data-shift-following]'),shiftLabel=shift.closest('label');
+    const following=Number(handlers.following?.(item)||0);
+    if(following>0){shiftLabel.hidden=false;shiftLabel.querySelector('small').textContent=`按相同天数平移 ${following} 个未完成阶段`}
     dialog.querySelector('button').onclick=()=>dialog.close();
     dialog.querySelector('form').onsubmit=event=>{
       event.preventDefault();
       if(!input.reportValidity())return;
       const date=input.value;dialog.close();
-      if(date!==item.date)handlers.move(item,date);
+      if(date!==item.date)handlers.move(item,date,{shiftFollowing:following>0&&shift.checked});
     };
     dialog.addEventListener('close',()=>{dialog.remove();restoreDialogFocus(returnFocus,item);},{once:true});
     document.body.append(dialog);dialog.showModal();input.focus();
