@@ -4952,6 +4952,9 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .actual-comparison span,.actual-comparison small { color: var(--muted); font-size: 12px; }
 .actual-comparison strong { font-size: 28px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .actual-comparison > div:last-child strong { color: var(--accent); }
+.actual-period-context { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 18px 0 0; }
+.actual-period-context strong { color: var(--ink); font-size: 13px; }
+.actual-period-context .actual-record-meta { flex-basis: 100%; }
 .actual-analysis,.actual-legend { display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 12px; color: var(--muted); }
 .actual-status:empty { display: none; }
 .actual-trend { overflow-x: auto; margin: 20px 0 12px; }
