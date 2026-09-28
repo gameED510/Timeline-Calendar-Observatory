@@ -61,6 +61,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - The date-rescheduling dialog now offers an explicit, default-off option to shift later unfinished stages by the same number of days. Completed stages are preserved, the toast names the affected count, and undo restores the entire plan only when none of its dates changed in the meantime. A 390px browser flow verified a two-day move, completed-stage preservation, grouped undo and zero overflow; the compact dialog no longer inherits the full-height project editor layout.
 - Risk cards now share a severity score across the overview, sidebar and risk page. Overdue work, same-day shooting conflicts, dense days and reversed stages are ordered by urgency, name the evidence and include a concrete next action. Unit coverage plus 320/390px browser checks verify priority order, action copy, zero overflow and zero console warnings.
 - Weekly reports can now browse prior Monday-to-Sunday periods without allowing navigation into future weeks. The copy action follows the visible period, while a dedicated current-week control returns to today's week instead of the selected calendar date.
+- Actual settlement now classifies the current difference as aligned, needs attention or high variance using explicit percentage thresholds. It checks up to six prior valid months for repeated direction, distinguishes uncovered zero-baseline estimates and changes the next-step advice when ad details are incomplete; it does not claim a cause without matched detail evidence.
 
 ## Still open: do not claim all 100 complete
 
@@ -71,7 +72,7 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 - Broader conflict-comparison scenarios, live update timing and expanded financial boundary cases (#5, #9-10, #13-15). Local recycle-bin support is implemented; cross-device recycle history is not provided.
 - Full motion performance traces remain open (#17-27, #29). Adjacent cross-month drag, vertical edge auto-scroll and an explicit optional workflow for shifting later unfinished stages are covered.
 - Lower-end physical-device profiling (#41-49) and broader pricing-impact scenarios remain open. Bulk project completion, reopening, selection export and recycle-protected deletion are implemented; 300-project render/overflow behavior is covered in synthetic Chromium.
-- A full cross-device actual-record change history and richer anomaly annotations remain open (#52-60, #65-69). Current records expose version/update time, reject stale writes, reconfirm unmatched details and decompose differences without claiming causal attribution.
+- A full cross-device actual-record change history remains open (#52-60, #65-69). Current records expose version/update time, reject stale writes, reconfirm unmatched details, classify anomaly magnitude and repeated direction, and decompose differences without claiming causal attribution.
 - More advanced capacity-aware staffing and resource assignment remains open (#71-79). Unified severity, processing order and immediate recommendations are implemented for overdue nodes, combined overdue/shooting collisions, dense days and reversed stages.
 - Physical screen-reader and large-text verification, plus consolidation of overlapping CSS/motion parameters (#85-100).
 

@@ -5135,6 +5135,14 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .actual-comparison span,.actual-comparison small { color: var(--muted); font-size: 12px; }
 .actual-comparison strong { font-size: 28px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .actual-comparison > div:last-child strong { color: var(--accent); }
+.actual-anomaly { display: grid; grid-template-columns: 20px minmax(0,1fr); gap: 10px; margin: -6px 0 20px; border-left: 3px solid var(--warning); background: color-mix(in srgb, var(--warning) 8%, var(--surface)); padding: 12px 14px; color: var(--ink); }
+.actual-anomaly.aligned { border-left-color: var(--success); background: color-mix(in srgb, var(--success) 7%, var(--surface)); }
+.actual-anomaly.high { border-left-color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, var(--surface)); }
+.actual-anomaly > svg { width: 18px; height: 18px; margin-top: 1px; }
+.actual-anomaly div { display: grid; gap: 4px; min-width: 0; }
+.actual-anomaly strong { font-size: 13px; }
+.actual-anomaly p,.actual-anomaly span { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.actual-anomaly span { color: var(--ink); }
 .actual-period-context { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 18px 0 0; }
 .actual-period-context strong { color: var(--ink); font-size: 13px; }
 .actual-period-context .actual-record-meta { flex-basis: 100%; }

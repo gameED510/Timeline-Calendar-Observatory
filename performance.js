@@ -142,6 +142,33 @@
       unallocatedActual: total - matchedActual, unmatchedEstimate: snapshot.formula - matchedEstimate,
       difference: total - snapshot.formula };
   }
+  function settlementAnomaly(record, records = []) {
+    const total = actualAmount(record?.total), formula = record?.snapshot?.formula;
+    if (total === null || !Number.isFinite(formula) || formula < 0) return null;
+    const difference = total - formula, absolute = Math.abs(difference);
+    if (formula === 0) {
+      return total === 0
+        ? { level: "aligned", direction: "aligned", difference, ratio: 0, label: "本月估算与实际一致", detail: "公式估算和实际到账均为零。", recommendation: "无需处理，继续记录后续月份。", priorCount: 0, sameDirection: 0 }
+        : { level: "high", direction: "under", difference, ratio: null, label: "估算未覆盖实际到账", detail: `公式估算为零，实际到账为 ${total}。`, recommendation: "先检查发布记录、账号报价和提成公式是否完整。", priorCount: 0, sameDirection: 0 };
+    }
+    const ratio = difference / formula, magnitude = Math.abs(ratio);
+    const direction = absolute <= .01 ? "aligned" : difference > 0 ? "under" : "over";
+    const level = direction === "aligned" || magnitude <= .1 ? "aligned" : magnitude <= .25 ? "watch" : "high";
+    const prior = records.filter(item => item !== record && item.month < record.month && Number.isFinite(item.total) && item.total >= 0 && Number.isFinite(item.snapshot?.formula) && item.snapshot.formula > 0)
+      .sort((a,b)=>b.month.localeCompare(a.month)).slice(0,6);
+    const sameDirection = direction === "aligned" ? 0 : prior.filter(item => Math.sign(item.total-item.snapshot.formula) === Math.sign(difference)).length;
+    const percent = Math.round(magnitude * 1000) / 10;
+    const label = level === "aligned" ? "本月估算基本贴合" : `${level === "high" ? "偏差较大 · " : "需要留意 · "}公式${direction === "under" ? "低估" : "高估"} ${percent}%`;
+    const detail = prior.length ? `此前 ${prior.length} 个有效月份中，${sameDirection} 个与本月同方向。` : "暂无足够历史月份判断是否为持续偏差。";
+    const breakdown = settlementDifference(record);
+    let recommendation;
+    if (!record.ads?.length || !breakdown?.matchedProjects) recommendation = "先补充并关联广告明细，再定位差额来自哪些项目。";
+    else if (Math.abs(breakdown.unallocatedActual) > .01 || Math.abs(breakdown.unmatchedEstimate) > .01) recommendation = "先补齐或重新关联广告明细，再判断预测误差。";
+    else if (sameDirection >= 2) recommendation = "同向偏差重复出现，建议复核账号报价与提成公式。";
+    else if (level === "aligned") recommendation = "差异在 10% 以内，继续积累实际记录观察。";
+    else recommendation = "优先核对差额最大的项目和当前提成公式。";
+    return { level, direction, difference, ratio, label, detail, recommendation, priorCount: prior.length, sameDirection };
+  }
   function settlementCsv(records) {
     const amount = value => Number.isFinite(value) ? Math.round(value * 100) / 100 : "";
     const rows = [["类型","结算月份","对应发布月","广告名称","平台","公式估算","校准估算","实际收益","个人提成","实际减估算","估算性质"]];
@@ -167,5 +194,5 @@
     };
     return "\uFEFF"+rows.map(row=>row.map(cell).join(',')).join('\r\n');
   }
-  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, cycleMonth, isActivePerformanceMonth, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv, actualAmount, settlementDifference };
+  root.TLPerformance = { platforms, rates, profiles, account, normalize, cycle, cycleMonth, isActivePerformanceMonth, summarize, naturalMonth, calibration, snapshot, evaluate, chartPoints, settlementCsv, actualAmount, settlementDifference, settlementAnomaly };
 })(globalThis);

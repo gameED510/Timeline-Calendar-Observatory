@@ -128,3 +128,24 @@ test('calibration excludes current/future months and zero baseline', () => {
   assert.equal(result.n,3); assert.equal(result.factor,1.5); assert.equal(result.mae,100); assert.equal(result.bias,-100);
   assert.equal(p.calibration(rows,'2026-03').ready,false);
 });
+
+test('settlement anomaly separates normal variance, repeated bias and missing coverage', () => {
+  const history=[
+    {month:'2026-06',total:130,snapshot:{formula:100},ads:[{projectId:'a',revenue:1300,commissionRate:.1}]},
+    {month:'2026-07',total:140,snapshot:{formula:100},ads:[{projectId:'a',revenue:1400,commissionRate:.1}]}
+  ];
+  const current={month:'2026-08',total:135,snapshot:{formula:100,rows:[{projectId:'a',estimated:100}]},ads:[{projectId:'a',revenue:1350,commissionRate:.1}]};
+  const repeated=p.settlementAnomaly(current,[...history,current]);
+  assert.equal(repeated.level,'high');
+  assert.equal(repeated.direction,'under');
+  assert.equal(repeated.sameDirection,2);
+  assert.match(repeated.recommendation,/复核账号报价/);
+  const aligned=p.settlementAnomaly({month:'2026-08',total:108,snapshot:{formula:100,rows:[]},ads:[]},history);
+  assert.equal(aligned.level,'aligned');
+  assert.match(aligned.recommendation,/补充并关联广告明细/);
+  const uncovered=p.settlementAnomaly({month:'2026-08',total:300,snapshot:{formula:0},ads:[]},history);
+  assert.equal(uncovered.level,'high');
+  assert.equal(uncovered.ratio,null);
+  assert.match(uncovered.label,/未覆盖/);
+  assert.equal(p.settlementAnomaly({month:'2026-08',total:null,snapshot:{formula:100}},history),null);
+});
