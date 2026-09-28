@@ -3852,8 +3852,9 @@ function exportProjectsCsv() {
 
 const WEEKLY_REPORT_STAGES = ["大纲", "脚本", "拍摄", "发布"];
 
-function weeklyReportAnchor() {
-  return TODAY_ISO;
+function weeklyReportAnchor(today = TODAY_ISO) {
+  const date = isoToDate(today);
+  return date.getDay() === 1 ? dateToIso(addDays(date, -1)) : today;
 }
 
 function weeklyReportRange(anchor) {

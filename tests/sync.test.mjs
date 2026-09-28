@@ -262,6 +262,10 @@ test("weekly reports cover Monday through Sunday and include outline, script, sh
   assert.equal(run(`weeklyReportRange('2026-09-23').start`),'2026-09-21');
   assert.equal(run(`weeklyReportRange('2026-09-23').end`),'2026-09-27');
   assert.equal(run(`TODAY_ISO='2026-09-27';selectedCalendarDate='2026-09-28';weeklyReportAnchor()`),'2026-09-27');
+  assert.equal(run(`weeklyReportAnchor('2026-09-28')`),'2026-09-27');
+  assert.equal(run(`weeklyReportRange(weeklyReportAnchor('2026-09-28')).start`),'2026-09-21');
+  assert.equal(run(`weeklyReportRange(weeklyReportAnchor('2026-09-28')).end`),'2026-09-27');
+  assert.equal(run(`weeklyReportAnchor('2026-09-29')`),'2026-09-29');
   assert.equal(run(`shiftWeeklyReportAnchor('2026-09-23',-1)`),'2026-09-14');
   assert.equal(run(`shiftWeeklyReportAnchor('2026-12-30',1)`),'2027-01-04');
   assert.equal(run(`isCurrentWeeklyReport('2026-09-21','2026-09-27')`),true);
