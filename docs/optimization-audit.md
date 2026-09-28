@@ -60,6 +60,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Thirty-six synthetic projects with 180 milestones and deliberately long Chinese/Latin names were rendered across all five views at 320, 390, 834 and 1440px. No page, card or embedded control overflow was detected.
 - The date-rescheduling dialog now offers an explicit, default-off option to shift later unfinished stages by the same number of days. Completed stages are preserved, the toast names the affected count, and undo restores the entire plan only when none of its dates changed in the meantime. A 390px browser flow verified a two-day move, completed-stage preservation, grouped undo and zero overflow; the compact dialog no longer inherits the full-height project editor layout.
 - Risk cards now share a severity score across the overview, sidebar and risk page. Overdue work, same-day shooting conflicts, dense days and reversed stages are ordered by urgency, name the evidence and include a concrete next action. Unit coverage plus 320/390px browser checks verify priority order, action copy, zero overflow and zero console warnings.
+- Weekly reports can now browse prior Monday-to-Sunday periods without allowing navigation into future weeks. The copy action follows the visible period, while a dedicated current-week control returns to today's week instead of the selected calendar date.
 
 ## Still open: do not claim all 100 complete
 

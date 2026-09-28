@@ -3807,6 +3807,14 @@ function weeklyReportRange(anchor) {
   return { start, end: dateToIso(addDays(isoToDate(start), 6)) };
 }
 
+function shiftWeeklyReportAnchor(anchor, weeks) {
+  return dateToIso(addDays(isoToDate(weeklyReportRange(anchor).start), weeks * 7));
+}
+
+function isCurrentWeeklyReport(anchor, today = TODAY_ISO) {
+  return weeklyReportRange(anchor).start === weeklyReportRange(today).start;
+}
+
 function weeklyReportAccountName(project, config) {
   const normalized = TLPerformance.profiles(config);
   const matched = normalized.find((profile) => profile.id === TLPerformance.account(project, normalized));
@@ -3869,16 +3877,19 @@ async function copyPlainText(content) {
 
 function openWeeklyReport() {
   const returnFocus = document.activeElement;
-  const anchor = weeklyReportAnchor();
+  let anchor = weeklyReportAnchor();
   let completedOnly = true;
   const dialog = document.createElement("dialog");
   dialog.className = "project-dialog weekly-report-dialog";
   dialog.setAttribute("aria-labelledby", "weeklyReportDialogTitle");
-  dialog.innerHTML = `<div class="dialog-header"><div><p class="eyebrow">TL / WEEKLY REPORT</p><h2 id="weeklyReportDialogTitle">本周周报</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><i data-lucide="x"></i></button></div><div class="project-form-body"><p class="weekly-report-range"></p><div class="segmented compact weekly-report-mode" role="tablist" aria-label="周报统计口径"><button type="button" class="segmented-button" role="tab" data-report-mode="completed">已完成</button><button type="button" class="segmented-button" role="tab" data-report-mode="all">全部排期</button></div><div class="weekly-report-sections"></div></div><footer class="dialog-actions"><button type="button" class="ghost-button" data-close>取消</button><button type="button" class="primary-button" data-copy><i data-lucide="copy"></i><span>复制周报</span></button></footer>`;
+  dialog.innerHTML = `<div class="dialog-header"><div><p class="eyebrow">TL / WEEKLY REPORT</p><h2 id="weeklyReportDialogTitle">工作周报</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><i data-lucide="x"></i></button></div><div class="project-form-body"><div class="weekly-report-period"><button type="button" class="icon-button" data-report-previous aria-label="上一周"><i data-lucide="chevron-left"></i></button><p class="weekly-report-range" aria-live="polite"></p><button type="button" class="icon-button" data-report-next aria-label="下一周"><i data-lucide="chevron-right"></i></button><button type="button" class="text-button" data-report-current>本周</button></div><div class="segmented compact weekly-report-mode" role="tablist" aria-label="周报统计口径"><button type="button" class="segmented-button" role="tab" data-report-mode="completed">已完成</button><button type="button" class="segmented-button" role="tab" data-report-mode="all">全部排期</button></div><div class="weekly-report-sections"></div></div><footer class="dialog-actions"><button type="button" class="ghost-button" data-close>取消</button><button type="button" class="primary-button" data-copy><i data-lucide="copy"></i><span>复制周报</span></button></footer>`;
   const close = () => dialog.close();
   const renderReport = () => {
     const items = weeklyReportItems(projects, anchor, pricingProfiles(), completedOnly);
     dialog.querySelector(".weekly-report-range").textContent = `${weeklyReportRangeLabel(anchor)} · 周一至周日`;
+    const current = isCurrentWeeklyReport(anchor);
+    dialog.querySelector("[data-report-next]").disabled = current;
+    dialog.querySelector("[data-report-current]").hidden = current;
     dialog.querySelectorAll("[data-report-mode]").forEach((button) => {
       const active = button.dataset.reportMode === (completedOnly ? "completed" : "all");
       button.classList.toggle("active", active);
@@ -3911,6 +3922,9 @@ function openWeeklyReport() {
   };
   dialog.querySelectorAll("[data-close]").forEach((button) => button.onclick = close);
   dialog.querySelectorAll("[data-report-mode]").forEach((button) => button.onclick = () => { completedOnly = button.dataset.reportMode === "completed"; renderReport(); });
+  dialog.querySelector("[data-report-previous]").onclick = () => { anchor = shiftWeeklyReportAnchor(anchor, -1); renderReport(); };
+  dialog.querySelector("[data-report-next]").onclick = () => { if (!isCurrentWeeklyReport(anchor)) { anchor = shiftWeeklyReportAnchor(anchor, 1); renderReport(); } };
+  dialog.querySelector("[data-report-current]").onclick = () => { anchor = weeklyReportAnchor(); renderReport(); };
   dialog.querySelector("[data-copy]").onclick = async () => {
     try { await copyPlainText(buildWeeklyReportContent(projects, anchor, pricingProfiles(), completedOnly)); showToast("周报已复制，可直接粘贴"); }
     catch { showToast("复制失败，请检查浏览器的剪贴板权限"); }

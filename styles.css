@@ -5180,7 +5180,10 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .weekly-report-dialog { width: min(720px, calc(100vw - 32px)); height: fit-content; max-height: min(760px, calc(100dvh - 32px)); }
 .weekly-report-dialog .project-form-body { max-height: min(560px, calc(100dvh - 190px)); }
 .weekly-report-dialog .dialog-actions { flex-wrap: nowrap; }
-.weekly-report-range { margin: 0 0 14px; color: var(--muted-strong); font-size: 13px; font-variant-numeric: tabular-nums; }
+.weekly-report-period { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px auto; align-items: center; gap: 8px; margin-bottom: 14px; }
+.weekly-report-period .icon-button { width: 38px; min-width: 38px; height: 38px; }
+.weekly-report-period .text-button { min-height: 38px; padding-inline: 10px; }
+.weekly-report-range { min-width: 0; margin: 0; color: var(--muted-strong); font-size: 13px; font-variant-numeric: tabular-nums; text-align: center; }
 .weekly-report-mode { width: fit-content; max-width: 100%; margin-bottom: 20px; }
 .weekly-report-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
 .weekly-report-sections section { min-width: 0; padding: 16px 0; border-top: 1px solid var(--line); }
@@ -5198,6 +5201,8 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
   .weekly-report-dialog { width: 100%; height: 94dvh; max-height: 94dvh; }
   .weekly-report-dialog .project-form-body { max-height: none; }
   .weekly-report-sections { grid-template-columns: minmax(0, 1fr); }
+  .weekly-report-period { grid-template-columns: 38px minmax(0, 1fr) 38px; }
+  .weekly-report-period .text-button { grid-column: 1 / -1; justify-self: center; }
 }
 .actual-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0 12px; }
 .actual-dialog .dialog-actions { grid-template-columns: 1fr 1fr; }

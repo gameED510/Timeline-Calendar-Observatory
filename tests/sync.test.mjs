@@ -245,6 +245,10 @@ test("weekly reports cover Monday through Sunday and include outline, script, sh
   assert.equal(run(`weeklyReportRange('2026-09-23').start`),'2026-09-21');
   assert.equal(run(`weeklyReportRange('2026-09-23').end`),'2026-09-27');
   assert.equal(run(`TODAY_ISO='2026-09-27';selectedCalendarDate='2026-09-28';weeklyReportAnchor()`),'2026-09-27');
+  assert.equal(run(`shiftWeeklyReportAnchor('2026-09-23',-1)`),'2026-09-14');
+  assert.equal(run(`shiftWeeklyReportAnchor('2026-12-30',1)`),'2027-01-04');
+  assert.equal(run(`isCurrentWeeklyReport('2026-09-21','2026-09-27')`),true);
+  assert.equal(run(`isCurrentWeeklyReport('2026-09-20','2026-09-27')`),false);
   const completed=run(`buildWeeklyReportContent(projects,'2026-09-23',pricingProfiles(),true)`);
   assert.match(completed,/大纲：\n拜托了闻学长 \+ TCL/);
   assert.match(completed,/脚本：\n拜托了闻学长 \+ TCL/);
