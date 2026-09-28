@@ -59,6 +59,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Risk totals, the overview summary, side insights and the risk page now share one risk collection. Single overdue nodes count correctly, overdue shooting collisions retain both causes, and reversed project stages remain visible after the drag toast disappears. Sequence risks open the correct project editor directly; a 390px browser flow verified all three risk types, a total of three risk items and zero horizontal overflow.
 - Thirty-six synthetic projects with 180 milestones and deliberately long Chinese/Latin names were rendered across all five views at 320, 390, 834 and 1440px. No page, card or embedded control overflow was detected.
 - The date-rescheduling dialog now offers an explicit, default-off option to shift later unfinished stages by the same number of days. Completed stages are preserved, the toast names the affected count, and undo restores the entire plan only when none of its dates changed in the meantime. A 390px browser flow verified a two-day move, completed-stage preservation, grouped undo and zero overflow; the compact dialog no longer inherits the full-height project editor layout.
+- Risk cards now share a severity score across the overview, sidebar and risk page. Overdue work, same-day shooting conflicts, dense days and reversed stages are ordered by urgency, name the evidence and include a concrete next action. Unit coverage plus 320/390px browser checks verify priority order, action copy, zero overflow and zero console warnings.
 
 ## Still open: do not claim all 100 complete
 
@@ -70,7 +71,7 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 - Full motion performance traces remain open (#17-27, #29). Adjacent cross-month drag, vertical edge auto-scroll and an explicit optional workflow for shifting later unfinished stages are covered.
 - Lower-end physical-device profiling (#41-49) and broader pricing-impact scenarios remain open. Bulk project completion, reopening, selection export and recycle-protected deletion are implemented; 300-project render/overflow behavior is covered in synthetic Chromium.
 - A full cross-device actual-record change history and richer anomaly annotations remain open (#52-60, #65-69). Current records expose version/update time, reject stale writes, reconfirm unmatched details and decompose differences without claiming causal attribution.
-- More advanced workload-aware risk severity and staffing/resource suggestions remain open (#71-79). Single overdue nodes, combined overdue/shooting collisions, reversed stages and long-label timeline stress are covered.
+- More advanced capacity-aware staffing and resource assignment remains open (#71-79). Unified severity, processing order and immediate recommendations are implemented for overdue nodes, combined overdue/shooting collisions, dense days and reversed stages.
 - Physical screen-reader and large-text verification, plus consolidation of overlapping CSS/motion parameters (#85-100).
 
 ## Release gates

@@ -99,6 +99,18 @@ test("risk collections include single overdue dates and reversed project stages"
   assert.equal(run(`getSequenceRisks([{id:'a',name:'A',milestones:{'拍摄':'2026-09-25','初稿':'2026-09-24'},completedMilestones:{}}])[0].warnings[0]`),'初稿 早于 拍摄');
 });
 
+test("risk queue ranks urgent work first and always provides an action", () => {
+  const {run}=app();
+  run(`queue=buildRiskQueue([
+    ['2026-09-26',[{project:{id:'a'},stage:'脚本',completed:false},{project:{id:'b'},stage:'发布',completed:false}]],
+    ['2026-09-20',[{project:{id:'c'},stage:'发布',completed:false}]]
+  ],[{project:{id:'d',name:'倒序项目',milestones:{'拍摄':'2026-10-02','初稿':'2026-10-01'},completedMilestones:{}},warnings:['初稿 早于 拍摄']}],'2026-09-28')`);
+  assert.equal(run('queue[0].meta.label'),'逾期 8 天');
+  assert.equal(run('queue[0].meta.levelLabel'),'立即处理');
+  assert.equal(run('queue.every(item=>Boolean(item.meta.recommendation))'),true);
+  assert.equal(run(`sequenceRiskMeta({milestones:{'拍摄':'2026-10-02'},completedMilestones:{}},['顺序异常'],'2026-09-28').level`),'high');
+});
+
 test("optional milestone shifting moves only later unfinished stages", () => {
   const {run}=app();
   run(`movePlan=milestoneMovePlan({milestones:{'拍摄':'2026-09-10','初稿':'2026-09-12','发布':'2026-09-15'},completedMilestones:{'发布':true}},'拍摄','2026-09-12',true)`);

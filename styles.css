@@ -404,6 +404,29 @@ button {
   padding: 8px 10px;
 }
 
+.side-conflict-row strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.side-conflict-row strong em {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--warning);
+  color: #fff;
+  padding: 2px 5px;
+  font-size: 9px;
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.side-conflict-row.risk-medium strong em,
+.side-conflict-row.risk-low strong em {
+  background: color-mix(in srgb, var(--warning), var(--surface) 34%);
+  color: var(--ink);
+}
+
 .side-progress-row {
   display: grid;
   gap: 8px;
@@ -2090,6 +2113,49 @@ button svg {
 .conflict-day h3 span {
   color: var(--muted);
   font-size: 13px;
+}
+
+.conflict-day h3 span b {
+  display: inline-block;
+  margin-right: 7px;
+  border-radius: 999px;
+  background: var(--warning);
+  color: #fff;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.conflict-day.risk-medium h3 span b,
+.conflict-day.risk-low h3 span b {
+  background: color-mix(in srgb, var(--warning), var(--surface) 38%);
+  color: var(--ink);
+}
+
+.risk-guidance {
+  display: grid;
+  gap: 5px;
+  margin: -2px 0 12px;
+  border-left: 2px solid var(--warning-line);
+  padding-left: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.risk-guidance strong {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.risk-guidance svg {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  flex: 0 0 auto;
 }
 
 .sequence-risk-copy {

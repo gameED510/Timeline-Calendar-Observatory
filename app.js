@@ -655,22 +655,23 @@ function render() {
   const { min, max } = getDateBounds(visibleMilestones);
   const dateRisks = getDateRisks(grouped);
   const sequenceRisks = getSequenceRisks(activeProjects);
+  const riskQueue = buildRiskQueue(dateRisks, sequenceRisks);
 
   elements.projectCount.textContent = String(activeProjects.length);
   elements.milestoneCount.textContent = String(pendingMilestones.length);
-  elements.conflictCount.textContent = String(dateRisks.length + sequenceRisks.length);
+  elements.conflictCount.textContent = String(riskQueue.length);
   elements.rangeCount.textContent = visibleMilestones.length ? String(daysBetween(dateToIso(min), dateToIso(max)) + 1) : "0";
   elements.rangeTitle.textContent = !activeAccountId ? "我的排期" : !accountHydrated ? "读取云端中" : visibleMilestones.length ? `${formatDateShort(dateToIso(min))} 至 ${formatDateShort(dateToIso(max))}` : projects.length ? "所有项目已完成" : "暂无项目";
 
   if (currentView === "projects") renderProjectList();
-  renderSideInsights(allMilestones, dateRisks, sequenceRisks);
-  renderFocusRow(visibleMilestones, dateRisks, sequenceRisks);
+  renderSideInsights(allMilestones, riskQueue);
+  renderFocusRow(visibleMilestones, riskQueue);
   renderLegend();
   if(calendarProjectFilter&&!projects.some(project=>project.id===calendarProjectFilter))calendarProjectFilter=null;
   if (currentView === "calendar") renderCalendar(calendarProjectFilter
     ? groupMilestonesByDate(visibleMilestones.filter(item=>item.project.id===calendarProjectFilter)) : grouped);
   if (currentView === "timeline") renderTimeline();
-  if (currentView === "conflicts") renderConflicts(dateRisks, sequenceRisks);
+  if (currentView === "conflicts") renderConflicts(riskQueue);
   if (currentView === "performance") renderPerformance();
   renderInspector();
   renderSyncPanel();
@@ -1242,7 +1243,7 @@ function pendingFocusSummary(pending, today = TODAY_ISO) {
   return {overdue,todayItems,first,title};
 }
 
-function renderSideInsights(allMilestones, dateRisks, sequenceRisks) {
+function renderSideInsights(allMilestones, riskQueue) {
   if (!elements.sideInsights) return;
   elements.sideInsights.innerHTML = "";
 
@@ -1265,31 +1266,20 @@ function renderSideInsights(allMilestones, dateRisks, sequenceRisks) {
   }
   elements.sideInsights.append(nextSection);
 
-  const conflictSection = createSideSection("风险", "逾期、撞期与阶段顺序");
-  const activeConflicts = dateRisks.slice(0, 3);
-  if (activeConflicts.length) {
-    activeConflicts.forEach(([iso, items]) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "side-conflict-row";
-      const risk = scheduleRisk(iso, items);
-      button.innerHTML = `<strong>${formatDateWithWeekday(iso)} · ${escapeHtml(risk.label)}</strong><span>${escapeHtml([...new Map(items.map(item=>[item.project.id,getClientName(item.project.name)])).values()].join(" / "))}</span>`;
-      button.addEventListener("click", () => {
-        selectedCalendarDate = iso;
-        switchView("conflicts");
-        render();
-      });
-      conflictSection.append(button);
-    });
-  }
-  sequenceRisks.slice(0, Math.max(0, 3 - activeConflicts.length)).forEach(({project,warnings})=>{
+  const conflictSection = createSideSection("风险", "已按处理优先级排序");
+  riskQueue.slice(0, 3).forEach((risk)=>{
     const button=document.createElement("button");
-    button.type="button";button.className="side-conflict-row";
-    button.innerHTML=`<strong>${escapeHtml(getClientName(project.name))} · 阶段顺序</strong><span>${escapeHtml(warnings.join("；"))}</span>`;
-    button.addEventListener("click",()=>openProjectDialog(project.id));
+    button.type="button";button.className=`side-conflict-row risk-${risk.meta.level}`;
+    const title=risk.kind==="date" ? formatDateWithWeekday(risk.date) : getClientName(risk.project.name);
+    button.innerHTML=`<strong><em>${escapeHtml(risk.meta.levelLabel)}</em>${escapeHtml(title)} · ${escapeHtml(risk.meta.label)}</strong><span>${escapeHtml(risk.meta.recommendation)}</span>`;
+    button.addEventListener("click",()=>{
+      if(risk.kind==="date")selectedCalendarDate=risk.date;
+      switchView("conflicts");
+      render();
+    });
     conflictSection.append(button);
   });
-  if (!activeConflicts.length && !sequenceRisks.length) conflictSection.append(createSideEmpty("暂无排期风险"));
+  if (!riskQueue.length) conflictSection.append(createSideEmpty("暂无排期风险"));
   elements.sideInsights.append(conflictSection);
 
   const progressSection = createSideSection("项目进度", "仅显示进行中");
@@ -1486,7 +1476,7 @@ function toggleMilestoneCompleted(projectId, stageName) {
     : `${getClientName(project.name)} · ${stageName} ${project.completedMilestones[stageName] ? "已完成" : "已恢复"}`);
 }
 
-function renderFocusRow(activeMilestones, dateRisks, sequenceRisks) {
+function renderFocusRow(activeMilestones, riskQueue) {
   elements.focusRow.innerHTML = "";
   const pending = activeMilestones
     .filter((item) => !item.completed)
@@ -1494,15 +1484,10 @@ function renderFocusRow(activeMilestones, dateRisks, sequenceRisks) {
   const doneCount = activeMilestones.length - pending.length;
   const focus = pendingFocusSummary(pending);
   const nextItem = pending.find((item) => item.date > TODAY_ISO) || pending[0];
-  const nextConflict = dateRisks[0];
-  const nextSequenceRisk = sequenceRisks[0];
-  const nextRisk = nextConflict ? {
-    title: formatDateWithWeekday(nextConflict[0]),
-    meta: `${scheduleRisk(nextConflict[0],nextConflict[1]).label} · ${nextConflict[1].length} 个节点`,
-    onClick: () => switchView("conflicts")
-  } : nextSequenceRisk ? {
-    title: getClientName(nextSequenceRisk.project.name),
-    meta: `阶段顺序 · ${nextSequenceRisk.warnings.join("、")}`,
+  const highestRisk = riskQueue[0];
+  const nextRisk = highestRisk ? {
+    title: highestRisk.kind === "date" ? formatDateWithWeekday(highestRisk.date) : getClientName(highestRisk.project.name),
+    meta: `${highestRisk.meta.levelLabel} · ${highestRisk.meta.label} · ${highestRisk.meta.recommendation}`,
     onClick: () => switchView("conflicts")
   } : null;
   const progress = activeMilestones.length ? Math.round((doneCount / activeMilestones.length) * 100) : 100;
@@ -1950,28 +1935,52 @@ function scheduleRisk(iso, items, today = TODAY_ISO) {
   const pending = items.filter(item=>!item.completed);
   const shoots = pending.filter(item=>item.stage==="拍摄").length;
   const overdueDays = pending.length && iso < today ? daysBetween(iso,today) : 0;
-  if (overdueDays && shoots > 1) return {label:`逾期 ${overdueDays} 天 + 拍摄撞期`,severe:true,reason:`${pending.length} 个节点尚未完成，其中 ${shoots} 项拍摄需协调人员`};
-  if (overdueDays) return {label:`逾期 ${overdueDays} 天`,severe:true,reason:`${pending.length} 个节点尚未完成`};
-  if (shoots > 1) return {label:"拍摄同日",severe:true,reason:`${shoots} 项拍摄，需核对时间与人员`};
-  if (pending.length >= 3) return {label:"节点密集",severe:false,reason:`${pending.length} 个待办节点`};
-  return {label:"同日待办",severe:false,reason:`${pending.length} 个节点，建议核对工作量`};
+  if (overdueDays && shoots > 1) return {label:`逾期 ${overdueDays} 天 + 拍摄撞期`,level:"critical",levelLabel:"立即处理",score:500+overdueDays*10+shoots,severe:true,reason:`${pending.length} 个节点尚未完成，其中 ${shoots} 项拍摄需协调人员`,recommendation:"先确认完成状态，再错开拍摄人员与时段"};
+  if (overdueDays) return {label:`逾期 ${overdueDays} 天`,level:"critical",levelLabel:"立即处理",score:450+overdueDays*10+pending.length,severe:true,reason:`${pending.length} 个节点尚未完成`,recommendation:"先更新完成状态，未完成节点立即改期"};
+  if (shoots > 1) return {label:"拍摄同日",level:"high",levelLabel:"优先协调",score:350+shoots*10+pending.length,severe:true,reason:`${shoots} 项拍摄，需核对时间与人员`,recommendation:"核对人员、场地和时段，必要时拆分日期"};
+  if (pending.length >= 3) return {label:"节点密集",level:"medium",levelLabel:"需要确认",score:220+pending.length,severe:false,reason:`${pending.length} 个待办节点`,recommendation:"确认负责人和交付时点，按阶段顺序执行"};
+  return {label:"同日待办",level:"low",levelLabel:"留意",score:120+pending.length,severe:false,reason:`${pending.length} 个节点`,recommendation:"确认具体时段，避免执行重叠"};
+}
+
+function sequenceRiskMeta(project, warnings, today = TODAY_ISO) {
+  const pendingDates = STAGES.map(({name})=>({name,date:project.milestones?.[name]}))
+    .filter(({name,date})=>date&&!project.completedMilestones?.[name]);
+  const alreadyDue = pendingDates.some(({date})=>date<=today);
+  return {
+    label:"阶段顺序异常",
+    level:alreadyDue ? "critical" : "high",
+    levelLabel:alreadyDue ? "立即处理" : "优先调整",
+    score:(alreadyDue?410:320)+warnings.length*10,
+    severe:true,
+    reason:warnings.join("；"),
+    recommendation:"按大纲、脚本、拍摄、初稿、发布的先后顺序调整日期"
+  };
 }
 
 function getDateRisks(grouped, today = TODAY_ISO) {
   return [...grouped.entries()]
     .map(([iso, items]) => [iso, items.filter((item) => !item.completed).sort(compareMilestones)])
     .filter(([iso, items]) => items.length > 1 || (items.length && iso < today))
-    .sort(([a], [b]) => a.localeCompare(b));
+    .sort((a, b) => scheduleRisk(b[0],b[1],today).score-scheduleRisk(a[0],a[1],today).score || a[0].localeCompare(b[0]));
 }
 
 function getSequenceRisks(source = projects) {
-  return source.map(project=>({project,warnings:getSequenceWarnings(project)})).filter(item=>item.warnings.length);
+  return source.map(project=>({project,warnings:getSequenceWarnings(project)})).filter(item=>item.warnings.length)
+    .sort((a,b)=>sequenceRiskMeta(b.project,b.warnings).score-sequenceRiskMeta(a.project,a.warnings).score || getClientName(a.project.name).localeCompare(getClientName(b.project.name),"zh-CN"));
 }
 
-function renderConflicts(dateRisks, sequenceRisks) {
+function buildRiskQueue(dateRisks, sequenceRisks, today = TODAY_ISO) {
+  const queue = [
+    ...dateRisks.map(([date,items])=>({kind:"date",date,items,meta:scheduleRisk(date,items,today)})),
+    ...sequenceRisks.map(({project,warnings})=>({kind:"sequence",project,warnings,meta:sequenceRiskMeta(project,warnings,today)}))
+  ];
+  return queue.sort((a,b)=>b.meta.score-a.meta.score || (a.date||"").localeCompare(b.date||"") || (a.project?.name||"").localeCompare(b.project?.name||"","zh-CN"));
+}
+
+function renderConflicts(riskQueue) {
   elements.conflictList.innerHTML = "";
 
-  if (!dateRisks.length && !sequenceRisks.length) {
+  if (!riskQueue.length) {
     const empty = document.createElement("div");
     empty.className = "empty-block";
     empty.textContent = "暂无逾期或同日多节点";
@@ -1979,44 +1988,40 @@ function renderConflicts(dateRisks, sequenceRisks) {
     return;
   }
 
-  dateRisks.forEach(([iso, items]) => {
+  riskQueue.forEach((riskEntry) => {
     const section = document.createElement("section");
-    section.className = "conflict-day";
-    const risk = scheduleRisk(iso, items);
+    const risk = riskEntry.meta;
+    section.className = `conflict-day risk-${risk.level}${riskEntry.kind==="sequence" ? " sequence-risk" : ""}`;
     if (risk.severe) section.classList.add("severe");
 
     const title = document.createElement("h3");
     const left = document.createElement("strong");
-    left.textContent = formatDateWithWeekday(iso);
+    left.textContent = riskEntry.kind==="date" ? formatDateWithWeekday(riskEntry.date) : "阶段顺序";
     const right = document.createElement("span");
-    right.textContent = `${risk.label} · ${risk.reason}`;
+    right.innerHTML = `<b>${escapeHtml(risk.levelLabel)}</b>${escapeHtml(risk.label)}`;
     title.append(left, right);
 
-    const stack = document.createElement("div");
-    stack.className = "chip-stack";
-    items.sort(compareMilestones).forEach((item) => {
-      stack.append(createMilestoneChip(item.project, item.stage, iso, false));
-    });
-
-    section.append(title, stack);
-    elements.conflictList.append(section);
-  });
-  sequenceRisks.forEach(({project,warnings})=>{
-    const section=document.createElement("section");
-    section.className="conflict-day sequence-risk severe";
-    const title=document.createElement("h3");
-    const left=document.createElement("strong");left.textContent="阶段顺序";
-    const right=document.createElement("span");right.textContent=`${warnings.length} 处异常`;
-    title.append(left,right);
+    const guidance=document.createElement("div");guidance.className="risk-guidance";
+    guidance.innerHTML=`<span>${escapeHtml(risk.reason)}</span><strong><i data-lucide="chevron-right"></i>${escapeHtml(risk.recommendation)}</strong>`;
+    if(riskEntry.kind==="date"){
+      const stack = document.createElement("div");
+      stack.className = "chip-stack";
+      riskEntry.items.sort(compareMilestones).forEach((item) => {
+        stack.append(createMilestoneChip(item.project, item.stage, riskEntry.date, false));
+      });
+      section.append(title,guidance,stack);
+      elements.conflictList.append(section);
+      return;
+    }
     const copy=document.createElement("div");copy.className="sequence-risk-copy";
-    const name=document.createElement("strong");name.textContent=getClientName(project.name);
-    const detail=document.createElement("span");detail.textContent=warnings.join("；");
+    const name=document.createElement("strong");name.textContent=getClientName(riskEntry.project.name);
+    const detail=document.createElement("span");detail.textContent=riskEntry.warnings.join("；");
     copy.append(name,detail);
     const actions=document.createElement("div");actions.className="conflict-actions";
     const edit=document.createElement("button");edit.type="button";edit.className="ghost-button";
     edit.innerHTML='<i data-lucide="pencil"></i>调整项目';
-    edit.addEventListener("click",()=>openProjectDialog(project.id));
-    actions.append(edit);section.append(title,copy,actions);elements.conflictList.append(section);
+    edit.addEventListener("click",()=>openProjectDialog(riskEntry.project.id));
+    actions.append(edit);section.append(title,guidance,copy,actions);elements.conflictList.append(section);
   });
 }
 
