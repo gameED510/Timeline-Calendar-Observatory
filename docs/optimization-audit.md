@@ -62,6 +62,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Risk cards now share a severity score across the overview, sidebar and risk page. Overdue work, same-day shooting conflicts, dense days and reversed stages are ordered by urgency, name the evidence and include a concrete next action. Unit coverage plus 320/390px browser checks verify priority order, action copy, zero overflow and zero console warnings.
 - Weekly reports can now browse prior Monday-to-Sunday periods without allowing navigation into future weeks. The copy action follows the visible period, while a dedicated current-week control returns to today's week instead of the selected calendar date.
 - Actual settlement now classifies the current difference as aligned, needs attention or high variance using explicit percentage thresholds. It checks up to six prior valid months for repeated direction, distinguishes uncovered zero-baseline estimates and changes the next-step advice when ad details are incomplete; it does not claim a cause without matched detail evidence.
+- The risk page now previews the three highest-load dates in the next seven days using stage coordination weights rather than invented work hours. It names the stage mix and recommends only evidence-based actions such as splitting two shoots, locking the shoot before other work or preparing multiple releases early.
 
 ## Still open: do not claim all 100 complete
 
@@ -73,7 +74,7 @@ Smart paste now previews before applying and preserves unrecognized stages. Pric
 - Full motion performance traces remain open (#17-27, #29). Adjacent cross-month drag, vertical edge auto-scroll and an explicit optional workflow for shifting later unfinished stages are covered.
 - Lower-end physical-device profiling (#41-49) and broader pricing-impact scenarios remain open. Bulk project completion, reopening, selection export and recycle-protected deletion are implemented; 300-project render/overflow behavior is covered in synthetic Chromium.
 - A full cross-device actual-record change history remains open (#52-60, #65-69). Current records expose version/update time, reject stale writes, reconfirm unmatched details, classify anomaly magnitude and repeated direction, and decompose differences without claiming causal attribution.
-- More advanced capacity-aware staffing and resource assignment remains open (#71-79). Unified severity, processing order and immediate recommendations are implemented for overdue nodes, combined overdue/shooting collisions, dense days and reversed stages.
+- Named staff assignment and organization-specific capacity limits remain open (#71-79). Unified severity, processing order, seven-day coordination load and immediate recommendations are implemented for overdue nodes, combined overdue/shooting collisions, dense days and reversed stages.
 - Physical screen-reader and large-text verification, plus consolidation of overlapping CSS/motion parameters (#85-100).
 
 ## Release gates

@@ -111,6 +111,23 @@ test("risk queue ranks urgent work first and always provides an action", () => {
   assert.equal(run(`sequenceRiskMeta({milestones:{'拍摄':'2026-10-02'},completedMilestones:{}},['顺序异常'],'2026-09-28').level`),'high');
 });
 
+test("seven-day capacity forecast prioritizes coordination-heavy dates", () => {
+  const {run}=app();
+  run(`capacityItems=[
+    {date:'2026-09-29',stage:'拍摄',completed:false,project:{id:'a'}},
+    {date:'2026-09-29',stage:'拍摄',completed:false,project:{id:'b'}},
+    {date:'2026-09-30',stage:'脚本',completed:false,project:{id:'c'}},
+    {date:'2026-09-30',stage:'初稿',completed:false,project:{id:'d'}},
+    {date:'2026-10-05',stage:'发布',completed:false,project:{id:'e'}},
+    {date:'2026-09-29',stage:'发布',completed:true,project:{id:'f'}}
+  ]; forecast=capacityForecast(capacityItems,'2026-09-28',7)`);
+  assert.equal(run('forecast.length'),2);
+  assert.equal(run('forecast[0].date'),'2026-09-29');
+  assert.equal(run('forecast[0].level'),'critical');
+  assert.match(run('forecast[0].recommendation'),/拆分拍摄日期/);
+  assert.equal(run(`capacityDay('2026-09-30',capacityItems.filter(item=>item.date==='2026-09-30')).summary`),'脚本 1 · 初稿 1');
+});
+
 test("optional milestone shifting moves only later unfinished stages", () => {
   const {run}=app();
   run(`movePlan=milestoneMovePlan({milestones:{'拍摄':'2026-09-10','初稿':'2026-09-12','发布':'2026-09-15'},completedMilestones:{'发布':true}},'拍摄','2026-09-12',true)`);

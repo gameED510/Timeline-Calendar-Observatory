@@ -117,6 +117,7 @@ const elements = {
   nextMonthButton: document.querySelector("#nextMonthButton"),
   timelineShell: document.querySelector("#timelineShell"),
   conflictList: document.querySelector("#conflictList"),
+  capacityForecast: document.querySelector("#capacityForecast"),
   viewButtons: [...document.querySelectorAll("[data-view]")],
   views: {
     calendar: document.querySelector("#calendarView"),
@@ -671,7 +672,10 @@ function render() {
   if (currentView === "calendar") renderCalendar(calendarProjectFilter
     ? groupMilestonesByDate(visibleMilestones.filter(item=>item.project.id===calendarProjectFilter)) : grouped);
   if (currentView === "timeline") renderTimeline();
-  if (currentView === "conflicts") renderConflicts(riskQueue);
+  if (currentView === "conflicts") {
+    renderCapacityForecast(pendingMilestones);
+    renderConflicts(riskQueue);
+  }
   if (currentView === "performance") renderPerformance();
   renderInspector();
   renderSyncPanel();
@@ -1975,6 +1979,56 @@ function buildRiskQueue(dateRisks, sequenceRisks, today = TODAY_ISO) {
     ...sequenceRisks.map(({project,warnings})=>({kind:"sequence",project,warnings,meta:sequenceRiskMeta(project,warnings,today)}))
   ];
   return queue.sort((a,b)=>b.meta.score-a.meta.score || (a.date||"").localeCompare(b.date||"") || (a.project?.name||"").localeCompare(b.project?.name||"","zh-CN"));
+}
+
+const CAPACITY_STAGE_WEIGHT = { "大纲":1, "脚本":2, "拍摄":4, "初稿":2, "发布":2 };
+
+function capacityDay(date, items) {
+  const pending = items.filter(item=>!item.completed);
+  const counts = Object.fromEntries(STAGES.map(({name})=>[name,pending.filter(item=>item.stage===name).length]));
+  const score = pending.reduce((sum,item)=>sum+(CAPACITY_STAGE_WEIGHT[item.stage]||1),0);
+  const projectsCount = new Set(pending.map(item=>item.project.id)).size;
+  const level = counts["拍摄"]>=2 || score>=9 ? "critical" : score>=5 ? "high" : "normal";
+  const label = level==="critical" ? "高负载" : level==="high" ? "偏忙" : "可控";
+  let recommendation;
+  if(counts["拍摄"]>=2) recommendation="优先拆分拍摄日期，或明确不同时间段和负责人";
+  else if(counts["拍摄"]&&pending.length>=3) recommendation="先锁定拍摄时段，其余节点围绕它错峰";
+  else if(counts["发布"]>=2) recommendation="提前确认素材、文案和发布账号，避免临时等待";
+  else if(counts["大纲"]+counts["脚本"]+counts["初稿"]>=3) recommendation="按大纲、脚本、初稿顺序安排连续处理时段";
+  else recommendation="当前负载可控，确认负责人和交付时间即可";
+  const summary = STAGES.map(({name})=>counts[name] ? `${name} ${counts[name]}` : "").filter(Boolean).join(" · ");
+  return {date,items:pending,counts,score,projectsCount,level,label,recommendation,summary};
+}
+
+function capacityForecast(items, today = TODAY_ISO, days = 7) {
+  const end = dateToIso(addDays(isoToDate(today),days-1));
+  const grouped = groupMilestonesByDate(items.filter(item=>!item.completed&&item.date>=today&&item.date<=end));
+  return [...grouped.entries()].map(([date,dayItems])=>capacityDay(date,dayItems))
+    .sort((a,b)=>b.score-a.score || a.date.localeCompare(b.date)).slice(0,3);
+}
+
+function renderCapacityForecast(items) {
+  if(!elements.capacityForecast)return;
+  const forecast=capacityForecast(items);
+  elements.capacityForecast.replaceChildren();
+  const heading=document.createElement("div");heading.className="capacity-heading";
+  heading.innerHTML='<div><p class="eyebrow">NEXT 7 DAYS</p><h3>未来七天工作量</h3></div><span>按协调强度排序</span>';
+  elements.capacityForecast.append(heading);
+  if(!forecast.length){
+    const empty=document.createElement("p");empty.className="capacity-empty";empty.textContent="未来七天暂无待办节点";
+    elements.capacityForecast.append(empty);return;
+  }
+  const list=document.createElement("div");list.className="capacity-list";
+  forecast.forEach(day=>{
+    const button=document.createElement("button");button.type="button";button.className=`capacity-day ${day.level}`;
+    button.innerHTML=`<span class="capacity-date"><strong>${escapeHtml(formatDateWithWeekday(day.date))}</strong><em>${escapeHtml(day.label)}</em></span><span class="capacity-summary">${escapeHtml(day.projectsCount+" 个项目 · "+day.summary)}</span><span class="capacity-action"><i data-lucide="chevron-right"></i>${escapeHtml(day.recommendation)}</span>`;
+    button.onclick=()=>{
+      const first=day.items[0];
+      if(first)openMilestoneInCalendar(first.project.id,first.stage);
+    };
+    list.append(button);
+  });
+  elements.capacityForecast.append(list);
 }
 
 function renderConflicts(riskQueue) {
