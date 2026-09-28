@@ -63,6 +63,7 @@ Scope: the 100-item review in the conversation, followed by the request to fix a
 - Weekly reports can now browse prior Monday-to-Sunday periods without allowing navigation into future weeks. The copy action follows the visible period, while a dedicated current-week control returns to today's week instead of the selected calendar date.
 - Actual settlement now classifies the current difference as aligned, needs attention or high variance using explicit percentage thresholds. It checks up to six prior valid months for repeated direction, distinguishes uncovered zero-baseline estimates and changes the next-step advice when ad details are incomplete; it does not claim a cause without matched detail evidence.
 - The risk page now previews the three highest-load dates in the next seven days using stage coordination weights rather than invented work hours. It names the stage mix and recommends only evidence-based actions such as splitting two shoots, locking the shoot before other work or preparing multiple releases early.
+- Calendar dragging now creates its localized drop-date formatter once per gesture instead of on nearly every pointer event, caches proxy dimensions and avoids toggling the whole card group's pointer behavior for each hit test. The before/after browser stress run records formatter construction and checks long tasks, layout shifts, ghost cleanup and final dates.
 
 ## Still open: do not claim all 100 complete
 

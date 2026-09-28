@@ -221,6 +221,7 @@ window.CalendarMotion = (() => {
     const startX = event.clientX, startY = event.clientY;
     const pressedAt=performance.now();
     let moving = false, ghost, target = null, lastTarget = null, scrolling=false, lastY=startY;
+    let ghostWidth=0,ghostHeight=0,dropLabel=null,dateFormatter=null;
     let autoScrollFrame=null, lastPointer=null;
     const scroller=group.closest('.workspace');
     const scrollBy=(dy)=>{
@@ -252,9 +253,11 @@ window.CalendarMotion = (() => {
         ghost.querySelector('.motion-card-actions')?.remove();
         ghost.querySelector('.motion-more')?.remove();ghost.querySelector('.motion-card-menu')?.remove();
         ghost.querySelector('strong').textContent=item.project.name;
-        const label=document.createElement('span');label.className='motion-drop-date';ghost.append(label);
+        dropLabel=document.createElement('span');dropLabel.className='motion-drop-date';ghost.append(dropLabel);
         ghost.style.transform=''; ghost.style.width=''; ghost.style.height='';
         layer.append(ghost); drag={ghost};
+        ghostWidth=ghost.offsetWidth;ghostHeight=ghost.offsetHeight;
+        dateFormatter=new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',weekday:'short'});
         window.getSelection()?.removeAllRanges();
         layout(layer,()=>{
           layer.classList.remove('expanded');layer.classList.add('dragging');
@@ -264,18 +267,15 @@ window.CalendarMotion = (() => {
         autoScrollFrame=requestAnimationFrame(autoScroll);
       }
       const box=layer.getBoundingClientRect();
-      ghost.style.left='0px';ghost.style.top='0px';
-      gsap.set(ghost,{xPercent:0,yPercent:0,x:e.clientX-box.left-ghost.offsetWidth/2,y:e.clientY-box.top-ghost.offsetHeight/2,rotation:Math.max(-7,Math.min(7,dx/35))});
-      layer.style.pointerEvents='none';
+      gsap.set(ghost,{xPercent:0,yPercent:0,x:e.clientX-box.left-ghostWidth/2,y:e.clientY-box.top-ghostHeight/2,rotation:Math.max(-7,Math.min(7,dx/35))});
       target=document.elementFromPoint(e.clientX,e.clientY)?.closest('.day-cell[data-date], .agenda-day[data-date]') || null;
-      layer.style.pointerEvents='';
       if (target !== lastTarget) {
         lastTarget?.classList.remove('motion-near'); target?.classList.add('motion-near');
         lastTarget=target;
+        dropLabel.textContent = target?.dataset.date
+          ? dateFormatter.format(new Date(target.dataset.date+'T12:00:00')) : '';
+        ghost.classList.toggle('over-date', Boolean(target));
       }
-      ghost.querySelector('.motion-drop-date').textContent = target?.dataset.date
-        ? new Intl.DateTimeFormat('zh-CN',{month:'numeric',day:'numeric',weekday:'short'}).format(new Date(target.dataset.date+'T12:00:00')) : '';
-      ghost.classList.toggle('over-date', Boolean(target));
     };
     const finish = async e => {
       main.removeEventListener('pointermove',move);main.removeEventListener('pointerup',finish);main.removeEventListener('pointercancel',cancel);
@@ -288,7 +288,7 @@ window.CalendarMotion = (() => {
       const destination=target?.dataset.date;
       const sourceDate=owner.closest('[data-date]')?.dataset.date;
       if(destination && destination!==sourceDate && e.type !== 'pointercancel') {
-        const box=ghost.getBoundingClientRect(), width=ghost.offsetWidth, height=ghost.offsetHeight;
+        const box=ghost.getBoundingClientRect(), width=ghostWidth, height=ghostHeight;
         const rotation=Number(gsap.getProperty(ghost,'rotation'))||0;
         const fn=callbacks.move;
         // Only the drag proxy survives the data render; expanded cards remain inline.
@@ -321,7 +321,7 @@ window.CalendarMotion = (() => {
         drag={ghost,settling:true};
         gsap.to(ghost,{x:'+='+(home.left+home.width/2-box.left-box.width/2),
           y:'+='+(home.top+home.height/2-box.top-box.height/2),rotation:0,
-          scaleX:card.offsetWidth/ghost.offsetWidth,scaleY:card.offsetHeight/ghost.offsetHeight,
+          scaleX:card.offsetWidth/ghostWidth,scaleY:card.offsetHeight/ghostHeight,
           duration:reduced()?0:.38,ease:springEase,
           onComplete:()=>{close(false,true);flushRender();},
           onInterrupt:()=>{ghost.remove();card.classList.remove('drag-origin');if(drag?.ghost===ghost)drag=null;flushRender();}});
