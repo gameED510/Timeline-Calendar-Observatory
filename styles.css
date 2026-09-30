@@ -5208,10 +5208,11 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .actual-dialog input,.actual-dialog select { min-width: 0; width: 100%; box-sizing: border-box; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--field-bg); color: var(--ink); padding: 8px 10px; font: inherit; }
 .actual-dialog input[hidden] { display: none; }
 .actual-dialog label { display: grid; gap: 8px; margin: 0; min-width: 0; font-size: 13px; }
-.weekly-report-dialog { width: min(720px, calc(100vw - 32px)); height: fit-content; max-height: min(760px, calc(100dvh - 32px)); }
-.weekly-report-dialog .project-form-body { max-height: min(560px, calc(100dvh - 190px)); }
+.weekly-report-dialog { width: min(720px, calc(100vw - 32px)); height: min(760px, calc(100dvh - 32px)); max-height: min(760px, calc(100dvh - 32px)); }
+.weekly-report-dialog[open] { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.weekly-report-dialog .project-form-body { max-height: none; overflow-y: auto; scrollbar-gutter: stable; }
 .weekly-report-dialog .dialog-actions { flex-wrap: nowrap; }
-.weekly-report-period { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px auto; align-items: center; gap: 8px; margin-bottom: 14px; }
+.weekly-report-period { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px 54px; align-items: center; gap: 8px; margin: 0; padding: 16px; background: var(--bg-soft); }
 .weekly-report-period .icon-button { width: 38px; min-width: 38px; height: 38px; }
 .weekly-report-period .text-button { min-height: 38px; padding-inline: 10px; }
 .weekly-report-range { min-width: 0; margin: 0; color: var(--muted-strong); font-size: 13px; font-variant-numeric: tabular-nums; text-align: center; }
@@ -5244,7 +5245,19 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .smart-import-disclosure > summary { padding: 12px 0; color: var(--muted-strong); font-size: 13px; cursor: pointer; }
 .smart-import-disclosure .smart-import-panel { margin: 0 0 12px; }
 .smart-import-disclosure .eyebrow { display: none; }
-#projectDialog .dialog-actions { display: grid; grid-template-columns: 44px minmax(80px,1fr) minmax(100px,1.5fr); }
+#projectDialog .dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+#projectDialog .dialog-actions > button { min-height: 44px; white-space: nowrap; }
+.editor-action-spacer { flex: 1; }
+#duplicateProjectTemplate { font-size: 12px; }
+.calendar-month-heading { grid-column: 1 / -1; margin: 0; padding: 18px 12px; font-size: 18px; background: var(--bg-soft); border-block: 1px solid var(--line); }
+.toast[popover] { inset: auto auto 22px 50%; margin: 0; overflow: visible; }
+.toast[popover].over-dialog { top: max(16px, env(safe-area-inset-top)); bottom: auto; }
+@media (max-width: 640px) {
+  #projectDialog .dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #projectDialog .editor-action-spacer { display: none; }
+  #duplicateProjectTemplate { grid-column: 1 / -1; grid-row: 2; }
+  .toast[popover] { bottom: calc(80px + env(safe-area-inset-bottom)); }
+}
 .editor-more { position: relative; align-self: center; }
 .editor-more > summary { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; list-style: none; }
 .editor-more > summary::-webkit-details-marker { display: none; }

@@ -48,7 +48,6 @@ test("interactive blue and colored-card metadata use contrast-safe tokens", () =
 });
 
 test("month calendars keep adjacent dates available as cross-month drop targets", () => {
-  assert.match(app, /return \[\.\.\.grouped\.keys\(\)\]\.some\(\(iso\) => iso\.startsWith\(monthKey\)\) \? monthDays : \[\]/);
   assert.match(app, /cell\.classList\.add\("outside-month"\)/);
   assert.match(styles, /\.day-cell\.outside-month\s*\{/);
 });

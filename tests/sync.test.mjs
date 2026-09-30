@@ -271,13 +271,23 @@ test("weekly reports cover Monday through Sunday and include outline, script, sh
   assert.equal(run(`isCurrentWeeklyReport('2026-09-21','2026-09-27')`),true);
   assert.equal(run(`isCurrentWeeklyReport('2026-09-20','2026-09-27')`),false);
   const completed=run(`buildWeeklyReportContent(projects,'2026-09-23',pricingProfiles(),true)`);
-  assert.match(completed,/大纲：\n拜托了闻学长 \+ TCL/);
-  assert.match(completed,/脚本：\n拜托了闻学长 \+ TCL/);
+  assert.match(completed,/大纲：\n拜托了闻学长 & TCL/);
+  assert.match(completed,/脚本：\n拜托了闻学长 & TCL/);
   assert.match(completed,/拍摄：\n无/);
-  assert.match(completed,/发布：\n拾光备忘录 \+ 周末项目/);
+  assert.match(completed,/发布：\n拾光备忘录 & 周末项目/);
   assert.doesNotMatch(completed,/2026-09-28/);
   const all=run(`buildWeeklyReportContent(projects,'2026-09-23',pricingProfiles(),false)`);
-  assert.match(all,/拍摄：\n拜托了闻学长 \+ TCL（待完成）/);
+  assert.match(all,/拍摄：\n拜托了闻学长 & TCL（待完成）/);
+});
+
+test("two-month calendar retains continuous unique drop dates across month and year boundaries", () => {
+  const {run}=app();
+  const dates=run(`getRelevantMonthGridDays('2026-09-01',new Map())`);
+  assert.ok(dates.includes('2026-09-30'));
+  assert.ok(dates.includes('2026-10-31'));
+  assert.equal(new Set(dates).size,dates.length);
+  for(let i=1;i<dates.length;i++)assert.equal(run(`daysBetween('${dates[i-1]}','${dates[i]}')`),1);
+  assert.ok(run(`getRelevantMonthGridDays('2026-12-01',new Map()).includes('2027-01-31')`));
 });
 
 test("keyboard viewport only adjusts for an editor and ignores pinch zoom", () => {

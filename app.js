@@ -596,9 +596,9 @@ function getMonthGridDays(anchorIso) {
 }
 
 function getRelevantMonthGridDays(anchorIso, grouped) {
-  const monthDays = getMonthGridDays(anchorIso);
-  const monthKey = startOfMonthIso(anchorIso).slice(0, 7);
-  return [...grouped.keys()].some((iso) => iso.startsWith(monthKey)) ? monthDays : [];
+  const first = isoToDate(startOfMonthIso(anchorIso));
+  const next = dateToIso(new Date(first.getFullYear(), first.getMonth() + 1, 1));
+  return [...new Set([...getMonthGridDays(anchorIso), ...getMonthGridDays(next)])].sort();
 }
 
 function changeCalendarMonth(offset) {
@@ -1592,9 +1592,6 @@ function renderCalendar(grouped) {
   if (calendarMode === "agenda" && !scheduleDays.includes(selectedCalendarDate)) {
     selectedCalendarDate = scheduleDays.find((iso) => grouped.has(iso)) || scheduleDays[0] || TODAY_ISO;
   }
-  if (calendarMode === "month") {
-    calendarMonthAnchor = startOfMonthIso(selectedCalendarDate);
-  }
   elements.calendarGrid.innerHTML = "";
   elements.calendarGrid.classList.toggle("agenda-grid", calendarMode === "agenda");
   elements.calendarGrid.classList.toggle("week-grid", calendarMode === "week");
@@ -1632,12 +1629,25 @@ function renderCalendar(grouped) {
   });
 
   visibleDays.forEach((iso) => {
+    if (calendarMode === "month") {
+      const first = isoToDate(calendarMonthAnchor);
+      const next = new Date(first.getFullYear(), first.getMonth() + 1, 1);
+      if (iso === visibleDays[0] || iso === dateToIso(startOfWeek(next))) {
+        const heading = document.createElement("h3");
+        heading.className = "calendar-month-heading";
+        const month = iso === visibleDays[0] ? first : next;
+        heading.textContent = `${month.getFullYear()}年${month.getMonth() + 1}月`;
+        elements.calendarGrid.append(heading);
+      }
+    }
     const items = (grouped.get(iso) || []).sort(compareMilestones);
     const activeCount = items.filter((item) => !item.completed).length;
     const cell = document.createElement("section");
     cell.className = "day-cell";
     cell.dataset.date = iso;
-    if (!iso.startsWith(calendarMonthAnchor.slice(0, 7))) cell.classList.add("outside-month");
+    const calendarStart = isoToDate(calendarMonthAnchor);
+    const calendarEnd = dateToIso(new Date(calendarStart.getFullYear(), calendarStart.getMonth() + 2, 1));
+    if (iso < calendarMonthAnchor || iso >= calendarEnd) cell.classList.add("outside-month");
     if (isWeekend(iso)) cell.classList.add("weekend");
     if (iso === TODAY_ISO) cell.classList.add("today");
     if (iso === selectedCalendarDate) cell.classList.add("selected-day");
@@ -1727,7 +1737,8 @@ function renderCalendarModeControls() {
   }
   if (elements.calendarPeriodLabel) {
     const month = isoToDate(calendarMonthAnchor);
-    elements.calendarPeriodLabel.textContent = `${month.getFullYear()}年${month.getMonth() + 1}月`;
+    const next = new Date(month.getFullYear(), month.getMonth() + 1, 1);
+    elements.calendarPeriodLabel.textContent = `${month.getFullYear()}年${month.getMonth() + 1}月 — ${next.getFullYear() !== month.getFullYear() ? `${next.getFullYear()}年` : ""}${next.getMonth() + 1}月`;
   }
 }
 
@@ -2275,6 +2286,7 @@ function openMilestoneInCalendar(projectId, stage) {
   const project = projects.find((item) => item.id === projectId);
   if (!project || !project.milestones[stage]) return;
   const targetDate = project.milestones[stage];
+  calendarMonthAnchor = startOfMonthIso(targetDate);
   selected = { projectId, stage };
   selectedCalendarDate = targetDate;
   if (isMobileLayout()) setMobilePage("plan");
@@ -2447,13 +2459,21 @@ function formatDateWithWeekday(iso) {
 function showToast(message, undo = null) {
   window.clearTimeout(toastTimer);
   elements.toast.textContent = message;
+  elements.toast.classList.toggle("over-dialog", Boolean(document.querySelector("dialog[open]")));
   if(undo) {
     const button=document.createElement("button");
     button.type="button";button.textContent="撤销";button.className="toast-undo";
     button.addEventListener("click",undo,{once:true});elements.toast.append(button);
   }
   elements.toast.classList.add("show");
-  toastTimer = window.setTimeout(() => elements.toast.classList.remove("show"), undo ? 6500 : 2600);
+  if (elements.toast.showPopover) {
+    elements.toast.hidePopover();
+    elements.toast.showPopover();
+  }
+  toastTimer = window.setTimeout(() => {
+    elements.toast.classList.remove("show");
+    elements.toast.hidePopover?.();
+  }, undo ? 6500 : 2600);
 }
 
 function setDataMenuOpen(open) {
@@ -3701,7 +3721,6 @@ function openProjectDialog(projectId = null) {
   elements.projectForm.querySelector(".project-display-options").open=false;
   document.querySelector("#projectUnsaved").hidden=true;
   document.querySelector("#projectDraftNotice").hidden=!readProjectDraft(projectDraftKey());
-  document.querySelector(".editor-more").open=false;
   document.querySelector("#duplicateProjectTemplate").hidden=!editingProject;
   editorBaseline=JSON.stringify(projectEditorState());
   elements.projectDialog.showModal();
@@ -3908,7 +3927,7 @@ function buildWeeklyReportContent(sourceProjects, anchor, config, completedOnly 
     lines.push("", `${stage}：`);
     const stageItems = items.filter((item) => item.stage === stage);
     if (!stageItems.length) lines.push("无");
-    else stageItems.forEach((item) => lines.push(`${item.account} + ${item.name}${!completedOnly && !item.completed ? "（待完成）" : ""}`));
+    else stageItems.forEach((item) => lines.push(`${item.account} & ${item.name}${!completedOnly && !item.completed ? "（待完成）" : ""}`));
   }
   return lines.join("\n");
 }
@@ -3939,12 +3958,14 @@ function openWeeklyReport() {
   dialog.setAttribute("aria-labelledby", "weeklyReportDialogTitle");
   dialog.innerHTML = `<div class="dialog-header"><div><p class="eyebrow">TL / WEEKLY REPORT</p><h2 id="weeklyReportDialogTitle">工作周报</h2></div><button type="button" class="icon-button" data-close aria-label="关闭"><i data-lucide="x"></i></button></div><div class="project-form-body"><div class="weekly-report-period"><button type="button" class="icon-button" data-report-previous aria-label="上一周"><i data-lucide="chevron-left"></i></button><p class="weekly-report-range" aria-live="polite"></p><button type="button" class="icon-button" data-report-next aria-label="下一周"><i data-lucide="chevron-right"></i></button><button type="button" class="text-button" data-report-current>本周</button></div><div class="segmented compact weekly-report-mode" role="tablist" aria-label="周报统计口径"><button type="button" class="segmented-button" role="tab" data-report-mode="completed">已完成</button><button type="button" class="segmented-button" role="tab" data-report-mode="all">全部排期</button></div><div class="weekly-report-sections"></div></div><footer class="dialog-actions"><button type="button" class="ghost-button" data-close>取消</button><button type="button" class="primary-button" data-copy><i data-lucide="copy"></i><span>复制周报</span></button></footer>`;
   const close = () => dialog.close();
+  const reportBody = dialog.querySelector(".project-form-body");
+  reportBody.before(dialog.querySelector(".weekly-report-period"));
   const renderReport = () => {
     const items = weeklyReportItems(projects, anchor, pricingProfiles(), completedOnly);
     dialog.querySelector(".weekly-report-range").textContent = `${weeklyReportRangeLabel(anchor)} · 周一至周日`;
     const current = isCurrentWeeklyReport(anchor);
     dialog.querySelector("[data-report-next]").disabled = current;
-    dialog.querySelector("[data-report-current]").hidden = current;
+    dialog.querySelector("[data-report-current]").disabled = current;
     dialog.querySelectorAll("[data-report-mode]").forEach((button) => {
       const active = button.dataset.reportMode === (completedOnly ? "completed" : "all");
       button.classList.toggle("active", active);
@@ -3967,7 +3988,7 @@ function openWeeklyReport() {
           const button = document.createElement("button");
           button.type = "button";
           button.className = "weekly-report-row";
-          button.innerHTML = `<span><strong>${escapeHtml(item.account)}</strong><b>+</b><strong>${escapeHtml(item.name)}</strong></span><small>${escapeHtml(formatDateWithWeekday(item.date))} · ${item.completed ? "已完成" : "待完成"}</small>`;
+          button.innerHTML = `<span><strong>${escapeHtml(item.account)}</strong><b>&amp;</b><strong>${escapeHtml(item.name)}</strong></span><small>${escapeHtml(formatDateWithWeekday(item.date))} · ${item.completed ? "已完成" : "待完成"}</small>`;
           button.onclick = () => { dialog.close(); openProjectDialog(item.project.id); };
           section.append(button);
         });
@@ -3979,7 +4000,7 @@ function openWeeklyReport() {
   dialog.querySelectorAll("[data-report-mode]").forEach((button) => button.onclick = () => { completedOnly = button.dataset.reportMode === "completed"; renderReport(); });
   dialog.querySelector("[data-report-previous]").onclick = () => { anchor = shiftWeeklyReportAnchor(anchor, -1); renderReport(); };
   dialog.querySelector("[data-report-next]").onclick = () => { if (!isCurrentWeeklyReport(anchor)) { anchor = shiftWeeklyReportAnchor(anchor, 1); renderReport(); } };
-  dialog.querySelector("[data-report-current]").onclick = () => { anchor = weeklyReportAnchor(); renderReport(); };
+  dialog.querySelector("[data-report-current]").onclick = () => { anchor = TODAY_ISO; renderReport(); };
   dialog.querySelector("[data-copy]").onclick = async () => {
     try { await copyPlainText(buildWeeklyReportContent(projects, anchor, pricingProfiles(), completedOnly)); showToast("周报已复制，可直接粘贴"); }
     catch { showToast("复制失败，请检查浏览器的剪贴板权限"); }

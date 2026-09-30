@@ -10,7 +10,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="site.webmanifest" />
     <script src="theme.js?v=1"></script>
-    <link rel="stylesheet" href="styles.css?v=50" />
+    <link rel="stylesheet" href="styles.css?v=51" />
   </head>
   <body>
     <div class="app-shell mobile-page-plan account-locked account-loading" id="appShell">
@@ -396,7 +396,7 @@
       </button>
     </nav>
 
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="toast" id="toast" popover="manual" role="status" aria-live="polite"></div>
 
     <dialog class="project-dialog" id="projectDialog" aria-labelledby="projectDialogTitle">
       <form id="projectForm" method="dialog">
@@ -459,7 +459,6 @@
         </div>
 
         <div class="dialog-actions">
-          <details class="editor-more"><summary title="更多项目操作" aria-label="更多项目操作"><i data-lucide="ellipsis"></i></summary><div class="editor-more-menu">
           <button class="ghost-button hidden" id="copyProjectTlButton" type="button">
             <i data-lucide="copy"></i>
             复制 TL
@@ -469,7 +468,7 @@
             <i data-lucide="trash-2"></i>
             删除
           </button>
-          </div></details>
+          <span class="editor-action-spacer" aria-hidden="true"></span>
           <button class="ghost-button" id="cancelDialogButton" type="button">取消</button>
           <button class="primary-button" type="submit">
             <i data-lucide="check"></i>
@@ -502,7 +501,7 @@
     <script src="performance.js?v=15"></script>
     <script src="performance-charts.js?v=3"></script>
     <script src="actual-performance.js?v=16"></script>
-    <script src="app.js?v=59"></script>
+    <script src="app.js?v=60"></script>
     <script src="vendor/lucide.min.js?v=10" defer></script>
   </body>
 </html>
