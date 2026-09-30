@@ -5250,6 +5250,7 @@ html:has(.pricing-dialog[open]), body:has(.pricing-dialog[open]) { overflow: hid
 .editor-action-spacer { flex: 1; }
 #duplicateProjectTemplate { font-size: 12px; }
 .calendar-month-heading { grid-column: 1 / -1; margin: 0; padding: 18px 12px; font-size: 18px; background: var(--bg-soft); border-block: 1px solid var(--line); }
+.calendar-month-placeholder { color: var(--muted); font-size: 12px; opacity: .45; pointer-events: none; }
 .toast[popover] { inset: auto auto 22px 50%; margin: 0; overflow: visible; }
 .toast[popover].over-dialog { top: max(16px, env(safe-area-inset-top)); bottom: auto; }
 @media (max-width: 640px) {

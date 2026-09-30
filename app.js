@@ -1621,24 +1621,35 @@ function renderCalendar(grouped) {
     return;
   }
 
-  ["周一", "周二", "周三", "周四", "周五", "周六", "周日"].forEach((weekday) => {
+  const appendWeekdays = () => ["周一", "周二", "周三", "周四", "周五", "周六", "周日"].forEach((weekday) => {
     const cell = document.createElement("div");
     cell.className = "weekday-cell";
     cell.textContent = weekday;
     elements.calendarGrid.append(cell);
   });
 
-  visibleDays.forEach((iso) => {
-    if (calendarMode === "month") {
-      const first = isoToDate(calendarMonthAnchor);
-      const next = new Date(first.getFullYear(), first.getMonth() + 1, 1);
-      if (iso === visibleDays[0] || iso === dateToIso(startOfWeek(next))) {
+  const firstMonth = isoToDate(calendarMonthAnchor);
+  const monthAnchors = [0, 1].map(offset => dateToIso(new Date(firstMonth.getFullYear(), firstMonth.getMonth() + offset, 1)));
+  const calendarEntries = calendarMode === "month"
+    ? monthAnchors.flatMap(month => getMonthGridDays(month).map((iso, index) => ({ iso, month, first: index === 0 })))
+    : visibleDays.map(iso => ({ iso }));
+  if (calendarMode === "week") appendWeekdays();
+  calendarEntries.forEach(({ iso, month: ownerMonth, first }) => {
+    if (first) {
         const heading = document.createElement("h3");
         heading.className = "calendar-month-heading";
-        const month = iso === visibleDays[0] ? first : next;
+        const month = isoToDate(ownerMonth);
         heading.textContent = `${month.getFullYear()}年${month.getMonth() + 1}月`;
         elements.calendarGrid.append(heading);
-      }
+        appendWeekdays();
+    }
+    if (ownerMonth && !iso.startsWith(ownerMonth.slice(0, 7))) {
+      const placeholder = document.createElement("div");
+      placeholder.className = "day-cell outside-month calendar-month-placeholder";
+      placeholder.setAttribute("aria-hidden", "true");
+      placeholder.textContent = String(isoToDate(iso).getDate());
+      elements.calendarGrid.append(placeholder);
+      return;
     }
     const items = (grouped.get(iso) || []).sort(compareMilestones);
     const activeCount = items.filter((item) => !item.completed).length;
