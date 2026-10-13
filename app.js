@@ -3900,6 +3900,10 @@ function isCurrentWeeklyReport(anchor, today = TODAY_ISO) {
   return weeklyReportRange(anchor).start === weeklyReportRange(today).start;
 }
 
+function isFutureWeeklyReport(anchor, today = TODAY_ISO) {
+  return weeklyReportRange(anchor).start > weeklyReportRange(today).start;
+}
+
 function weeklyReportAccountName(project, config) {
   const normalized = TLPerformance.profiles(config);
   const matched = normalized.find((profile) => profile.id === TLPerformance.account(project, normalized));
@@ -3975,7 +3979,7 @@ function openWeeklyReport() {
     const items = weeklyReportItems(projects, anchor, pricingProfiles(), completedOnly);
     dialog.querySelector(".weekly-report-range").textContent = `${weeklyReportRangeLabel(anchor)} · 周一至周日`;
     const current = isCurrentWeeklyReport(anchor);
-    dialog.querySelector("[data-report-next]").disabled = current;
+    dialog.querySelector("[data-report-next]").disabled = false;
     dialog.querySelector("[data-report-current]").disabled = current;
     dialog.querySelectorAll("[data-report-mode]").forEach((button) => {
       const active = button.dataset.reportMode === (completedOnly ? "completed" : "all");
@@ -4009,8 +4013,13 @@ function openWeeklyReport() {
   };
   dialog.querySelectorAll("[data-close]").forEach((button) => button.onclick = close);
   dialog.querySelectorAll("[data-report-mode]").forEach((button) => button.onclick = () => { completedOnly = button.dataset.reportMode === "completed"; renderReport(); });
-  dialog.querySelector("[data-report-previous]").onclick = () => { anchor = shiftWeeklyReportAnchor(anchor, -1); renderReport(); };
-  dialog.querySelector("[data-report-next]").onclick = () => { if (!isCurrentWeeklyReport(anchor)) { anchor = shiftWeeklyReportAnchor(anchor, 1); renderReport(); } };
+  const changeReportWeek = (weeks) => {
+    anchor = shiftWeeklyReportAnchor(anchor, weeks);
+    if (isFutureWeeklyReport(anchor)) completedOnly = false;
+    renderReport();
+  };
+  dialog.querySelector("[data-report-previous]").onclick = () => changeReportWeek(-1);
+  dialog.querySelector("[data-report-next]").onclick = () => changeReportWeek(1);
   dialog.querySelector("[data-report-current]").onclick = () => { anchor = TODAY_ISO; renderReport(); };
   dialog.querySelector("[data-copy]").onclick = async () => {
     try { await copyPlainText(buildWeeklyReportContent(projects, anchor, pricingProfiles(), completedOnly)); showToast("周报已复制，可直接粘贴"); }

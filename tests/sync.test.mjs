@@ -280,6 +280,23 @@ test("weekly reports cover Monday through Sunday and include outline, script, sh
   assert.match(all,/拍摄：\n拜托了闻学长 & TCL（待完成）/);
 });
 
+test("future weekly reports include planned incomplete work across month and year boundaries", () => {
+  const {run}=app();
+  run(`TODAY_ISO='2026-10-13';projects=normalizeProjects([
+    {id:'future',name:'拜托了闻学长 & 下周广告',milestones:{'大纲':'2026-10-19','脚本':'2026-10-20','拍摄':'2026-10-25','发布':'2026-10-26'},completedMilestones:{}},
+    {id:'year',name:'拜托了闻学长 & 跨年广告',milestones:{'发布':'2027-01-05'},completedMilestones:{}}
+  ]);`);
+  assert.equal(run(`isFutureWeeklyReport('2026-10-18')`),false);
+  assert.equal(run(`isFutureWeeklyReport('2026-10-19')`),true);
+  assert.equal(run(`weeklyReportItems(projects,'2026-10-19',pricingProfiles(),true).length`),0);
+  const planned=run(`buildWeeklyReportContent(projects,'2026-10-19',pricingProfiles(),false)`);
+  assert.match(planned,/全部排期/);
+  assert.match(planned,/大纲：\n拜托了闻学长 & 下周广告（待完成）/);
+  assert.match(planned,/拍摄：\n拜托了闻学长 & 下周广告（待完成）/);
+  assert.match(planned,/发布：\n无/);
+  assert.match(run(`buildWeeklyReportContent(projects,shiftWeeklyReportAnchor('2026-12-30',1),pricingProfiles(),false)`),/跨年广告（待完成）/);
+});
+
 test("two-month calendar retains continuous unique drop dates across month and year boundaries", () => {
   const {run}=app();
   const dates=run(`getRelevantMonthGridDays('2026-09-01',new Map())`);
