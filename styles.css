@@ -4935,20 +4935,21 @@ body:has(.account-locked) .mobile-tabbar { display: none !important; }
 }
 .motion-card-main { width: 100%; height: 100%; padding: 16px; border: 0; border-radius: inherit; background: transparent; text-align: left; color: inherit; cursor: grab; touch-action: none; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; }
 .motion-card.shoot-highlight {
-  border-color: color-mix(in srgb, var(--project-color) 45%, #fff);
-  box-shadow: inset 0 0 3px 1px #ffffffcf,
-    0 0 0 2px color-mix(in srgb, var(--project-color) 65%, #fff),
-    0 0 9px 3px var(--project-color),
-    0 0 22px 7px color-mix(in srgb, var(--project-color) 85%, transparent),
-    0 0 42px 11px color-mix(in srgb, var(--project-color) 48%, transparent);
+  background: color-mix(in srgb, var(--project-color) 68%, #fff);
+  color: #182024;
+  border-color: color-mix(in srgb, var(--project-color) 60%, #fff);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: inset 0 0 28px #ffffff26,
+    0 0 16px 4px color-mix(in srgb, var(--project-color) 70%, transparent),
+    0 0 32px 10px color-mix(in srgb, var(--project-color) 42%, transparent),
+    0 8px 48px color-mix(in srgb, var(--project-color) 30%, transparent);
 }
 .motion-card.shoot-highlight.focused {
-  box-shadow: inset 0 0 3px 1px #ffffffcf,
-    0 0 0 2px color-mix(in srgb, var(--project-color) 65%, #fff),
-    0 0 12px 4px var(--project-color),
-    0 0 28px 8px color-mix(in srgb, var(--project-color) 90%, transparent),
-    0 0 46px 12px color-mix(in srgb, var(--project-color) 55%, transparent),
-    0 16px 32px #00000025;
+  box-shadow: inset 0 0 28px #ffffff26,
+    0 0 20px 5px color-mix(in srgb, var(--project-color) 75%, transparent),
+    0 0 40px 12px color-mix(in srgb, var(--project-color) 48%, transparent),
+    0 12px 48px color-mix(in srgb, var(--project-color) 32%, transparent);
 }
 .motion-card-main strong { font-size: 15px; line-height: 1.4; font-weight: 650; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .motion-card-stage { font-size: 12px; line-height: 1.4; }
