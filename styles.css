@@ -4934,6 +4934,19 @@ body:has(.account-locked) .mobile-tabbar { display: none !important; }
   transform-origin: center; color: var(--ink);
 }
 .motion-card-main { width: 100%; height: 100%; padding: 16px; border: 0; border-radius: inherit; background: transparent; text-align: left; color: inherit; cursor: grab; touch-action: none; display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; }
+.motion-card.shoot-highlight {
+  background: color-mix(in srgb, var(--project-color) 42%, var(--bg-soft));
+  border-color: color-mix(in srgb, var(--project-color) 70%, var(--bg-soft));
+  box-shadow: inset 0 1px 2px #ffffffc0,
+    0 0 0 1px color-mix(in srgb, var(--project-color) 28%, transparent),
+    0 0 18px 3px color-mix(in srgb, var(--project-color) 38%, transparent),
+    0 8px 24px color-mix(in srgb, var(--project-color) 22%, transparent);
+}
+.motion-card.shoot-highlight.focused {
+  box-shadow: inset 0 1px 2px #ffffffc0,
+    0 0 24px 5px color-mix(in srgb, var(--project-color) 42%, transparent),
+    0 16px 32px #00000025;
+}
 .motion-card-main strong { font-size: 15px; line-height: 1.4; font-weight: 650; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .motion-card-stage { font-size: 12px; line-height: 1.4; }
 .motion-card-actions { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; opacity: 0; visibility: hidden; }

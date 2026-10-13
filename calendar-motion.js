@@ -156,12 +156,18 @@ window.CalendarMotion = (() => {
       card.style.zIndex=String(i===index?100:i+1);
     }));
   }
+  function orderPileItems(items) {
+    // Later cards form the front of a collapsed pile.
+    return [...items].sort((a, b) => Number(a.stage === '拍摄') - Number(b.stage === '拍摄'));
+  }
   function mount(items, group, handlers) {
+    items = orderPileItems(items);
     group.className='inline-pile';
     group.setAttribute('aria-label',`${items.length} 个节点`);
     groups.set(group,{handlers,items});
     items.forEach((item,index)=>{
       const card=document.createElement('article');card.className='motion-card';
+      card.classList.toggle('shoot-highlight', item.stage === '拍摄');
       card.dataset.projectId=item.project.id;card.dataset.stage=item.stage;
       card.style.setProperty('--project-color',item.project.color);
       card.style.setProperty('--stack',String(Math.min(index,3)));
