@@ -40,7 +40,13 @@ test("view preferences restore valid choices without sharing them across account
   run(`calendarMode='week';projectFilter='done';projectSort='name';currentView='performance';saveViewPreferences();
     calendarMode='month';projectFilter='active';projectSort='next';currentView='projects';restoreViewPreferences()`);
   assert.equal(run('calendarMode'),'week');assert.equal(run('projectFilter'),'done');assert.equal(run('projectSort'),'name');
-  assert.equal(run('currentView'),'performance');
+  assert.equal(run('currentView'),'calendar');
+  for (const previous of ['projects','performance','timeline','conflicts']) {
+    run(`localStorage.setItem('tl-view:test',JSON.stringify({calendarMode:'week',projectFilter:'done',projectSort:'name',currentView:'${previous}'}));currentView='${previous}';restoreViewPreferences()`);
+    assert.equal(run('currentView'),'calendar');
+    assert.equal(run('calendarMode'),'week');
+    assert.equal(run('projectFilter'),'done');
+  }
   run(`activeAccountId='other';projectFilter='active';projectSort='next';currentView='timeline';restoreViewPreferences()`);
   assert.equal(run('calendarMode'),'month');assert.equal(run('projectFilter'),'active');assert.equal(run('currentView'),'calendar');
   run(`localStorage.setItem('tl-view:other','{"calendarMode":"bad","projectSort":"bad","currentView":"bad"}');restoreViewPreferences()`);

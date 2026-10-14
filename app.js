@@ -694,13 +694,12 @@ function restoreViewPreferences() {
     if (["month","week","agenda"].includes(saved.calendarMode)) calendarMode=saved.calendarMode;
     if (["all","active","done","conflict"].includes(saved.projectFilter)) projectFilter=saved.projectFilter;
     if (["next","priority","progress","conflict","name"].includes(saved.projectSort)) projectSort=saved.projectSort;
-    if (["calendar","projects","timeline","conflicts","performance"].includes(saved.currentView)) currentView=saved.currentView;
   } catch { /* Preferences must not prevent opening an account. */ }
 }
 
 function saveViewPreferences() {
   if (!activeAccountId) return;
-  try { localStorage.setItem(`tl-view:${activeAccountId}`,JSON.stringify({calendarMode,projectFilter,projectSort,currentView})); }
+  try { localStorage.setItem(`tl-view:${activeAccountId}`,JSON.stringify({calendarMode,projectFilter,projectSort})); }
   catch { /* Continue with session preferences when storage is unavailable. */ }
 }
 
