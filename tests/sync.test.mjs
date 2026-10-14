@@ -53,6 +53,18 @@ test("view preferences restore valid choices without sharing them across account
   assert.equal(run('projectSort'),'next');assert.equal(run('currentView'),'calendar');
 });
 
+test("week mode always opens today's week rather than a previously selected month date", () => {
+  const {run}=app();
+  run(`TODAY_ISO='2026-10-15';selectedCalendarDate='2026-11-25';calendarMonthAnchor='2026-11-01';selectCalendarMode('week');`);
+  assert.equal(run('selectedCalendarDate'),'2026-10-15');
+  assert.equal(run('calendarMonthAnchor'),'2026-10-01');
+  assert.equal(run(`getWeekDays(selectedCalendarDate)[0]`),'2026-10-12');
+  run(`selectedCalendarDate='2026-10-17';selectCalendarMode('month')`);
+  assert.equal(run('selectedCalendarDate'),'2026-10-17');
+  run(`TODAY_ISO='2027-01-01';selectCalendarMode('week')`);
+  assert.equal(run(`getWeekDays(selectedCalendarDate)[0]`),'2026-12-28');
+});
+
 test("desktop navigation keeps mobile navigation state ready for viewport changes", () => {
   const {run}=app();
   run(`document.querySelector=()=>({scrollTop:0});

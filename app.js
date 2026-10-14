@@ -4335,6 +4335,16 @@ function refreshCurrentDate(now = new Date()) {
   return true;
 }
 
+function selectCalendarMode(mode) {
+  calendarMode = ["week", "agenda"].includes(mode) ? mode : "month";
+  if (calendarMode === "week") selectedCalendarDate = TODAY_ISO;
+  if (calendarMode === "month" || calendarMode === "week") {
+    calendarMonthAnchor = startOfMonthIso(selectedCalendarDate);
+  }
+  saveViewPreferences();
+  render();
+}
+
 function jumpToToday() {
   refreshCurrentDate();
   selectedCalendarDate = TODAY_ISO;
@@ -4375,10 +4385,8 @@ function wireEvents() {
 
   elements.calendarModeButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      calendarMode = ["week", "agenda"].includes(button.dataset.calendarMode) ? button.dataset.calendarMode : "month";
-      if (calendarMode === "month") calendarMonthAnchor = startOfMonthIso(selectedCalendarDate);
-      saveViewPreferences();
-      render();
+      refreshCurrentDate();
+      selectCalendarMode(button.dataset.calendarMode);
     });
   });
   elements.previousMonthButton?.addEventListener("click", () => changeCalendarMonth(-1));
