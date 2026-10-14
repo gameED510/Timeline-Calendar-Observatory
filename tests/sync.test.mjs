@@ -326,6 +326,16 @@ test("day rollover updates today without changing the viewed month or selection"
   assert.equal(run(`refreshCurrentDate(new Date(2026,8,22,2))`),false);
 });
 
+test("performance defaults to calendar-month commission and does not jump after the 15th", () => {
+  const {run}=app();
+  assert.equal(run('performanceDetail'),'commission');
+  run(`TODAY_ISO='2026-10-15';performanceMonth='2026-10';`);
+  run(`refreshCurrentDate(new Date(2026,9,16,1))`);
+  assert.equal(run('performanceMonth'),'2026-10');
+  run(`refreshCurrentDate(new Date(2026,10,1,1))`);
+  assert.equal(run('performanceMonth'),'2026-11');
+});
+
 test("sync summary distinguishes pending, uploading, offline and acknowledged data", () => {
   const { run }=app();
   assert.equal(run('projectSyncSummary().label'),'已同步');

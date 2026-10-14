@@ -36,8 +36,8 @@ let syncedProjects = localState.sync.projects;
 let projectTombstones = localState.sync.tombstones;
 let dirtyProjectIds = new Set(localState.sync.dirtyIds);
 let currentView = "calendar";
-let performanceMonth = TLPerformance.cycleMonth(TODAY_ISO);
-let performanceDetail = "current";
+let performanceMonth = TODAY_ISO.slice(0, 7);
+let performanceDetail = "commission";
 let selected = null;
 let editingProjectId = null;
 let selectedProjectColor = PROJECT_COLORS[0];
@@ -862,16 +862,14 @@ function renderPerformance() {
   document.querySelector("#performanceSummary").innerHTML = `
     <p class="performance-range">本期发布 · ${range(period)}${current.missing.length ? ` · ${current.missing.length} 个项目待补平台，尚未计入总数` : ""}</p>
     <div class="performance-metrics">
-      <div class="performance-metric"><span>发布总数</span><strong>${current.total}<small> 条</small></strong><em>${current.projects} 个项目 · 按平台分别计数</em></div>
-      <div class="performance-metric douyin"><span><b class="platform-dot"></b>抖音</span><strong>${current.counts.douyin}<small> 条</small></strong><em>全部账号的发布记录</em></div>
-      <div class="performance-metric xiaohongshu"><span><b class="platform-dot"></b>小红书</span><strong>${current.counts.xiaohongshu}<small> 条</small></strong><em>全部账号的发布记录</em></div>
+      <div class="performance-metric"><span>发布总数</span><strong>${current.total}<small> 条</small></strong></div>
+      <div class="performance-metric douyin"><span><b class="platform-dot"></b>抖音</span><strong>${current.counts.douyin}<small> 条</small></strong></div>
+      <div class="performance-metric xiaohongshu"><span><b class="platform-dot"></b>小红书</span><strong>${current.counts.xiaohongshu}<small> 条</small></strong></div>
     </div>
     <div class="performance-cycle-forecast">
       <div><span>本期已完成发布预计提成</span><strong>¥${money(current.commission)}</strong></div>
-      <p>完成发布后立即计入这里；到账预测按自然发布月延后 3 个月。${current.unpriced.length ? `另有 ${current.unpriced.reduce((sum, row) => sum + row.count, 0)} 条待完善账号或报价，暂未计入金额。` : ""}</p>
-    </div>
-    <p class="performance-range">${performanceMonth} 提成对应发布月 · ${earnedPeriod.start.slice(0,7)}</p>
-    <details class="performance-explanation"><summary>统计口径</summary><p>发布统计截至本月 15 日，16 日起计入下月。上方“本期预计提成”会随完成发布即时更新；${performanceMonth} 到账预测对应自然发布月 ${range(earnedPeriod)}。公式仅计已完成发布，并按各账号的收益分成与个人提成比例计算。${earned.missing.length ? `有 ${earned.missing.length} 个项目待补平台。` : ""}${earned.unpriced.length ? `有 ${earned.unpriced.length} 条发布待完善账号或报价。` : ""}</p></details>`;
+      ${current.unpriced.length ? `<p>${current.unpriced.reduce((sum, row) => sum + row.count, 0)} 条待补报价，未计入金额</p>` : ""}
+    </div>`;
   const data = performanceDetail === "commission" ? earned : current;
   const detailPeriod = performanceDetail === "commission" ? earnedPeriod : period;
   document.querySelectorAll("[data-performance-detail]").forEach((button) => {
@@ -934,7 +932,7 @@ function renderActualPerformance() {
   if (!panel) {
     panel = document.createElement("section");
     panel.id = "actualPerformance";
-    document.querySelector("#performanceSummary").after(panel);
+    document.querySelector("#performanceSummary").before(panel);
   }
   TLActualUI.mount(panel, {
     userId: syncState.user?.id, client: syncState.client, epoch: accountEpoch,
@@ -4331,9 +4329,9 @@ function updateKeyboardViewport() {
 function refreshCurrentDate(now = new Date()) {
   const next = dateToIso(now);
   if (next === TODAY_ISO) return false;
-  const previousPerformanceMonth = TLPerformance.cycleMonth(TODAY_ISO);
+  const previousPerformanceMonth = TODAY_ISO.slice(0, 7);
   TODAY_ISO = next;
-  if (performanceMonth === previousPerformanceMonth) performanceMonth = TLPerformance.cycleMonth(TODAY_ISO);
+  if (performanceMonth === previousPerformanceMonth) performanceMonth = TODAY_ISO.slice(0, 7);
   render();
   return true;
 }

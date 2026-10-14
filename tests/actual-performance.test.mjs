@@ -120,6 +120,15 @@ test('actual settlement editor exposes record revisions and requires mismatch re
   assert.match(ui,/latestActualMonth=P\.cycleMonth\(ctx\.today\)/);
   assert.match(ui,/实际到账只能记录到当前绩效月/);
 });
+test('settlement overview is compact and retains actual entry without analytics panels',()=>{
+  const ui=readFileSync(new URL('../actual-performance.js',import.meta.url),'utf8');
+  const draw=ui.slice(ui.indexOf('  function draw()'),ui.indexOf('  function mount('));
+  for(const label of ['校准到账估算','差额构成','当前校准样本','performance-charts','actual-analysis'])assert.ok(!draw.includes(label));
+  assert.match(draw,/本月预计到账提成/);
+  assert.match(draw,/实际结算提成/);
+  assert.match(draw,/data-entry/);
+  assert.ok(!draw.includes('actual-details" open'));
+});
 test('calibration excludes current/future months and zero baseline', () => {
   const rows = ['01','02','03'].map(m => ({month:`2026-${m}`,total:200,snapshot:{formula:100}}));
   rows.push({month:'2026-04',total:999,snapshot:{formula:1}});
