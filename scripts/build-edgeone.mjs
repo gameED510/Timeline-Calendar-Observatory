@@ -10,6 +10,8 @@ const entries = [
   "styles.css",
   "theme.js",
   "app.js",
+  "admin-console.js",
+  "admin-console.css",
   "performance.js",
   "actual-performance.js",
   "performance-charts.js",

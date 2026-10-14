@@ -280,6 +280,7 @@ function changeCloudAccount(user) {
   const nextId = user?.id || null;
   syncState.user = user;
   if (nextId !== activeAccountId) {
+    window.TLAdmin?.close();
     TLActualUI.reset();
     document.querySelectorAll(".pricing-dialog, .actual-dialog, .import-preview, .reschedule-dialog, .dense-day-dialog, .recovery-comparison, .template-options-dialog, .weekly-report-dialog").forEach((dialog) => { dialog.close(); dialog.remove(); });
     document.querySelector("#actualPerformance")?.remove();
@@ -4477,6 +4478,16 @@ function wireEvents() {
   elements.deleteProjectFromDialogButton.addEventListener("click", deleteEditingProject);
   elements.deleteProjectButton.addEventListener("click", deleteSelectedProject);
   elements.weeklyReportButton.addEventListener("click", openWeeklyReport);
+  document.querySelector('#adminConsoleButton')?.addEventListener('click', () => {
+    setDataMenuOpen(false);
+    if (!syncState.user || !syncState.client) {
+      setAccountPopoverOpen(true);
+      showToast('请先登录管理员账号');
+      return;
+    }
+    window.TLAdmin.open({client: syncState.client, userId: syncState.user.id,
+      isCurrent: id => syncState.user?.id === id, icons: activateIcons});
+  });
   elements.todayButton.addEventListener("click", jumpToToday);
   elements.themeButton?.addEventListener("click", toggleTheme);
   elements.dataMenuButton?.addEventListener("click", () => {
