@@ -32,3 +32,11 @@ test('platform assets ship locally in offline shell and both build targets',()=>
   assert.match(source,/aria-label/);
   assert.match(source,/mark.title/);
 });
+test('shooting cards inherit theme colors along with platform marks',()=>{
+  const css=readFileSync(new URL('../styles.css',import.meta.url),'utf8');
+  const shoot=css.match(/\.motion-card\.shoot-highlight\s*\{([^}]+)\}/)[1];
+  assert.match(shoot,/color: var\(--ink\)/);
+  assert.match(shoot,/var\(--bg-soft\)/);
+  assert.doesNotMatch(shoot,/color: #/);
+  assert.match(css,/\.platform-marks\s*\{[^}]*color: inherit/);
+});
