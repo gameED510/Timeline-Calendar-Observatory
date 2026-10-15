@@ -1824,6 +1824,8 @@ function renderCalendarDayDetails(iso, items) {
     main.type = "button";
     main.className = "calendar-detail-main";
     main.innerHTML = `<span class="detail-dot"></span><strong>${escapeHtml(getClientName(project.name))}</strong><em>${stage}${completed ? " · 已完成" : ""}</em>`;
+    const platforms = window.TLPlatformMarks?.create(project);
+    if (platforms) main.querySelector('em').append(platforms);
     main.addEventListener("click", () => selectMilestone(project.id, stage));
 
     const actions = document.createElement("div");
@@ -1953,7 +1955,11 @@ function createTimelineEvent(item) {
   const dateLabel = document.createElement("small");
   dateLabel.textContent = formatTinyDate(date);
 
-  text.append(stageLabel, projectLabel, dateLabel);
+  const meta = document.createElement('span');
+  meta.className = 'chip-meta';meta.append(stageLabel);
+  const platforms = window.TLPlatformMarks?.create(project);
+  if (platforms) meta.append(platforms);
+  text.append(meta, projectLabel, dateLabel);
   card.append(check, text);
 
   card.addEventListener("click", () => openMilestoneInCalendar(project.id, stage));
@@ -2211,7 +2217,12 @@ function createMilestoneChip(project, stage, iso, draggable) {
   const projectLabel = document.createElement("span");
   projectLabel.className = "chip-project";
   projectLabel.textContent = getClientName(project.name);
-  text.append(stageLabel, projectLabel);
+  const meta = document.createElement('span');
+  meta.className = 'chip-meta';
+  meta.append(stageLabel);
+  const platforms = window.TLPlatformMarks?.create(project);
+  if (platforms) meta.append(platforms);
+  text.append(meta, projectLabel);
   const date = document.createElement("span");
   date.className = "chip-date";
   date.textContent = formatTinyDate(iso);

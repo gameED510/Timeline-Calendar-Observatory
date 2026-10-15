@@ -16,6 +16,7 @@ const staticEntries = [
   "actual-performance.js",
   "performance-charts.js",
   "calendar-motion.js",
+  "platform-marks.js",
   "favicon.svg",
   "site.webmanifest",
   "sw.js",

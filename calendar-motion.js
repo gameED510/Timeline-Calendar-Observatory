@@ -53,7 +53,11 @@ window.CalendarMotion = (() => {
       row.style.setProperty('--project-color',item.project.color);
       const name=document.createElement('strong');name.textContent=item.project.name;
       const stage=document.createElement('span');stage.textContent=`${item.stage}${item.completed?' · 已完成':''}`;
-      const text=document.createElement('div');text.append(name,stage);
+      const text=document.createElement('div');
+      const meta=document.createElement('span');meta.className='chip-meta';meta.append(stage);
+      const platforms=window.TLPlatformMarks?.create(item.project);
+      if(platforms)meta.append(platforms);
+      text.append(name,meta);
       const actions=document.createElement('div');actions.className='dense-day-actions';
       actions.append(icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>{dialog.close();handlers.toggle(item);}),icon('calendar-days','调整日期',()=>{dialog.close();chooseDate(item,handlers,returnFocus);}),icon('pencil','编辑项目',()=>{dialog.close();returnFocus?.focus({preventScroll:true});handlers.edit(item);}));
       row.append(text,actions);list.append(row);
@@ -182,7 +186,11 @@ window.CalendarMotion = (() => {
       main.setAttribute('aria-expanded','false');main.setAttribute('aria-label',`${item.project.name} ${item.stage}，展开并聚焦`);
       const name=document.createElement('strong');name.textContent=handlers.label(item);
       const stage=document.createElement('span');stage.className='motion-card-stage';stage.textContent=item.stage+(item.completed?' · 已完成':'');
-      main.append(name,stage);
+      const meta=document.createElement('span');meta.className='motion-card-meta';
+      meta.append(stage);
+      const platforms=window.TLPlatformMarks?.create(item.project);
+      if(platforms)meta.append(platforms);
+      main.append(name,meta);
       main.addEventListener('click',event=>{
         event.stopPropagation();
         if(main.dataset.dragged){delete main.dataset.dragged;return;}

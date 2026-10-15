@@ -9,6 +9,7 @@ const root=resolve(import.meta.dirname,'..');
 const files=new Set(['index.html','styles.css','theme.js','app.js','calendar-motion.js','performance.js','actual-performance.js','performance-charts.js','favicon.svg','site.webmanifest']);
 files.add('admin-console.js');
 files.add('admin-console.css');
+files.add('platform-marks.js');
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.webmanifest':'application/manifest+json','.png':'image/png','.gif':'image/gif'};
 const config={supabaseUrl:process.env.SUPABASE_URL||'',supabaseAnonKey:process.env.SUPABASE_ANON_KEY||'',supabaseProxyUrl:'/api/supabase-proxy'};
 if(!config.supabaseUrl||!config.supabaseAnonKey) {

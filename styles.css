@@ -5472,3 +5472,28 @@ html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden
 }
 .performance-view .actual-comparison strong { font-size: 34px; }
 @media (max-width: 550px) { .performance-view .actual-comparison strong { font-size: 28px; } }
+.platform-marks { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; color: inherit; line-height: 1; }
+.platform-mark { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 16px; }
+.platform-mark-xiaohongshu { width: 26px; }
+.platform-mark svg { width: 100%; height: 14px; fill: currentColor; stroke: none; }
+.platform-mark-xiaohongshu svg { height: 11px; }
+.motion-card-meta, .chip-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-width: 0; }
+.motion-card-meta .motion-card-stage { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip-meta .platform-marks { margin-left: 8px; }
+.inline-pile.expanded .motion-card.focused:not(.motion-ghost) { height: 128px; min-height: 128px; }
+.inline-pile.expanded .motion-card.focused .motion-card-main { height: 128px; min-height: 128px; padding: 12px 12px 52px; }
+.inline-pile.expanded .motion-card.focused .motion-card-main strong { padding-right: 28px; width: 100%; box-sizing: border-box; }
+.inline-pile.expanded .motion-card.focused .motion-card-meta { margin-top: auto; }
+.inline-pile.expanded .motion-card.focused .motion-card-stage { margin-top: 0; }
+.calendar-detail-main em:has(.platform-marks) { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+@media (max-width: 550px) {
+  .inline-pile { height: 62px; }
+  .inline-pile:not(.expanded) .motion-card { height: 42px; }
+  .inline-pile:not(.expanded) .motion-card-meta { min-height: 12px; justify-content: flex-end; }
+  .inline-pile:not(.expanded) .motion-card-meta:not(:has(.platform-marks)) { display: none; }
+  .inline-pile:not(.expanded) .platform-mark { width: 10px; height: 12px; }
+  .inline-pile:not(.expanded) .platform-mark-xiaohongshu { width: 22px; }
+  .inline-pile:not(.expanded) .platform-mark svg { height: 10px; }
+  .inline-pile:not(.expanded) .platform-mark-xiaohongshu svg { height: 9px; }
+  .inline-pile:not(.expanded) .platform-marks { gap: 4px; }
+}
