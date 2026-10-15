@@ -670,8 +670,13 @@ function render() {
   renderFocusRow(visibleMilestones, riskQueue);
   renderLegend();
   if(calendarProjectFilter&&!projects.some(project=>project.id===calendarProjectFilter))calendarProjectFilter=null;
-  if (currentView === "calendar") renderCalendar(calendarProjectFilter
-    ? groupMilestonesByDate(visibleMilestones.filter(item=>item.project.id===calendarProjectFilter)) : grouped);
+  if (currentView === "calendar") {
+    const calendarMilestones = motionState
+      ? allMilestones.filter(item => !isProjectComplete(item.project) || item.project.id === motionState.projectId)
+      : visibleMilestones;
+    renderCalendar(groupMilestonesByDate(calendarProjectFilter
+      ? calendarMilestones.filter(item=>item.project.id===calendarProjectFilter) : calendarMilestones));
+  }
   if (currentView === "timeline") renderTimeline();
   if (currentView === "conflicts") {
     renderCapacityForecast(pendingMilestones);
@@ -1451,7 +1456,7 @@ function toggleProjectCompleted(projectId) {
     : nextDone ? `${getClientName(project.name)} 已完成，已移入“已完成”` : `${getClientName(project.name)} 已恢复到“进行中”`);
 }
 
-function toggleMilestoneCompleted(projectId, stageName) {
+function toggleMilestoneCompleted(projectId, stageName, { keepCalendarDate = false } = {}) {
   if (!canEditProjects()) return;
   const project = projects.find((item) => item.id === projectId);
   if (!project || !project.milestones[stageName]) return;
@@ -1462,7 +1467,7 @@ function toggleMilestoneCompleted(projectId, stageName) {
     const next = getNextPendingMilestone(project);
     if (selected?.projectId === projectId && selected.stage === stageName) {
       selected = next ? { projectId, stage: next.stage } : null;
-      if (next) selectedCalendarDate = next.date;
+      if (next && !keepCalendarDate) selectedCalendarDate = next.date;
     }
   } else {
     if (projectFilter === "done") projectFilter = "active";
@@ -1720,7 +1725,8 @@ function renderCalendar(grouped) {
       window.CalendarMotion.mount(items, pile, {
         label: item => item.project.shortName || getClientName(item.project.name),
         edit: item => openProjectDialog(item.project.id),
-        toggle: item => toggleMilestoneCompleted(item.project.id, item.stage),
+        toggle: item => toggleMilestoneCompleted(item.project.id, item.stage, { keepCalendarDate: true }),
+        collapsed: () => { if (items.some(item=>isProjectComplete(item.project))) render(); },
         move: (item, date, options) => moveMilestone(item.project.id, item.stage, date, options),
         following: item => getShiftableFollowingStages(item.project, item.stage).length,
         icons: activateIcons

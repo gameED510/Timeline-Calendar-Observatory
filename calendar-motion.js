@@ -100,7 +100,11 @@ window.CalendarMotion = (() => {
         card.querySelector('.motion-card-main').setAttribute('aria-expanded','false');
         const data=groups.get(old);card.querySelector('strong').textContent=data.handlers.label(data.items[i]);
       });
-      },()=>{old.classList.remove('closing');if(!old.classList.contains('expanded')&&!old.classList.contains('dragging'))old.closest('.day-cell')?.classList.remove('pile-active');},immediate);
+      },()=>{
+        old.classList.remove('closing');
+        if(!old.classList.contains('expanded')&&!old.classList.contains('dragging'))old.closest('.day-cell')?.classList.remove('pile-active');
+        if(!immediate&&old.isConnected&&!old.classList.contains('expanded'))groups.get(old)?.handlers.collapsed?.();
+      },immediate);
       if(restoreFocus) old.querySelector('.motion-card-main')?.focus({preventScroll:true});
     }
     layer=null; callbacks=null; focused=-1;
@@ -192,7 +196,7 @@ window.CalendarMotion = (() => {
       });
       main.addEventListener('pointerdown',event=>startDrag(event,card,main,item,group));
       const actions=document.createElement('div');actions.className='motion-card-actions';
-      actions.append(icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>{close(false);handlers.toggle(item);}));
+      actions.append(icon(item.completed?'rotate-ccw':'check',item.completed?'标记未完成':'标记完成',()=>handlers.toggle(item)));
       const menu=document.createElement('div');menu.className='motion-card-menu';menu.hidden=true;
       const edit=icon('pencil','编辑项目',()=>{close(false);handlers.edit(item);});
       edit.append(document.createTextNode('编辑项目'));menu.append(edit);
@@ -347,7 +351,8 @@ window.CalendarMotion = (() => {
   function snapshot() {
     if(!layer||drag)return null;
     const data=groups.get(layer), item=data.items[Math.max(0,focused)];
-    return {projectId:item.project.id,stage:item.stage,focused:focused>=0};
+    const card=layer.querySelectorAll('.motion-card')[Math.max(0,focused)];
+    return {projectId:item.project.id,stage:item.stage,focused:focused>=0,focusAction:card?.querySelector('.motion-card-actions')?.contains(document.activeElement)};
   }
   function restore(state) {
     if(!state)return;
@@ -361,6 +366,7 @@ window.CalendarMotion = (() => {
         node.style.zIndex=String(i===focused?100:i+1);
       });
     }
+    if(state.focusAction)card.querySelector('.motion-card-actions button')?.focus({preventScroll:true});
   }
   window.addEventListener('resize', () => {
     cancelAnimationFrame(resizeFrame);

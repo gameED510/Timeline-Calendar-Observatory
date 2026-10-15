@@ -4,6 +4,15 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
+test('calendar completion preserves the expanded pile and restores its action focus', async()=>{
+  const motion=await read('calendar-motion.js');
+  assert.match(motion,/标记完成',\(\)=>handlers.toggle\(item\)/);
+  assert.doesNotMatch(motion,/标记完成',\(\)=>\{close\(false\);handlers.toggle/);
+  assert.match(motion,/focusAction/);
+  assert.match(motion,/handlers.collapsed/);
+  assert.match(await read('app.js'),/item.project.id === motionState.projectId/);
+});
+
 test("blank day selection preserves cards until collapse finishes", async () => {
   const app = await read('app.js');
   const handler = app.slice(app.indexOf('cell.addEventListener("click"'), app.indexOf('const head = document.createElement("div")', app.indexOf('cell.addEventListener("click"')));

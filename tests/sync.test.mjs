@@ -53,6 +53,16 @@ test("view preferences restore valid choices without sharing them across account
   assert.equal(run('projectSort'),'next');assert.equal(run('currentView'),'calendar');
 });
 
+test("completion from an expanded card keeps its calendar date and can be undone", () => {
+  const {run}=app();
+  run(`saveProjects=()=>{};selected={projectId:'p',stage:'拍摄'};selectedCalendarDate='2026-09-06';toggleMilestoneCompleted('p','拍摄',{keepCalendarDate:true});`);
+  assert.equal(run('selectedCalendarDate'),'2026-09-06');
+  assert.equal(run(`projects[0].completedMilestones['拍摄']`),true);
+  run(`toggleMilestoneCompleted('p','拍摄',{keepCalendarDate:true})`);
+  assert.equal(run(`projects[0].completedMilestones['拍摄']`),false);
+  assert.equal(run('selectedCalendarDate'),'2026-09-06');
+});
+
 test("week mode always opens today's week rather than a previously selected month date", () => {
   const {run}=app();
   run(`TODAY_ISO='2026-10-15';selectedCalendarDate='2026-11-25';calendarMonthAnchor='2026-11-01';selectCalendarMode('week');`);
