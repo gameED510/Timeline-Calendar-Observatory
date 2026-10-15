@@ -12,9 +12,14 @@ window.TLPlatformMarks = (() => {
   }
   function create(project) {
     const selected = platforms(project);
-    if (!selected.length) return null;
     const marks = document.createElement('span');
     marks.className = 'platform-marks';
+    if (!selected.length) {
+      marks.className += ' platform-pending';
+      marks.textContent = '平台待选';
+      marks.title = '尚未选择发布平台';
+      return marks;
+    }
     marks.setAttribute('role','img');
     marks.setAttribute('aria-label',`发布平台：${selected.map(key=>names[key]).join('、')}`);
     for (const key of selected) {

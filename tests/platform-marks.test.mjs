@@ -5,7 +5,18 @@ import vm from 'node:vm';
 import '../performance.js';
 const source=readFileSync(new URL('../platform-marks.js',import.meta.url),'utf8');
 const window={TLPerformance:globalThis.TLPerformance};
-vm.runInNewContext(source,{window});
+const node=()=>({children:[],dataset:{},attributes:{},className:'',setAttribute(key,value){this.attributes[key]=value},append(child){this.children.push(child)}});
+vm.runInNewContext(source,{window,document:{createElement:node,createElementNS:node}});
+test('unset platforms show pending text and selected platforms show only logos',()=>{
+  const pending=window.TLPlatformMarks.create({});
+  assert.equal(pending.textContent,'平台待选');
+  assert.match(pending.className,/platform-pending/);
+  assert.equal(pending.children.length,0);
+  const selected=window.TLPlatformMarks.create({publication:{douyin:{count:1}}});
+  assert.equal(selected.children.length,1);
+  assert.equal(selected.children[0].dataset.platform,'douyin');
+  assert.equal(selected.textContent,undefined);
+});
 test('platform marks use explicit normalized publication settings, not names or completion',()=>{
   const list=p=>Array.from(window.TLPlatformMarks.platforms(p));
   assert.deepEqual(list({name:'抖音 & 小红书'}),[]);

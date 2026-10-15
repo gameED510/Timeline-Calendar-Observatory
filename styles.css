@@ -5473,6 +5473,7 @@ html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden
 .performance-view .actual-comparison strong { font-size: 34px; }
 @media (max-width: 550px) { .performance-view .actual-comparison strong { font-size: 28px; } }
 .platform-marks { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; color: inherit; line-height: 1; }
+.platform-pending { font-size: 11px; font-weight: 400; white-space: nowrap; opacity: .75; }
 .platform-mark { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 16px; }
 .platform-mark-xiaohongshu { width: 26px; }
 .platform-mark svg { width: 100%; height: 14px; fill: currentColor; stroke: none; }
@@ -5496,4 +5497,5 @@ html:has(.actual-dialog[open]),body:has(.actual-dialog[open]) { overflow: hidden
   .inline-pile:not(.expanded) .platform-mark svg { height: 10px; }
   .inline-pile:not(.expanded) .platform-mark-xiaohongshu svg { height: 9px; }
   .inline-pile:not(.expanded) .platform-marks { gap: 4px; }
+  .inline-pile:not(.expanded) .platform-pending { font-size: 9px; }
 }
