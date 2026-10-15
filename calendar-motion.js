@@ -103,7 +103,9 @@ window.CalendarMotion = (() => {
       },()=>{
         old.classList.remove('closing');
         if(!old.classList.contains('expanded')&&!old.classList.contains('dragging'))old.closest('.day-cell')?.classList.remove('pile-active');
-        if(!immediate&&old.isConnected&&!old.classList.contains('expanded'))groups.get(old)?.handlers.collapsed?.();
+        if(!immediate)queueMicrotask(()=>{
+          if(old.isConnected&&!old.classList.contains('expanded'))groups.get(old)?.handlers.collapsed?.();
+        });
       },immediate);
       if(restoreFocus) old.querySelector('.motion-card-main')?.focus({preventScroll:true});
     }
